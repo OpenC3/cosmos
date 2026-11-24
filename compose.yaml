@@ -324,7 +324,7 @@ services:
     restart: "unless-stopped"
     ports:
       # Iroh bridge hubs (bridge_microservice) bind one UDP port each from this
-      # range and advertise 127.0.0.1:<port> so openc3-app and host interfaces
+      # range and advertise 127.0.0.1:<port> so openc3-cosmos-app and host interfaces
       # reach them locally with no relay. Keep this range in sync with
       # BRIDGE_PORT_BASE/COUNT in bridge_microservice.py.
       - "127.0.0.1:7799-7814:7799-7814/udp"

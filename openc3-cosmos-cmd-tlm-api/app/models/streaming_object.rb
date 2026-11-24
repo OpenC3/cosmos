@@ -42,8 +42,20 @@ class StreamingObject
   attr_reader :item_key
   # The key as subscribed, which differs from key when a LATEST item expands to a concrete packet
   attr_reader :source_key
+  # :PACKET or :RECEIVED - which timestamp start_time / end_time apply to and is returned as __time
+  attr_reader :time_type
 
-  def initialize(key, start_time_nsec, end_time_nsec, item_key: nil, source_key: nil, scope:, token: nil)
+  TIME_TYPES = [:PACKET, :RECEIVED].freeze
+
+  # Convert a requested time type (e.g. "RECEIVED" or nil) into a TIME_TYPES symbol
+  def self.parse_time_type(time_type)
+    return :PACKET if time_type.nil? or time_type.to_s.empty?
+    parsed = time_type.to_s.upcase.to_sym
+    raise ArgumentError, "Unknown time_type: #{time_type}. Must be one of #{TIME_TYPES.join(', ')}" unless TIME_TYPES.include?(parsed)
+    parsed
+  end
+
+  def initialize(key, start_time_nsec, end_time_nsec, item_key: nil, source_key: nil, scope:, token: nil, time_type: :PACKET)
     key = key.upcase
     @key = key
     @item_key = item_key
@@ -57,6 +69,11 @@ class StreamingObject
     @item_name = parsed.item_name
     @value_type = parsed.value_type
     @reduced_type = parsed.reduced_type
+    @time_type = StreamingObject.parse_time_type(time_type)
+    # Historical RAW packets come from log files which are organized by packet time
+    if @time_type == :RECEIVED and @stream_mode == :RAW and start_time_nsec
+      raise ArgumentError, "time_type RECEIVED is not supported for historical RAW streams: #{key}"
+    end
     if @stream_mode == :RAW
       type = (@cmd_or_tlm == :CMD) ? 'COMMAND' : 'TELEMETRY'
     elsif @stream_mode == :DECOM
@@ -85,6 +102,9 @@ class StreamingObject
     else
       @id = 'PACKET__' + key
     end
-    OpenC3::Logger.debug("Creating object #{@id} start:#{@start_time} end:#{@end_time} offset:#{@offset}")
+    # Subscriptions to the same key with different time types are separate. A prefix
+    # (rather than a suffix) can't collide with an item_key and keeps PACKET ids unchanged.
+    @id = "#{@time_type}__#{@id}" unless @time_type == :PACKET
+    OpenC3::Logger.debug("Creating object #{@id} start:#{@start_time} end:#{@end_time} time_type:#{@time_type} offset:#{@offset}")
   end
 end

@@ -17,6 +17,7 @@
 
 require 'openc3'
 require 'openc3/models/microservice_model'
+require 'openc3/models/shared_resource_model'
 require 'openc3/operators/operator'
 require 'openc3/utilities/python_venv'
 require 'openc3/utilities/secrets'
@@ -249,7 +250,54 @@ module OpenC3
       end
     end
 
+    # Confirm that shared resource members on this shard which are waiting to be
+    # released have stopped. Called at the start of a cycle so any process the
+    # previous cycle removed has already been shut down by remove_old.
+    #
+    # @param records [Hash] SharedResourceModel.all, updated in place
+    def acknowledge_shared_resources(records)
+      records.keys.each do |name|
+        record = records[name]
+        next unless record['state'] == SharedResourceModel::RELEASING
+
+        stopped = []
+        @mutex.synchronize do
+          (record['waiting'] || []).each do |member|
+            next unless member['shard'].to_i == @shard
+            next if @processes[member['name']] or @removed_processes[member['name']]
+            stopped << member['name']
+          end
+        end
+        next if stopped.empty?
+
+        Logger.info("Shared resource #{name} members stopped: #{stopped.join(', ')}")
+        updated = SharedResourceModel.acknowledge(name, stopped)
+        if updated
+          records[name] = updated
+        else
+          records.delete(name)
+        end
+      end
+    end
+
+    # Disable microservices belonging to a shared resource which isn't active in
+    # their scope. The rest of update then handles them like any other disabled
+    # microservice: killed if running and not spawned until enabled.
+    def apply_shared_resources(microservices, records)
+      microservices.each do |microservice_name, microservice_config|
+        resource = microservice_config['shared_resource']
+        next unless resource
+        scope = microservice_name.split("__")[0]
+        unless SharedResourceModel.active?(records[resource], scope)
+          microservice_config['enabled'] = false
+        end
+      end
+    end
+
     def update
+      shared_resources = SharedResourceModel.all
+      acknowledge_shared_resources(shared_resources)
+
       @previous_microservices = @microservices.dup
       # Get all the microservice configuration
       @microservices = MicroserviceModel.all
@@ -259,6 +307,8 @@ module OpenC3
         microservice_shard = microservice_config['shard'] || 0
         microservice_shard == @shard
       end
+
+      apply_shared_resources(@microservices, shared_resources)
 
       # Detect new and changed microservices
       @new_microservices = {}

@@ -36,7 +36,7 @@
           item-value="value"
           :custom-filter="tokenizedFilter"
           :filter-keys="filterKeys"
-          @update:search="searches.target = $event"
+          @update:search="onSearch('targetAutocomplete', 'target', $event)"
           @update:model-value="targetNameChanged"
           @focus="resetSearchAndFocus('targetAutocomplete', 'target')"
         />
@@ -57,7 +57,7 @@
           item-value="value"
           :custom-filter="tokenizedFilter"
           :filter-keys="filterKeys"
-          @update:search="searches.packet = $event"
+          @update:search="onSearch('packetAutocomplete', 'packet', $event)"
           @update:model-value="packetNameChanged"
           @update:focused="packetFocusChanged"
           @focus="resetSearchAndFocus('packetAutocomplete', 'packet')"
@@ -83,7 +83,7 @@
           item-value="value"
           :custom-filter="tokenizedFilter"
           :filter-keys="filterKeys"
-          @update:search="searches.queue = $event"
+          @update:search="onSearch('queueAutocomplete', 'queue', $event)"
           @update:model-value="queueNameChanged"
           @focus="resetSearchAndFocus('queueAutocomplete', 'queue')"
         />
@@ -109,7 +109,7 @@
           item-value="value"
           :custom-filter="tokenizedFilter"
           :filter-keys="filterKeys"
-          @update:search="searches.item = $event"
+          @update:search="onSearch('itemAutocomplete', 'item', $event)"
           @update:model-value="itemNameChanged($event)"
           @update:focused="itemFocusChanged"
           @focus="resetSearchAndFocus('itemAutocomplete', 'item')"
@@ -651,6 +651,31 @@ export default {
     // Focus handler for the four name dropdowns. The search text sticks
     // around after a selection, so clear it to put the list back in name
     // order, then select the input contents as every other field does.
+    // Vuetify scrolls a menu to the current selection when it opens, which
+    // hides the best match (ranked first) once the user starts typing:
+    // - The open scroll runs in a requestAnimationFrame with the selection's
+    //   index in the unfiltered list, so typing right away gets it applied to
+    //   the filtered list instead.
+    // - Otherwise the offset is kept as the list is filtered and the browser
+    //   clamps it to the shorter list.
+    // Put each new search back at the top, in a frame queued after the open
+    // scroll so it runs last.
+    onSearch: function (refName, searchKey, search) {
+      this.searches[searchKey] = search
+      if (!search) return
+      this.$nextTick(() => {
+        requestAnimationFrame(() => {
+          const input = this.$refs[refName]?.$el.querySelector('input')
+          const menuId = input?.getAttribute('aria-controls')
+          const list = menuId
+            ? document.getElementById(menuId)?.querySelector('.v-list')
+            : null
+          if (list) {
+            list.scrollTop = 0
+          }
+        })
+      })
+    },
     resetSearchAndFocus: function (refName, searchKey) {
       this.searches[searchKey] = ''
       this.selectOnFocus(refName)

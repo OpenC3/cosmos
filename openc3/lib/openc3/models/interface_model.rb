@@ -58,6 +58,7 @@ module OpenC3
     attr_accessor :shard
     attr_accessor :db_shard
     attr_accessor :bridge_name
+    attr_accessor :shared_resource
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -137,6 +138,7 @@ module OpenC3
       shard: 0,
       db_shard: 0,
       bridge_name: nil,
+      shared_resource: nil,
       scope:
     )
       if self.class._get_type == 'INTERFACE'
@@ -197,6 +199,7 @@ module OpenC3
       @shard = shard.to_i # to_i to handle nil
       @db_shard = db_shard.to_i # to_i to handle nil
       @bridge_name = bridge_name&.to_s&.upcase
+      @shared_resource = shared_resource
       @secrets = secrets
     end
 
@@ -271,6 +274,7 @@ module OpenC3
         'shard' => @shard,
         'db_shard' => @db_shard,
         'bridge_name' => @bridge_name,
+        'shared_resource' => @shared_resource,
         'updated_at' => @updated_at
       }
     end
@@ -457,9 +461,19 @@ module OpenC3
       when 'BRIDGE'
         if type == 'INTERFACE'
           parser.verify_num_parameters(1, 1, "#{keyword} <Bridge Name>")
+          raise parser.error("BRIDGE can not be used with SHARED_RESOURCE") if @shared_resource
           @bridge_name = parameters[0].to_s.upcase
         else
           raise ConfigParser::Error.new(parser, "BRIDGE not supported for Router: #{keyword} #{parameters.join(" ")}")
+        end
+
+      when 'SHARED_RESOURCE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shared Resource Name>")
+        raise parser.error("SHARED_RESOURCE can not be used with BRIDGE") if @bridge_name
+        begin
+          @shared_resource = SharedResourceModel.validate_name(parameters[0])
+        rescue => e
+          raise parser.error(e.message)
         end
 
       else
@@ -474,9 +488,9 @@ module OpenC3
     def deploy(gem_path, variables, validate_only: false)
       type = self.class._get_type
       microservice_name = "#{@scope}__#{type}__#{@name}"
-      # A bridged interface runs on the host (openc3-app) rather than in Docker.
+      # A bridged interface runs on the host (openc3-cosmos-app) rather than in Docker.
       # COSMOS runs a bridge_interface tunnel + a shared bridge_microservice relay
-      # and hands the real interface's spawn info to openc3-app. See deploy_bridge.
+      # and hands the real interface's spawn info to openc3-cosmos-app. See deploy_bridge.
       return deploy_bridge(gem_path, variables, microservice_name, type, validate_only: validate_only) if @bridge_name
 
       microservice = MicroserviceModel.new(
@@ -493,6 +507,7 @@ module OpenC3
         prefix: @prefix,
         shard: @shard,
         db_shard: @db_shard,
+        shared_resource: @shared_resource,
         scope: @scope
       )
       unless validate_only
@@ -507,14 +522,14 @@ module OpenC3
 
     # Deploy a bridged interface. This splits the interface across the Docker
     # side of COSMOS (bridge_interface tunnel + protocols/target processing) and
-    # the host side (openc3-app spawns the real interface for raw data transfer):
+    # the host side (openc3-cosmos-app spawns the real interface for raw data transfer):
     #   1. A COSMOS interface_microservice that builds a bridge_interface tunnel
     #      (InterfaceModel#build substitutes BridgeInterface when bridge_name is
     #      set) and connects to the named bridge_microservice relay.
     #   2. A shared bridge_microservice relay (one per bridge_name) that this
     #      interface's stream (ALPN stream/<name>) is added to.
     #   3. A HostInterfaceMicroserviceModel holding the real interface's spawn info for
-    #      openc3-app to run the interface on the host.
+    #      openc3-cosmos-app to run the interface on the host.
     def deploy_bridge(gem_path, variables, microservice_name, type, validate_only: false)
       # The COSMOS side runs the Python interface_microservice which builds a
       # BridgeInterface (see InterfaceModel#build). It keeps this interface's
@@ -567,7 +582,7 @@ module OpenC3
       relay
     end
 
-    # Capture the real interface's spawn info for openc3-app. The host side does
+    # Capture the real interface's spawn info for openc3-cosmos-app. The host side does
     # raw data transfer only, so protocols and target definitions are omitted;
     # the connection options and secrets needed to open the device are included.
     def create_host_interface_microservice

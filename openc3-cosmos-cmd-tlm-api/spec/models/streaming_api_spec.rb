@@ -688,6 +688,46 @@ RSpec.describe StreamingApi, type: :model do
       build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
       expect(collection.objects.map { |o| [o.key, o.source_key] }).to eq([[explicit_key, explicit_key]])
     end
+
+    it 'exact removal of a key-only item leaves other item_keys for the key' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      key_only = collection.objects.find { |o| o.item_key == explicit_key }
+      collection.remove(key_only, exact: true)
+      expect(collection.objects.map(&:item_key)).to eq(['0'])
+    end
+
+    it 'exact removal of one LATEST packet leaves the others' do
+      collection = build([latest_key])
+      collection.remove(collection.objects[0], exact: true)
+      expect(collection.objects.map(&:key)).to eq(['DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED'])
+    end
+
+    it 'finishing a key-only item leaves an alias with a later end time' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      thread = StreamingThread.new(@api, collection, scope: 'DEFAULT')
+      thread.finish([collection.objects.find { |o| o.item_key == explicit_key }])
+      expect(collection.objects.map(&:item_key)).to eq(['0'])
+      expect(thread.instance_variable_get(:@cancel_thread)).to be_falsey
+    end
+
+    it 'hands off every alias on a caught-up topic and leaves topics that have not caught up' do
+      collection = build([[explicit_key, '0'], [explicit_key, '1'], [latest_key, '2']])
+      realtime = StreamingThread.new(@api, StreamingObjectCollection.new, scope: 'DEFAULT')
+      health_status_topic = collection.objects[0].topic
+      _topics, _offsets, item_objects_by_topic, packet_objects_by_topic = collection.topics_offsets_and_objects
+      realtime.handoff_objects(collection, health_status_topic, item_objects_by_topic, packet_objects_by_topic)
+      expect(realtime.instance_variable_get(:@collection).objects.map(&:item_key)).to contain_exactly('0', '1', '2')
+      expect(collection.objects.map { |o| [o.packet_name, o.item_key] }).to eq([['PARAMS', '2']])
+    end
+
+    it 'handing off a LATEST packet leaves the packets that have not caught up' do
+      collection = build([latest_key])
+      health_status = collection.objects[0]
+      health_status.offset = '100-0'
+      realtime = StreamingThread.new(@api, StreamingObjectCollection.new, scope: 'DEFAULT')
+      realtime.handoff_objects(collection, health_status.topic, { health_status.topic => [health_status] }, {})
+      expect(collection.objects.map(&:packet_name)).to eq(['PARAMS'])
+    end
   end
 
   describe 'add with COSMOS_ALL packets and authorization' do
@@ -1503,6 +1543,455 @@ RSpec.describe StreamingApi, type: :model do
       expect(@messages[0][0]['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
       expect(@messages[0][0]['VALUE1']).to eq(10.5)
       expect(@messages[-1]).to eq([])
+    end
+  end
+
+  context 'time_type' do
+    let(:item_key) { 'DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED' }
+
+    it 'rejects an unknown time_type' do
+      expect { @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'BOGUS' }) }.to raise_error(ArgumentError, /Unknown time_type: BOGUS/)
+    end
+
+    it 'defaults to PACKET and accepts RECEIVED in any case' do
+      expect(StreamingObject.parse_time_type(nil)).to eq(:PACKET)
+      expect(StreamingObject.parse_time_type('')).to eq(:PACKET)
+      expect(StreamingObject.parse_time_type('received')).to eq(:RECEIVED)
+    end
+
+    it 'rejects RECEIVED for historical RAW packets which come from packet time ordered files' do
+      data = { 'packets' => ['RAW__TLM__INST__PARAMS'], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1_000_000_000 }
+      expect { @api.add(data) }.to raise_error(ArgumentError, /not supported for historical RAW/)
+    end
+
+    it 'returns the received time as __time when streaming realtime' do
+      packet_time = (@start_time.to_i - 86_400) * 1_000_000_000 # Simulator a day behind
+      received_time = @start_time.to_i * 1_000_000_000
+      msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => packet_time, 'received_time' => received_time,
+        'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+      sent = false
+      allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
+        sleep 0.1
+        unless sent
+          sent = true
+          block.call(topics[0], "#{@start_time.to_i * 1000}-0", msg, nil)
+        end
+        {}
+      end
+
+      @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+      start = Time.now
+      sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+      expect(@messages[0][0]['__time']).to eq(received_time)
+      expect(@messages[0][0][item_key]).to eq(5)
+    end
+
+    it 'groups realtime items with different time types into separate entries' do
+      msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 100, 'received_time' => 200,
+        'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+      # Deliver once, after both subscriptions exist, so the first read can't
+      # publish only the PACKET entry and block the RECEIVED one
+      ready = false
+      sent = false
+      allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
+        sleep 0.1
+        if ready and not sent
+          sent = true
+          block.call(topics[0], "1-0", msg, nil)
+        end
+        {}
+      end
+      @api.add({ 'items' => [[item_key, 'PKT']], 'scope' => 'DEFAULT' })
+      @api.add({ 'items' => [[item_key, 'RX']], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+      ready = true
+      start = Time.now
+      sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+      entries = @messages.flatten
+      expect(entries).to include(a_hash_including('__time' => 100, 'PKT' => 5))
+      expect(entries).to include(a_hash_including('__time' => 200, 'RX' => 5))
+    end
+
+    it 'keeps PACKET ids unchanged and prefixes other time types' do
+      packet = StreamingObject.new(item_key, nil, nil, item_key: item_key, scope: 'DEFAULT')
+      received = StreamingObject.new(item_key, nil, nil, item_key: item_key, scope: 'DEFAULT', time_type: :RECEIVED)
+      expect(packet.id).to eq("ITEM__#{item_key}__#{item_key}__#{item_key}")
+      expect(received.id).to eq("RECEIVED__#{packet.id}")
+    end
+
+    context 'subscribing to the same item with both time types' do
+      def realtime_ids
+        @api.instance_variable_get(:@realtime_thread).instance_variable_get(:@collection).objects.map(&:id).sort
+      end
+
+      before(:each) do
+        msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 100, 'received_time' => 200,
+          'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+        # Deliver once, after both subscriptions exist
+        ready = false
+        sent = false
+        allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
+          sleep 0.1
+          if ready and not sent
+            sent = true
+            block.call(topics[0], "1-0", msg, nil)
+          end
+          {}
+        end
+        @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT' })
+        @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        ready = true
+      end
+
+      it 'streams both instead of dropping the second' do
+        start = Time.now
+        sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+        entries = @messages.flatten
+        expect(entries).to include(a_hash_including('__time' => 100, item_key => 5))
+        expect(entries).to include(a_hash_including('__time' => 200, item_key => 5))
+      end
+
+      it 'removes only the given time_type' do
+        @api.remove({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        expect(realtime_ids).to eq(["ITEM__#{item_key}__#{item_key}__#{item_key}"])
+      end
+
+      it 'removes every time_type when none is given' do
+        # Capture the collection first: the emptied thread completes and clears @realtime_thread
+        collection = @api.instance_variable_get(:@realtime_thread).instance_variable_get(:@collection)
+        @api.remove({ 'items' => [item_key], 'scope' => 'DEFAULT' })
+        expect(collection.objects).to be_empty
+      end
+
+      it 'removes a packet subscription by time_type' do
+        packet_key = 'DECOM__TLM__INST__PARAMS__CONVERTED'
+        @api.add({ 'packets' => [packet_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        @api.add({ 'packets' => [packet_key], 'scope' => 'DEFAULT' })
+        @api.remove({ 'packets' => [packet_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        expect(realtime_ids).to include("PACKET__#{packet_key}")
+        expect(realtime_ids).to_not include("RECEIVED__PACKET__#{packet_key}")
+      end
+    end
+
+    describe 'LoggedStreamingThread setup' do
+      # Packet times a day in the future, as from a simulator, received over the last 100s
+      let(:oldest_msg) { { 'time' => (@start_time.to_i + 86_400) * 1_000_000_000, 'received_time' => (@start_time.to_i - 100) * 1_000_000_000 } }
+
+      def setup_thread(time_type)
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", oldest_msg])
+        collection = StreamingObjectCollection.new
+        collection.add(StreamingObject.new(item_key, (@start_time.to_i - 50) * 1_000_000_000, nil, item_key: item_key, scope: 'DEFAULT', time_type: time_type))
+        thread = LoggedStreamingThread.new(@api, collection, scope: 'DEFAULT', token: nil)
+        thread.setup_thread_body(collection.objects)
+        [thread, collection]
+      end
+
+      def setup_mode(time_type)
+        thread, collection = setup_thread(time_type)
+        [thread.instance_variable_get(:@thread_mode), collection.objects[0].offset]
+      end
+
+      it 'compares the start time against the oldest packet time for PACKET' do
+        mode, _offset = setup_mode(:PACKET)
+        expect(mode).to eq(:TSDB) # Start is before the oldest (future) packet time
+      end
+
+      it 'compares the start time against the oldest received time for RECEIVED' do
+        mode, offset = setup_mode(:RECEIVED)
+        expect(mode).to eq(:STREAM) # The received times in Redis cover the start
+        # Backed off by the overlap buffer so variable write delay can't skip messages
+        overlap_ms = LoggedStreamingThread::TSDB_STREAM_OVERLAP_NSEC / 1_000_000
+        expect(offset).to eq("#{(@start_time.to_i - 50) * 1000 - overlap_ms}-0")
+      end
+
+      context 'with stored messages at the start of the topic' do
+        # Writes messages to the real (mock) topic rather than stubbing get_oldest_message
+        def setup_mode_from_topic(time_type, messages, start_time, db_shard: 0)
+          collection = StreamingObjectCollection.new
+          collection.add(StreamingObject.new(item_key, start_time, nil, item_key: item_key, scope: 'DEFAULT', time_type: time_type))
+          topic = collection.objects[0].topic
+          messages.each_with_index do |msg, index|
+            OpenC3::EphemeralStore.instance(db_shard: db_shard).xadd(topic, msg, id: "#{@start_time.to_i - 100 + index}000-0")
+          end
+          thread = LoggedStreamingThread.new(@api, collection, scope: 'DEFAULT', token: nil)
+          thread.setup_thread_body(collection.objects)
+          thread.instance_variable_get(:@thread_mode)
+        end
+
+        # Stored (e.g. played back) packets years old, then realtime ones from 50s ago
+        let(:stored_msg) { { 'time' => (@start_time.to_i - 86_400 * 365) * 1_000_000_000, 'received_time' => (@start_time.to_i - 86_400 * 300) * 1_000_000_000, 'stored' => 'true' } }
+        let(:realtime_msg) { { 'time' => (@start_time.to_i - 50) * 1_000_000_000, 'received_time' => (@start_time.to_i - 50) * 1_000_000_000, 'stored' => 'false' } }
+
+        [:PACKET, :RECEIVED].each do |time_type|
+          it "ignores them when deciding where #{time_type} data comes from" do
+            # The start is after the stored times but before the realtime data in Redis
+            start_time = (@start_time.to_i - 86_400) * 1_000_000_000
+            mode = setup_mode_from_topic(time_type, [stored_msg, stored_msg, realtime_msg], start_time)
+            expect(mode).to eq(:TSDB)
+          end
+        end
+
+        it 'reads past more stored messages than one scan returns' do
+          stub_const('LoggedStreamingThread::OLDEST_REALTIME_SCAN_COUNT', 2)
+          start_time = (@start_time.to_i - 86_400) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg] * 5 + [realtime_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+
+        it 'stops scanning after OLDEST_REALTIME_SCAN_MAX messages' do
+          stub_const('LoggedStreamingThread::OLDEST_REALTIME_SCAN_COUNT', 2)
+          stub_const('LoggedStreamingThread::OLDEST_REALTIME_SCAN_MAX', 5)
+          # The realtime data would cover the start, but it's past the scan limit
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg] * 5 + [realtime_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+
+        it 'reads the oldest realtime message from the target db_shard' do
+          # mock_redis gives each db_shard its own MockRedis, so reading the oldest
+          # message or scanning past the stored one on another db_shard finds
+          # nothing and falls back to the TSDB
+          OpenC3::TargetModel.new(name: 'INST', scope: 'DEFAULT', db_shard: 1).create
+          allow(OpenC3::Topic).to receive(:get_oldest_message).and_call_original
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg, realtime_msg], start_time, db_shard: 1)
+          expect(mode).to eq(:STREAM)
+          expect(OpenC3::Topic).to have_received(:get_oldest_message).with(anything, db_shard: 1)
+        end
+
+        it 'still streams from Redis when the realtime data covers the start' do
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg, realtime_msg], start_time)
+          expect(mode).to eq(:STREAM)
+        end
+
+        it 'uses the TSDB when the topic only has stored messages' do
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:PACKET, [stored_msg, stored_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+      end
+      it 'skips the overlap messages before the start time' do
+        thread, collection = setup_thread(:RECEIVED)
+        start_nsec = (@start_time.to_i - 50) * 1_000_000_000
+        msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 0, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+        # Received just before the start but written to the stream after the estimated offset
+        expect(thread.handle_message(msg.merge('received_time' => start_nsec - 1), collection.objects)).to be_nil
+        expect(thread.handle_message(msg.merge('received_time' => start_nsec), collection.objects)).to include('__time' => start_nsec)
+      end
+
+      it 'delivers messages before the start time after handoff to realtime' do
+        # A target whose clock is behind the requested start time would otherwise
+        # never get live data after handoff
+        _thread, collection = setup_thread(:RECEIVED)
+        start_nsec = (@start_time.to_i - 50) * 1_000_000_000
+        realtime = RealtimeStreamingThread.new(@api, collection, scope: 'DEFAULT')
+        msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 0, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+        expect(realtime.handle_message(msg.merge('received_time' => start_nsec - 1), collection.objects)).to include('__time' => start_nsec - 1)
+        expect(realtime.handle_message(msg.merge('received_time' => start_nsec), collection.objects)).to include('__time' => start_nsec)
+      end
+    end
+
+    # Returns the bounds for the packet time bounds lookup, pg_data for the first data
+    # query, and nothing after. Returns the list of queries run.
+    def mock_received_queries(mock_conn, pg_data, bounds)
+      bounds_result = [{ 'min_time' => bounds[0].to_s, 'max_time' => bounds[1].to_s }]
+      bounds_result.define_singleton_method(:ntuples) { 1 }
+      queries = []
+      data_sent = false
+      allow(mock_conn).to receive(:exec) do |query|
+        queries << query
+        if query.include?('min(PACKET_TIMESECONDS)')
+          bounds_result
+        elsif !data_sent
+          data_sent = true
+          pg_data
+        end
+      end
+      queries
+    end
+
+    it 'skips a TSDB table with no rows received in the range' do
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) { |_instance, items, **_kwargs| items }
+      allow(OpenC3::TargetModel).to receive(:packet).and_return({ 'items' => [{ 'name' => 'VALUE1', 'data_type' => 'FLOAT', 'array_size' => nil }] })
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+      empty_bounds = [{ 'min_time' => nil, 'max_time' => nil }]
+      empty_bounds.define_singleton_method(:ntuples) { 1 }
+      queries = []
+      allow(mock_conn).to receive(:exec) do |query|
+        queries << query
+        empty_bounds
+      end
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+
+      @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1000 })
+      sleep 1.65
+
+      expect(queries.length).to eq(1)
+      expect(queries[0]).to start_with('SELECT CAST(min(PACKET_TIMESECONDS) AS LONG)')
+      expect(@messages[-1]).to eq([])
+    end
+
+    it 'only limits an open-ended received time query from below' do
+      thread = LoggedStreamingThread.new(@api, StreamingObjectCollection.new, scope: 'DEFAULT', token: nil)
+      thread.instance_variable_set(:@time_type, :RECEIVED)
+      allow(OpenC3::QuestDBClient).to receive(:packet_time_bounds) { [10, 20] }
+      expect(thread.received_packet_bounds('TBL', 1, nil, 2)).to eq([10, nil])
+      expect(OpenC3::QuestDBClient).to have_received(:packet_time_bounds).with('TBL', 1, nil, db_shard: 2)
+      # A range ending now could still get rows, so it isn't limited from above either
+      expect(thread.received_packet_bounds('TBL', 1, Time.now.to_nsec_from_epoch, 2)).to eq([10, nil])
+      expect(thread.received_packet_bounds('TBL', 1, 2, 2)).to eq([10, 20])
+      thread.instance_variable_set(:@time_type, :PACKET)
+      expect(thread.received_packet_bounds('TBL', 1, 2, 2)).to eq([nil, nil])
+    end
+
+    it 'queries TSDB items by received time and returns it as __time' do
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) { |_instance, items, **_kwargs| items }
+      allow(OpenC3::TargetModel).to receive(:packet).and_return({ 'items' => [{ 'name' => 'VALUE1', 'data_type' => 'FLOAT', 'array_size' => nil }] })
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+      received_time = @file_start_time + 500
+      packet_time = @file_start_time - 86_400_000_000_000
+      pg_data = [[["VALUE1__C", 1.5], ["PACKET_TIMESECONDS", packet_time], ["__rx_time_ns", received_time], ["COSMOS_EXTRA", nil]]]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+      queries = mock_received_queries(mock_conn, pg_data, [packet_time, packet_time + 10])
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+
+      @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1000 })
+      sleep 1.65
+
+      # The packet time bounds lookup runs once, then the data query is limited to them
+      expect(queries[0]).to start_with('SELECT CAST(min(PACKET_TIMESECONDS) AS LONG)')
+      expect(queries[1]).to include("WHERE RECEIVED_TIMESECONDS >= #{@file_start_time} AND RECEIVED_TIMESECONDS < #{@file_start_time + 1000} AND PACKET_TIMESECONDS >= #{packet_time} AND PACKET_TIMESECONDS <= #{packet_time + 10}")
+      expect(queries[1]).to include('ORDER BY RECEIVED_TIMESECONDS')
+      expect(queries.count { |q| q.include?('min(PACKET_TIMESECONDS)') }).to eq(1)
+      expect(@messages[0][0]['__time']).to eq(received_time)
+      expect(@messages[0][0][item_key]).to eq(1.5)
+      expect(@messages[-1]).to eq([])
+    end
+
+    it 'samples reduced items by received time' do
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) { |_instance, items, **_kwargs| items }
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+      pg_data = [[["RECEIVED_TIMESECONDS", @file_start_time], ["VALUE1__A", 2.5]]]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+      queries = mock_received_queries(mock_conn, pg_data, [10, 20])
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+
+      key = 'REDUCED_MINUTE__TLM__INST__PARAMS__VALUE1__RAW__AVG'
+      @api.add({ 'items' => [key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 120_000_000_000 })
+      sleep 1.5
+
+      expect(queries[1]).to start_with('SELECT CAST(RECEIVED_TIMESECONDS AS LONG) as RECEIVED_TIMESECONDS')
+      expect(queries[1]).to include('AND PACKET_TIMESECONDS >= 10 AND PACKET_TIMESECONDS <= 20 ORDER BY RECEIVED_TIMESECONDS) timestamp(RECEIVED_TIMESECONDS) SAMPLE BY 1m')
+      expect(@messages[0][0]['__time']).to eq(@file_start_time)
+      expect(@messages[0][0][key]).to eq(2.5)
+    end
+  end
+
+  context 'include_times' do
+    let(:item_key) { 'DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED' }
+
+    def stream_realtime(data, msg)
+      sent = false
+      allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
+        sleep 0.1
+        unless sent
+          sent = true
+          block.call(topics[0], "#{@start_time.to_i * 1000}-0", msg, nil)
+        end
+        {}
+      end
+      @api.add(data)
+      start = Time.now
+      sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+      @messages[0][0]
+    end
+
+    let(:msg) do
+      { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 100, 'received_time' => 200,
+        'json_data' => JSON.generate({ 'VALUE1' => 5 }), 'buffer' => "\x01\x02" }
+    end
+
+    it 'does not return the extra times unless asked' do
+      entry = stream_realtime({ 'items' => [item_key], 'scope' => 'DEFAULT' }, msg)
+      expect(entry['__time']).to eq(100)
+      expect(entry).to_not have_key('__packet_time')
+      expect(entry).to_not have_key('__received_time')
+    end
+
+    it 'returns both times for realtime items whatever the time_type' do
+      entry = stream_realtime({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED', 'include_times' => true }, msg)
+      expect(entry['__time']).to eq(200)
+      expect(entry['__packet_time']).to eq(100)
+      expect(entry['__received_time']).to eq(200)
+      expect(entry[item_key]).to eq(5)
+    end
+
+    it 'returns both times for realtime decom packets' do
+      entry = stream_realtime({ 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT', 'include_times' => true }, msg)
+      expect(entry['__type']).to eq('PACKET')
+      expect(entry['__time']).to eq(100)
+      expect(entry['__packet_time']).to eq(100)
+      expect(entry['__received_time']).to eq(200)
+    end
+
+    it 'returns both times for realtime raw packets' do
+      entry = stream_realtime({ 'packets' => ['RAW__TLM__INST__PARAMS'], 'scope' => 'DEFAULT', 'include_times' => true }, msg)
+      expect(entry['buffer']).to_not be_nil
+      expect(entry['__time']).to eq(100)
+      expect(entry['__packet_time']).to eq(100)
+      expect(entry['__received_time']).to eq(200)
+    end
+
+    it 'returns both times for raw packets from log files' do
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+      @api.add({ 'packets' => ['RAW__TLM__INST__PARAMS'], 'scope' => 'DEFAULT', 'include_times' => true,
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1_000_000_000 })
+      sleep 2.5 # Files need a long time
+
+      first_packet = @messages[0][0]
+      expect(first_packet['buffer']).to_not be_nil
+      expect(first_packet['__packet_time']).to eq(first_packet['__time'])
+      # Packet logs store the received time with each packet
+      expect(first_packet['__received_time']).to be_a(Integer)
+    end
+
+    it 'selects and returns both times for TSDB items' do
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) { |_instance, items, **_kwargs| items }
+      allow(OpenC3::TargetModel).to receive(:packet).and_return({ 'items' => [{ 'name' => 'VALUE1', 'data_type' => 'FLOAT', 'array_size' => nil }] })
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+      received_time = @file_start_time + 500
+      pg_data = [[["VALUE1__C", 1.5], ["PACKET_TIMESECONDS", @file_start_time], ["__rx_time_ns", received_time], ["COSMOS_EXTRA", nil]]]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+      queries = []
+      allow(mock_conn).to receive(:exec) do |query|
+        queries << query
+        queries.length == 1 ? pg_data : nil
+      end
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+
+      @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'include_times' => true,
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1000 })
+      sleep 1.65
+
+      expect(queries[0]).to include('"__rx_time_ns"')
+      expect(queries[0]).to include("WHERE PACKET_TIMESECONDS >= #{@file_start_time}")
+      entry = @messages[0][0]
+      expect(entry['__time']).to eq(@file_start_time)
+      expect(entry['__packet_time']).to eq(@file_start_time)
+      expect(entry['__received_time']).to eq(received_time)
+      expect(entry[item_key]).to eq(1.5)
     end
   end
 end

@@ -55,6 +55,10 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 Data Extractor provides text fields where you specify the time range to extract items. Clicking the Start Date and End Date text fields opens a Date Chooser dialog. Note you can also manually type in the date. Clicking the Start Time and End Time icon opens up a Time Chooser dialog. Note you can also manually type in the time.
 
+### Packet Time / Received Time
+
+By default the start and end times select data by packet time, which is the time stored in the packet (or the time COSMOS received it if the packet has no time item). Choose Received Time to select data by the time COSMOS received each packet instead. This is useful when the packet times don't match the COSMOS clock, for example when testing against a simulator whose time is in the past or the future. With Received Time selected the first column of the output is named RECEIVED_TIME and contains the received time. The selection is saved with the configuration.
+
 ### Adding Target(s) Packet(s) Item(s)
 
 Data Extractor provides Target, Packet, Item drop downs to select the items you want to export. When you select a Target the Packet drop down defaults to \[All\] which sets the button to "Add Target". This would add EVERY item defined in EVERY packet in the target. Note: This can be a LOT of telemetry points but any added point can be removed.

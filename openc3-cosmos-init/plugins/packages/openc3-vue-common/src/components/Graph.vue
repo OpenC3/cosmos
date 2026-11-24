@@ -175,6 +175,7 @@
       :colors="colors"
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
+      :time-type="timeType"
       :time-zone="timeZone"
       :x-axis-item-packet="allowableXAxisItemPacket"
       :x-axis-is-time="xAxisIsTime"
@@ -384,6 +385,13 @@ export default {
       type: Number,
       default: null,
     },
+    // Start times keyed by time type ('PACKET' / 'RECEIVED') in nanoseconds.
+    // Overrides startTime so graphs using different time types each get a
+    // start time taken in their own time type.
+    startTimes: {
+      type: Object,
+      default: null,
+    },
     secondsGraphed: {
       type: Number,
       required: true,
@@ -492,6 +500,8 @@ export default {
       graphMaxX: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
+      // 'PACKET' or 'RECEIVED': which time selects the data and is graphed as __time
+      timeType: 'PACKET',
       xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       drawStyle: 'lines', // 'lines' or 'points'
       indexes: {},
@@ -546,6 +556,16 @@ export default {
     }
   },
   computed: {
+    // The shared start time, but only if it was taken in our time type.
+    // A packet time start sent as a received time start (or the reverse)
+    // selects the wrong data when the two clocks differ.
+    sharedStartTime: function () {
+      if (this.startTimes) {
+        return this.startTimes[this.timeType] ?? null
+      }
+      // startTime alone is always a packet time
+      return this.timeType === 'PACKET' ? this.startTime : null
+    },
     calcFullSize: function () {
       return this.fullWidth || this.fullHeight
     },
@@ -604,7 +624,17 @@ export default {
       }
     },
     xAxisLabel: function () {
-      return this.xAxisIsTime ? 'Time' : this.actualXAxisItem.split('__').at(-2)
+      if (this.xAxisIsDefault) {
+        return this.timeType === 'RECEIVED' ? 'Received Time' : 'Packet Time'
+      }
+      // A custom x axis item can be one of the times too
+      switch (this.actualXAxisItem.split('__').at(4)) {
+        case 'PACKET_TIMESECONDS':
+          return 'Packet Time'
+        case 'RECEIVED_TIMESECONDS':
+          return 'Received Time'
+      }
+      return this.actualXAxisItem.split('__').at(-2)
     },
     xAxisIsDefault: function () {
       return this.actualXAxisItem === DEFAULT_X_AXIS_ITEM
@@ -1158,6 +1188,11 @@ export default {
         )
       }
       this.addItems(clonedItems)
+      // The legend placement lives on the uPlot root we just replaced
+      this.moveLegend(this.legendPosition)
+      if (this.legendHidden) {
+        this.applyHideLegend(true)
+      }
       this.startRealtimeScrolling()
       // Don't need to $emit('edit') because addItems() does that
     },
@@ -1499,10 +1534,13 @@ export default {
       this.graphEndDateTime = graph.endDateTime
       // Allow the watch to update needToUpdate
       this.$nextTick(() => {
+        // Changing the time type rebuilds the chart which resubscribes with
+        // the new start / end times as well, so don't do that twice below
+        const timeTypeChanged = this.setTimeType(graph.timeType)
         if (this.needToUpdate) {
           if (this.subscription == null) {
             this.startGraph()
-          } else {
+          } else if (!timeTypeChanged) {
             // NOTE: removing and adding back to back broke the streaming_api
             // because the messages got out of order (add before remove)
             // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
@@ -1519,6 +1557,27 @@ export default {
       })
       this.moveLegend(this.legendPosition)
       this.$emit('edit')
+    },
+    // Returns whether the time type changed
+    setTimeType: function (timeType = 'PACKET') {
+      if (timeType === this.timeType) {
+        return false
+      }
+      this.timeType = timeType
+      if (this.graph) {
+        // The axis label and every point graphed so far depend on the time type
+        // so rebuild, which also resubscribes all the items with the new type.
+        // removeItems only unsubscribes the graphed items so also drop a
+        // custom x axis item or it keeps streaming with the old type.
+        this.pendingData = []
+        // The realtime x axis anchor is a time in the old time type
+        this.resetRealtimeXAxis()
+        if (!this.xAxisIsDefault) {
+          this.removeItemsFromSubscription([this.actualXAxisItem])
+        }
+        this.rebuildChart()
+      }
+      return true
     },
     resize: function () {
       if (!this.graph) return
@@ -2016,7 +2075,7 @@ export default {
       }
     },
     addItemsToSubscription: function (itemArray = this.items) {
-      let theStartTime = this.startTime
+      let theStartTime = this.sharedStartTime
       if (this.graphStartDateTime) {
         theStartTime = this.graphStartDateTime
       }
@@ -2048,6 +2107,7 @@ export default {
               items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
+              time_type: this.timeType,
               // Ask to be told when realtime streaming skips data
               notices: true,
             })
@@ -2058,10 +2118,13 @@ export default {
           .catch(logUnlessAuthRequired)
       }
     },
-    clearAllData: function () {
+    resetRealtimeXAxis: function () {
       this.realtimeXAxisAnchor = null
       this.realtimeXAxisAnchorTime = null
       this.lastScrolledMax = null
+    },
+    clearAllData: function () {
+      this.resetRealtimeXAxis()
       // Clear all data so delete the time data as well
       this.data[0] = []
       this.clearData(this.items)
@@ -2268,9 +2331,9 @@ export default {
       }
 
       // If we weren't passed a startTime notify grapher of our start
-      if (this.startTime == null && this.data[0][0]) {
+      if (this.sharedStartTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1_000_000_000
-        this.$emit('started', newStartTime)
+        this.$emit('started', newStartTime, this.timeType)
       }
       if (
         this.playbackMode !== 'playback' &&

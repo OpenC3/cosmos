@@ -80,7 +80,7 @@ script = list.select {|script| script["name"] == id.to_s}[0]
 # Script is stopped so it should NOT be in the running list
 check_expression("#{script.nil?} == true")
 
-list = completed_script_list()
+list = completed_script_list(limit: 100, offset: 0)
 script = list.select {|script| script["name"] == id.to_s}[0]
 # Script is completed so it should be in the completed list
 check_expression("#{script.nil?} == false")

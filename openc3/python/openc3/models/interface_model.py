@@ -92,6 +92,7 @@ class InterfaceModel(Model):
         shard=0,
         db_shard=0,
         bridge_name=None,
+        shared_resource: str | None = None,
         scope: str = OPENC3_SCOPE,
     ):
         type = self.__class__._get_type()
@@ -161,6 +162,7 @@ class InterfaceModel(Model):
         if self.db_shard is None:
             self.db_shard = 0
         self.bridge_name = bridge_name
+        self.shared_resource = shared_resource
         self.secrets = [] if secrets is None else secrets
 
     # Called by InterfaceMicroservice to instantiate the Interface defined
@@ -242,6 +244,7 @@ class InterfaceModel(Model):
             "shard": self.shard,
             "db_shard": self.db_shard,
             "bridge_name": self.bridge_name,
+            "shared_resource": self.shared_resource,
             "updated_at": self.updated_at,
         }
 
