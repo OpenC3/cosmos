@@ -100,7 +100,7 @@ Bundling is opt-in because every wheel adds to the gem's size. A dependency such
 
 When the plugin is built, the Rakefile runs [`cli bundlewheels`](/docs/getting-started/cli#bundle-wheels) before `gem build`. The build needs network access, and it:
 
-1. Fails unless `uv.lock` exists and matches `pyproject.toml` (`uv lock --check`). When the plugin is in a git repository, it also fails if `uv.lock` is untracked or has uncommitted changes.
+1. Fails unless `uv.lock` exists and matches `pyproject.toml` (`uv lock --check`).
 1. Lets uv choose the wheel for every locked runtime dependency on each target platform. uv evaluates environment markers and wheel tags for that platform.
 1. Downloads exactly those wheels from the URLs recorded in `uv.lock` into `python_wheels/` and checks each one against the sha256 in `uv.lock`. It also writes `python_wheels/SHA256SUMS`.
 1. Installs from `python_wheels/` alone, offline, for each target to prove the bundle is complete.
@@ -109,18 +109,65 @@ If the build stops, the message names the fix:
 
 | Build error | Fix |
 | --- | --- |
-| `offline_install requires a uv.lock` | Run `uv lock` in the plugin directory, then commit `uv.lock`. |
-| `uv.lock is out of date with pyproject.toml` | `pyproject.toml` changed after the last lock, for example a dependency was added by hand. Run `uv lock` and commit the updated `uv.lock`. Use `uv add <package>` next time, which updates both files. |
-| `uv.lock is not committed` | Run `git add uv.lock` and commit it. The bundle must match the lock in source control, so the gem can be traced to a reviewed commit. |
+| `offline_install requires a uv.lock` | Run `openc3.sh cli lock` in the plugin directory. |
+| `uv.lock is out of date with pyproject.toml` | `pyproject.toml` changed after the last lock, for example a dependency was added by hand. Run `openc3.sh cli lock` to update `uv.lock`. |
 | `Could not find a compatible wheel for every locked package for <platform>` | A dependency publishes no wheel for that platform or Python version (only a source distribution, or no build for that architecture). Pick a version that ships one, or drop that platform from `python_platforms`. |
-| `offline_install can only bundle packages locked from a package index` | A dependency is locked from a URL, git repository or local path, for example `name @ https://...`. An offline install can only take wheels from the bundle for packages locked from an index, so publish the package to an index or a find-links directory, depend on it by name, and run `uv lock`. |
+| `offline_install can only bundle packages locked from a package index` | A dependency is locked from a URL, git repository or local path, for example `name @ https://...`. An offline install can only take wheels from the bundle for packages locked from an index, so publish the package to an index or a find-links directory, depend on it by name, and run `openc3.sh cli lock`. |
 | `Could not download ... HTTP 401` or `HTTP 403` | The index that serves the wheels requires credentials. The build downloads the locked wheels without credentials, so it can't bundle from such an index yet. |
 | `python_platforms also needs python_version` | Add `python_version`, set to the deployment's Python, such as `"3.13"`. |
 | `python3 (3.11 or newer) is required to read .../pyproject.toml` | The build ran outside the COSMOS image without a new enough Python. Install Python 3.11 or newer so `python3` is on `PATH`, or build with `openc3.sh cli rake build`. |
 
-`uv lock` needs network access to the package index, just like the build. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) on the machine where you edit the plugin. Building outside the COSMOS image, for example with a locally installed `rake build`, also needs `python3` 3.11 or newer on `PATH`, which COSMOS uses to read `pyproject.toml`. `openc3.sh cli rake build` already has both.
+To create or update `uv.lock`, run [`openc3.sh cli lock`](/docs/getting-started/cli#lock) in the plugin directory. It runs uv in the COSMOS image, so you don't need uv installed. Add `--build VERSION` to rebuild the gem in the same step. Locking needs network access to the package index, just like the build. uv resolves against the index in the plugin's `[tool.uv]` settings, or else the `PYPI_URL` the COSMOS image was built with. If you do have [uv](https://docs.astral.sh/uv/getting-started/installation/) installed, `uv lock` and `uv add <package>` work as well.
+
+Building outside the COSMOS image, for example with a locally installed `rake build`, needs uv and `python3` 3.11 or newer on `PATH`. COSMOS uses `python3` to read `pyproject.toml`. `openc3.sh cli rake build` already has both.
 
 To check a built gem later, for example against a deployment's platform before shipping it, run [`cli verifywheels`](/docs/getting-started/cli#verify-wheels). It prints a per-target report of the wheel serving each package and its hash check.
+
+##### Updating dependencies
+
+To change a dependency, edit `pyproject.toml`, then lock and build the next version:
+
+```bash
+% openc3.sh cli lock --build 1.0.1
+```
+
+Versions already in `uv.lock` stay as they are unless `pyproject.toml` no longer allows them. To move to newer versions, add `--upgrade-package <name>` (repeatable) or `--upgrade` for every dependency. Then upgrade the plugin in the Admin Console [Plugins tab](/docs/tools/admin#plugins) with the new gem.
+
+##### Converting an existing plugin
+
+A plugin generated before COSMOS supported `offline_install` needs a few files updated before it can bundle wheels. Compare with a newly generated plugin (`openc3.sh cli generate plugin NAME --python`) if yours has drifted from the template.
+
+1. List the Python dependencies in `pyproject.toml`. A plugin with only a `requirements.txt` must move them to the `dependencies` list in `[project]`, because `offline_install` is read from `pyproject.toml` and the wheels are bundled from `uv.lock`. Then add the `[tool.openc3]` table shown above.
+1. In the `Rakefile`, run `openc3cli bundlewheels` before `gem build`:
+
+   ```ruby
+   # Bundle the locked Python wheels into python_wheels/ when pyproject.toml sets
+   # [tool.openc3] offline_install, so the gem installs on an air-gapped COSMOS.
+   if File.exist?('pyproject.toml')
+     sh('openc3cli bundlewheels')
+   end
+
+   sh('gem', 'build', PLUGIN_NAME)
+   ```
+
+1. In the gemspec, package the lock and the wheels by adding them to `s.files`:
+
+   ```ruby
+   s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) +
+     Dir.glob("{pyproject.toml,uv.lock}") + Dir.glob("python_wheels/*")
+   ```
+
+   Install rejects an `offline_install` gem that lacks `uv.lock` or `python_wheels/`.
+
+1. Add `python_wheels/` to `.gitignore`. The build recreates it each time.
+1. Lock and build, then check the gem against the COSMOS image:
+
+   ```bash
+   % openc3.sh cli lock --build 1.1.0
+   % openc3.sh cli verifywheels openc3-cosmos-my-plugin-1.1.0.gem
+   ```
+
+1. Upgrade the plugin in the Admin Console [Plugins tab](/docs/tools/admin#plugins) with the new gem. Its Python dependencies now install from the bundled wheels.
 
 The gem ships `uv.lock` next to the wheels, so security scanners that read `uv.lock` cover every bundled package, and the bundled versions are exactly the locked ones.
 

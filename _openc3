@@ -198,6 +198,7 @@ _openc3_cli() {
             'setpassword:set initial password from OPENC3_API_PASSWORD'
             'migratepassword:migrate password hash to argon2'
             'migratetouv:migrate plugin to per-plugin UV virtual environment'
+            'lock:lock Python plugin dependencies (uv lock), optionally then build'
             'bundlewheels:bundle Python wheels for [tool.openc3] offline_install'
             'verifywheels:report whether a plugin gem installs offline from its bundled wheels'
         )
@@ -501,6 +502,22 @@ _openc3_cli() {
                     return 0
                 fi
             fi
+            ;;
+        lock)
+            # Usage: lock [PLUGIN_DIR] [--upgrade] [--upgrade-package NAME]... [--build VERSION]
+            case $words[CURRENT-1] in
+                --upgrade-package)
+                    _message -r 'package name'
+                    ;;
+                --build)
+                    _message -r 'plugin gem version (e.g. 1.0.0)'
+                    ;;
+                *)
+                    _alternative \
+                        'directories:plugin directory:_directories' \
+                        'options: :(--upgrade --upgrade-package --build --help -h)'
+                    ;;
+            esac
             ;;
         bundlewheels)
             # Usage: bundlewheels [PLUGIN_DIR]

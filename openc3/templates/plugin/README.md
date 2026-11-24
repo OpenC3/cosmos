@@ -54,8 +54,13 @@ offline_install = true
 each one against the hash in `uv.lock`, and packages them into the gem. COSMOS installs from those wheels only and
 reports any missing or incompatible package instead of going online.
 
-The build stops if `uv.lock` is missing, out of date with `pyproject.toml`, or (in a git repository) not committed.
-Run `uv lock`, commit `uv.lock`, and build again.
+The build stops if `uv.lock` is missing or out of date with `pyproject.toml`. Lock and build again in one step,
+with no local uv needed:
+
+```sh
+openc3.sh cli lock --build 1.0.1                             # after editing pyproject.toml
+openc3.sh cli lock --upgrade-package requests --build 1.0.1  # to move a dependency to a newer version
+```
 
 Building outside the COSMOS image (a local `rake build` rather than `openc3.sh cli rake build`) needs `uv` and
 `python3` 3.11 or newer on `PATH`.

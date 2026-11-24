@@ -34,6 +34,7 @@ Usage:
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
   cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
   cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment
+  cli lock [PLUGIN_DIR]             # Lock a Python plugin's dependencies (uv lock), optionally then build
   cli bundlewheels [PLUGIN_DIR]     # Bundle Python wheels for [tool.openc3] offline_install
   cli verifywheels PLUGIN.gem       # Report whether a plugin's bundled Python wheels install offline
 ```
@@ -552,6 +553,26 @@ If the plugin has no Python dependencies (`pyproject.toml` or `requirements.txt`
 
 This command performs the same operation as the **Migrate to UV** button in the [Admin Plugins tab](/docs/tools/admin#plugins).
 
+## Lock
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Locks a Python plugin's dependencies: it runs `uv lock` in the plugin directory, which writes `uv.lock` from `pyproject.toml`. It runs in the COSMOS image, so you don't need uv installed. `PLUGIN_DIR` defaults to the current directory. uv resolves against the index in the plugin's `[tool.uv]` settings, or else the `PYPI_URL` the COSMOS image was built with.
+
+Versions already in `uv.lock` are kept unless `pyproject.toml` no longer allows them. `--upgrade-package NAME` (repeatable) upgrades one package to the newest version `pyproject.toml` allows, and `--upgrade` upgrades every package. `--build VERSION` then builds the plugin gem, the same as `openc3.sh cli rake build VERSION=VERSION`:
+
+```bash
+% openc3.sh cli lock --upgrade-package numpy --build 1.2.0
+uv lock --upgrade-package numpy
+Resolved 3 packages in 412ms
+Updated numpy v2.4.5 -> v2.4.6
+openc3cli bundlewheels
+Bundled 2 wheel(s) into python_wheels/ for this machine
+  Successfully built RubyGem
+```
+
+See [Offline installs with bundled wheels](/docs/configuration/plugins#offline-installs-with-bundled-wheels) for updating a plugin's dependencies and converting an existing plugin.
+
 ## Bundle Wheels
 
 <span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
@@ -567,7 +588,7 @@ Bundled 7 wheel(s) into python_wheels/ for this machine
   Successfully built RubyGem
 ```
 
-For a plugin generated before this command existed, add the `openc3cli bundlewheels` step to its Rakefile ahead of `gem build`, and add `Dir.glob("uv.lock")` and `Dir.glob("python_wheels/*")` to `s.files` in its gemspec. Install rejects an `offline_install` gem that lacks either.
+A plugin generated before this command existed needs its Rakefile and gemspec updated first. See [Converting an existing plugin](/docs/configuration/plugins#converting-an-existing-plugin).
 
 See [Offline installs with bundled wheels](/docs/configuration/plugins#offline-installs-with-bundled-wheels) for the settings and what is checked at build and install time.
 

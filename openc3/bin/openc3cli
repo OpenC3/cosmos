@@ -83,6 +83,7 @@ def print_usage
   puts "  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var"
   puts "  cli initsettings                  # Seed settings from OPENC3_SETTING_* env vars"
   puts "  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment"
+  puts "  cli lock [PLUGIN_DIR]             # Lock a Python plugin's dependencies (uv lock), optionally then build"
   puts "  cli bundlewheels [PLUGIN_DIR]     # Bundle Python wheels for [tool.openc3] offline_install"
   puts "  cli verifywheels PLUGIN.gem       # Report whether a plugin's bundled Python wheels install offline"
   puts ""
@@ -1749,6 +1750,60 @@ if not ARGV[0].nil? # argument(s) given
       end
     rescue => e
       abort("Error migrating plugin: #{e.formatted}")
+    end
+
+  when 'lock'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli lock [PLUGIN_DIR] [--upgrade] [--upgrade-package NAME]... [--build VERSION]"
+      puts ""
+      puts "Lock a Python plugin's dependencies: runs 'uv lock' in the plugin directory, which writes"
+      puts "uv.lock from pyproject.toml. Runs in the COSMOS image, so uv need not be installed locally."
+      puts "Versions already in uv.lock are kept unless pyproject.toml no longer allows them or an"
+      puts "upgrade option is given."
+      puts ""
+      puts "Arguments:"
+      puts "  PLUGIN_DIR                Plugin source directory (optional, default: current directory)"
+      puts ""
+      puts "Options:"
+      puts "  --upgrade                 Upgrade every dependency to the newest version pyproject.toml allows"
+      puts "  --upgrade-package NAME    Upgrade only NAME (repeatable)"
+      puts "  --build VERSION           Then build the plugin gem, as 'rake build VERSION=VERSION'"
+      puts "  -h, --help                Show this help message"
+      exit(0)
+    end
+    plugin_dir = nil
+    upgrade = false
+    upgrade_packages = []
+    build_version = nil
+    args = ARGV[1..]
+    until args.empty?
+      arg = args.shift
+      case arg
+      when '--upgrade'
+        upgrade = true
+      when '--upgrade-package', '--build'
+        value = args.shift
+        abort("ERROR: #{arg} needs a value") if value.nil? || value.start_with?('-')
+        if arg == '--build'
+          build_version = value
+        else
+          upgrade_packages << value
+        end
+      else
+        abort("ERROR: unknown option #{arg}") if arg.start_with?('-')
+        abort("ERROR: give only one PLUGIN_DIR") if plugin_dir
+        plugin_dir = arg
+      end
+    end
+    plugin_dir = File.expand_path(plugin_dir || Dir.pwd)
+    begin
+      OpenC3::PythonWheelBundle.lock(plugin_dir, upgrade: upgrade, upgrade_packages: upgrade_packages)
+    rescue OpenC3::PythonWheelBundle::Error => e
+      abort("ERROR: #{e.message}")
+    end
+    if build_version
+      abort("ERROR: #{plugin_dir} has no Rakefile to build with") unless File.exist?(File.join(plugin_dir, 'Rakefile'))
+      exit(1) unless system('rake', 'build', "VERSION=#{build_version}", chdir: plugin_dir)
     end
 
   when 'bundlewheels'

@@ -100,7 +100,7 @@ module OpenC3
       return nil unless offline_install?(dir)
 
       unless File.exist?(File.join(dir, 'uv.lock'))
-        raise Error, "Plugin sets [tool.openc3] offline_install but its gem has no uv.lock. Run `uv lock`, commit uv.lock, and include it in the gemspec files."
+        raise Error, "Plugin sets [tool.openc3] offline_install but its gem has no uv.lock. Lock it with `openc3.sh cli lock` and include uv.lock in the gemspec files."
       end
 
       wheels_dir = File.join(dir, WHEELS_DIR)
@@ -141,15 +141,13 @@ module OpenC3
 
       lock_path = File.join(project_dir, 'uv.lock')
       unless File.exist?(lock_path)
-        raise Error, "[tool.openc3] offline_install requires a uv.lock. Run `uv lock` and commit the result."
+        raise Error, "[tool.openc3] offline_install requires a uv.lock. Run `openc3.sh cli lock` in the plugin directory."
       end
 
       output, status = Open3.capture2e('uv', 'lock', '--check', chdir: project_dir)
       unless status.success?
-        raise Error, "uv.lock is out of date with pyproject.toml. Run `uv lock` and commit the result.\n#{output}"
+        raise Error, "uv.lock is out of date with pyproject.toml. Run `openc3.sh cli lock` in the plugin directory.\n#{output}"
       end
-
-      check_lock_committed(project_dir)
 
       lock = read_toml(lock_path)
       check_sources(lock)
@@ -197,6 +195,32 @@ module OpenC3
       out.puts "Bundled #{bundled.length} wheel(s) into #{WHEELS_DIR}/ for " \
                "#{targets.map { |platform| describe_target(platform, settings[:python_version]) }.join(', ')}"
       bundled
+    end
+
+    # Locks a plugin's Python dependencies, writing uv.lock from pyproject.toml.
+    # `openc3.sh cli lock` runs this in the COSMOS image, so the plugin author
+    # needs no local uv. uv resolves against the plugin's own [tool.uv] index
+    # settings, else UV_DEFAULT_INDEX, which the image sets from PYPI_URL.
+    #
+    # @param project_dir [String] plugin source directory
+    # @param upgrade [Boolean] upgrade every dependency, not only what
+    #   pyproject.toml no longer allows
+    # @param upgrade_packages [Array<String>] packages to upgrade
+    # @param out [IO] where uv's output is printed
+    # @return [void]
+    def self.lock(project_dir, upgrade: false, upgrade_packages: [], out: $stdout)
+      project_dir = File.expand_path(project_dir)
+      unless File.exist?(File.join(project_dir, 'pyproject.toml'))
+        raise Error, "#{project_dir} has no pyproject.toml. Only a Python plugin with a pyproject.toml can be locked."
+      end
+
+      args = ['uv', 'lock']
+      args << '--upgrade' if upgrade
+      upgrade_packages.each { |name| args.push('--upgrade-package', name) }
+      out.puts args.join(' ')
+      output, status = Open3.capture2e(*args, chdir: project_dir)
+      out.print output
+      raise Error, "uv lock failed in #{project_dir}" unless status.success?
     end
 
     # Checks a plugin's bundled wheels without network access and prints a
@@ -315,31 +339,6 @@ module OpenC3
       requirements
     end
     private_class_method :export_requirements
-
-    # Fails when the plugin is in a git repository and its uv.lock is
-    # untracked or changed since the last commit, so the bundled wheels always
-    # match a lock someone committed. Outside a repository, or with no git on
-    # PATH, there is nothing to compare against.
-    #
-    # `openc3.sh cli rake build` mounts the plugin into a container whose user
-    # does not own it, and git refuses such a repository as "dubious
-    # ownership", which would skip this check without a word. safe.directory
-    # lifts that for these read-only queries, and --no-ext-diff keeps the
-    # repository's own config from running a diff program.
-    def self.check_lock_committed(project_dir)
-      git = ['git', '-c', 'safe.directory=*', '-C', project_dir]
-      _, status = Open3.capture2e(*git, 'rev-parse', '--is-inside-work-tree')
-      return unless status.success?
-
-      _, tracked = Open3.capture2e(*git, 'ls-files', '--error-unmatch', 'uv.lock')
-      _, unchanged = Open3.capture2e(*git, 'diff', '--quiet', '--no-ext-diff', 'HEAD', '--', 'uv.lock')
-      return if tracked.success? && unchanged.success?
-
-      raise Error, "uv.lock is not committed. Run `git add uv.lock` and commit it, so the bundled wheels match the lock in source control."
-    rescue Errno::ENOENT
-      nil
-    end
-    private_class_method :check_lock_committed
 
     def self.target_args(platform, version)
       args = []

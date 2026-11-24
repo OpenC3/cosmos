@@ -259,25 +259,52 @@ module OpenC3
         expect { PythonWheelBundle.build(plugin, out: StringIO.new) }.to raise_error(PythonWheelBundle::Error, /requires a uv.lock/)
       end
 
-      # The issue asks for a committed lock: a lock edited after the last
-      # commit would ship wheels nobody reviewed. Outside git there is
-      # nothing to check against, so only a repository is held to it.
-      it "requires the uv.lock to be committed when the plugin is in git" do
-        skip "git is not on PATH" unless system("which git > /dev/null 2>&1")
-        plugin = locked_plugin("offline_install = true\n")
-        git = ->(*args) { system('git', '-C', plugin, '-c', 'user.name=spec', '-c', 'user.email=spec@example.com', *args, out: File::NULL, err: File::NULL) }
-        git.call('init', '-q')
-        git.call('add', 'pyproject.toml')
-        git.call('commit', '-q', '-m', 'init')
+      describe "lock" do
+        it "writes uv.lock so the plugin builds" do
+          plugin = locked_plugin("offline_install = true\n")
+          File.delete(File.join(plugin, 'uv.lock'))
+          out = StringIO.new
 
-        expect { PythonWheelBundle.build(plugin, out: StringIO.new) }.to raise_error(PythonWheelBundle::Error, /uv.lock is not committed/)
+          PythonWheelBundle.lock(plugin, out: out)
 
-        git.call('add', 'uv.lock')
-        git.call('commit', '-q', '-m', 'lock')
-        expect(PythonWheelBundle.build(plugin, out: StringIO.new)).to include(PURE)
+          expect(out.string).to start_with("uv lock\n")
+          expect(File.exist?(File.join(plugin, 'uv.lock'))).to be true
+          expect(PythonWheelBundle.build(plugin, out: StringIO.new)).to include(PURE)
+        end
 
-        File.write(File.join(plugin, 'uv.lock'), File.read(File.join(plugin, 'uv.lock')) + "\n")
-        expect { PythonWheelBundle.build(plugin, out: StringIO.new) }.to raise_error(PythonWheelBundle::Error, /uv.lock is not committed/)
+        it "brings a lock that is out of date with pyproject.toml up to date" do
+          plugin = locked_plugin("offline_install = true\n")
+          pyproject = File.join(plugin, 'pyproject.toml')
+          File.write(pyproject, File.read(pyproject).sub('dependencies = ["fakepure", "fakenative"]', 'dependencies = ["fakepure"]'))
+          expect { PythonWheelBundle.build(plugin, out: StringIO.new) }.to raise_error(PythonWheelBundle::Error, /out of date/)
+
+          PythonWheelBundle.lock(plugin, out: StringIO.new)
+
+          expect(PythonWheelBundle.build(plugin, out: StringIO.new)).to eql [PURE]
+        end
+
+        it "passes the upgrade options to uv" do
+          plugin = locked_plugin("offline_install = true\n")
+          out = StringIO.new
+
+          PythonWheelBundle.lock(plugin, upgrade: true, upgrade_packages: ['fakepure', 'fakenative'], out: out)
+
+          expect(out.string).to start_with("uv lock --upgrade --upgrade-package fakepure --upgrade-package fakenative\n")
+        end
+
+        it "requires a pyproject.toml" do
+          expect { PythonWheelBundle.lock(@dir, out: StringIO.new) }.to raise_error(PythonWheelBundle::Error, /has no pyproject.toml/)
+        end
+
+        it "reports a failed lock" do
+          plugin = locked_plugin("offline_install = true\n")
+          pyproject = File.join(plugin, 'pyproject.toml')
+          File.write(pyproject, File.read(pyproject).sub('dependencies = ["fakepure", "fakenative"]', 'dependencies = ["notapackage"]'))
+          out = StringIO.new
+
+          expect { PythonWheelBundle.lock(plugin, out: out) }.to raise_error(PythonWheelBundle::Error, /uv lock failed/)
+          expect(out.string).to include("notapackage")
+        end
       end
 
       it "requires the uv.lock to match pyproject.toml" do
