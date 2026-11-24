@@ -402,9 +402,13 @@ class InterfaceCmdHandlerThread:
 
             if self.critical_commanding is not None and self.critical_commanding != "OFF" and not release_critical:
                 restricted = command.restricted
-                if hazardous or restricted or (self.critical_commanding == "ALL" and manual):
+                # Command Sender treats any command as hazardous when range checks are
+                # ignored or parameter conversions are disabled, so require approval
+                # for those manual commands too. Scripts that send this way aren't held.
+                mode_hazardous = manual and (not range_check or raw)
+                if hazardous or mode_hazardous or restricted or (self.critical_commanding == "ALL" and manual):
                     cmd_type = "NORMAL"
-                    if hazardous:
+                    if hazardous or mode_hazardous:
                         cmd_type = "HAZARDOUS"
                     elif restricted:
                         cmd_type = "RESTRICTED"
