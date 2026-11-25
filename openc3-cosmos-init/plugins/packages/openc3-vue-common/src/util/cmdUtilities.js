@@ -99,6 +99,14 @@ export function convertToValue(param, { raw = false } = {}) {
       }
       return jstr
     }
+    // Unquoted true / false is a boolean, as a script writes it; quoted it's
+    // the string
+    if (
+      param.type === 'BOOL' &&
+      (upcaseStr === 'TRUE' || upcaseStr === 'FALSE')
+    ) {
+      return upcaseStr === 'TRUE'
+    }
     if (upcaseStr === 'INFINITY') return Number.POSITIVE_INFINITY
     if (upcaseStr === '-INFINITY') return Number.NEGATIVE_INFINITY
     if (upcaseStr === 'NAN') return Number.NaN

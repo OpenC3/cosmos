@@ -50,7 +50,7 @@
           <p class="mb-2">
             Select a target and packet, fill in the parameters and press
             <strong>Send</strong>. Send is the only way to send: loading a
-            command from the history or a paste only fills in the form.
+            command from the history or the script line only fills in the form.
           </p>
           <ul class="ps-5 mb-4">
             <li class="mb-1">
@@ -115,14 +115,23 @@
             </li>
           </ul>
 
-          <div class="text-overline">Pasting a command</div>
+          <div class="text-overline">Script line</div>
           <p class="mb-2">
-            Click the clipboard button next to Send, choose
-            <strong>File &gt; Paste Command</strong>, or press
-            <v-kbd>{{ pasteKey }}</v-kbd> with no field selected. Paste a
-            command as written in a script and press Load to fill in the form.
+            The <strong>Script</strong> line below the parameters shows the
+            command as a script would send it, updated as you change the form,
+            so you can check it before pressing Send. The copy button copies it.
           </p>
           <ul class="ps-5 mb-2">
+            <li class="mb-1">
+              Paste a command over the whole line to load it into the form.
+              Choose <strong>File &gt; Paste Command</strong> to select the line
+              first, or press <v-kbd>{{ pasteKey }}</v-kbd> with no field
+              selected.
+            </li>
+            <li class="mb-1">
+              Or edit the line and press Enter to load it. Until you do, Send is
+              off. Esc undoes the edit.
+            </li>
             <li class="mb-1">
               <code>cmd("INST COLLECT with TYPE 'NORMAL'")</code> and the bare
               <code>INST COLLECT with TYPE 'NORMAL'</code> both work.
@@ -133,7 +142,8 @@
             <li class="mb-1">
               The method (e.g. <code>cmd_no_range_check</code>) and
               <code>validate</code> are not applied: the Mode menu decides
-              those, and the status says what was skipped.
+              those. The status says what was skipped, and the line then shows
+              how Send will send it.
             </li>
           </ul>
         </template>
@@ -180,7 +190,7 @@ const shortcutGroups = [
     title: 'Command Sender',
     rows: [
       {
-        action: 'Paste a command into the paste box',
+        action: 'Load a command from the clipboard into the form',
         keys: [pasteKey],
       },
       {
@@ -194,10 +204,10 @@ const shortcutGroups = [
     ],
   },
   {
-    title: 'Paste Box',
+    title: 'Script Line',
     rows: [
-      { action: 'Load the command into the form', keys: ['Enter'] },
-      { action: 'Close without loading', keys: ['Esc'] },
+      { action: 'Load the edited command into the form', keys: ['Enter'] },
+      { action: 'Undo the edit', keys: ['Esc'] },
     ],
   },
   {

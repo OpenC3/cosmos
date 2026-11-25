@@ -513,8 +513,17 @@ export default {
     // command sets are shown (emitting update:showIgnoredParams) so the form
     // matches it exactly. Resolves to the names that couldn't be set (see
     // applyParameters) plus unknownQueue: the queue, if it isn't one of the
-    // queues (it's left as None), else null.
-    async setCommand({ target, command, params = {}, queue }) {
+    // queues (it's left as None), else null. keepObfuscated: for the
+    // command already in the editor, an obfuscated parameter given as *****
+    // keeps the value it has rather than being left unset, e.g. when the
+    // command's own line, which masks it, is edited and loaded again.
+    async setCommand({
+      target,
+      command,
+      params = {},
+      queue,
+      keepObfuscated = false,
+    }) {
       const targetName = target.toUpperCase()
       const commandName = command.toUpperCase()
       // Taking over loadId only once the definition has loaded means a load
@@ -559,7 +568,11 @@ export default {
         ignoredParams,
         this.loadId + 1,
       )
-      const result = this.applyParameters(params, rows, ignoredParams)
+      const current =
+        keepObfuscated && this.rowsCommand === `${targetName} ${commandName}`
+          ? new Map(this.computedRows.map((row) => [row.parameter_name, row]))
+          : null
+      const result = this.applyParameters(params, rows, ignoredParams, current)
 
       this.loadId++
       this.ignoredParams = ignoredParams
@@ -589,11 +602,13 @@ export default {
     // Set row values from { NAME: 'value as written' }. Returns the names
     // that couldn't be set: unknown (not a parameter of the command), hidden
     // (an ignored parameter that isn't shown) and obfuscated (shown as *****
-    // in the history, so the value is unknown and left unset).
+    // in the history, so the value is unknown and left unset). current:
+    // the rows by name whose obfuscated values ***** keeps (see setCommand).
     applyParameters(
       params,
       rows = this.computedRows,
       ignoredParams = this.ignoredParams,
+      current = null,
     ) {
       const result = { unknown: [], hidden: [], obfuscated: [] }
       const byName = new Map(
@@ -612,6 +627,12 @@ export default {
         }
         const value = String(text)
         if (row.obfuscate && this.removeQuotes(value) === '*****') {
+          // The value the editor has, masked in its own command line
+          const kept = current?.get(row.parameter_name)
+          if (kept && kept.val !== null) {
+            row.val = kept.val
+            continue
+          }
           // The history's mask for an obfuscated value (a literal ***** for
           // any other parameter is kept). Unset, like a required parameter,
           // and flagged so Send asks for it rather than send the default.

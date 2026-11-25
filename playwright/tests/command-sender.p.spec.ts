@@ -93,11 +93,41 @@ async function loadFromHistory(page, cmd, name) {
   )
 }
 
-// Helper function to paste a command into the form (it never sends)
+// The Script line: the form's command as scripted
+function commandLine(page) {
+  return page.locator('[data-test=command-line] textarea').first()
+}
+
+// The Script line and its hint or error
+function commandLinePanel(page) {
+  return page.locator('[data-test=command-line-panel]')
+}
+
+// Helper function to type a command in the Script line and press Enter to
+// load it into the form (it never sends)
 async function pasteCommand(page, cmd) {
-  await page.locator('[data-test=paste-command]').click()
-  await page.locator('[data-test=paste-command-input] input').fill(cmd)
-  await page.locator('[data-test=paste-command-input] input').press('Enter')
+  await commandLine(page).fill(cmd)
+  await commandLine(page).press('Enter')
+}
+
+// Paste text the way the browser does for Mod+V, on the focused element
+async function pasteOnPage(page, text) {
+  await page.evaluate((pasted) => {
+    const data = new DataTransfer()
+    data.setData('text/plain', pasted)
+    const target = document.activeElement || document.body
+    target.dispatchEvent(
+      new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
+    )
+  }, text)
+}
+
+// Helper function to paste a command over the whole Script line, which loads
+// it into the form (it never sends)
+async function pasteLine(page, cmd) {
+  await commandLine(page).focus()
+  await commandLine(page).selectText()
+  await pasteOnPage(page, cmd)
 }
 
 //
@@ -614,31 +644,13 @@ test('hazardous commands from history', async ({ page, utils }) => {
 test('pastes a command into the form', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'ABORT')
-  // Errors are shown in the paste field and leave the form alone
-  await pasteCommand(page, 'cmd("INST NOPE")')
-  await expect(page.locator('[data-test=paste-command-card]')).toContainText(
-    'Unable to load INST NOPE',
-  )
-  await page
-    .locator('[data-test=paste-command-input] input')
-    .fill('cmd("INST", "ABORT")')
-  await page.locator('[data-test=paste-command-input] input').press('Enter')
-  await expect(page.locator('[data-test=paste-command-card]')).toContainText(
-    'Only the single string form is supported',
-  )
-  await page.locator('[data-test=paste-command-input] input').press('Escape')
-  await utils.dropdownSelectedValue(
-    page,
-    '[data-test="select-packet"]',
-    'ABORT',
-  )
+  await expect(commandLine(page)).toHaveValue('cmd("INST ABORT")')
 
-  // Pasting fills in the form but doesn't send
-  await pasteCommand(
+  // Pasting over the line fills in the form but doesn't send
+  await pasteLine(
     page,
     'cmd("INST COLLECT with TYPE \'SPECIAL\', DURATION 3, TEMP 2.5")',
   )
-  await expect(page.locator('[data-test=paste-command-card]')).toHaveCount(0)
   await expect(page.locator('[data-test=sender-status]')).toContainText(
     'Loaded INST COLLECT, press Send to send it',
   )
@@ -649,6 +661,10 @@ test('pastes a command into the form', async ({ page, utils }) => {
   )
   await checkValue(page, 'DURATION', '3')
   await checkValue(page, 'TEMP', '2.5')
+  // The line shows the whole command Send sends
+  await expect(commandLine(page)).toHaveValue(
+    'cmd("INST COLLECT with TYPE \'SPECIAL\', DURATION 3, OPCODE 171, TEMP 2.5")',
+  )
   await expect(historyEntries(page)).toHaveCount(0)
   await sendHazardousCmd(page)
   await checkSent(
@@ -656,19 +672,23 @@ test('pastes a command into the form', async ({ page, utils }) => {
     'cmd("INST COLLECT with TYPE \'SPECIAL\', DURATION 3, OPCODE 171, TEMP 2.5")',
   )
 
-  // The Mode menu decides how it's sent, so a different method is noted
+  // File > Paste Command selects the line, so a paste replaces it. The Mode
+  // menu decides how it's sent, so a different method is noted.
   await page.locator('[data-test=command-sender-file]').click()
   await page.getByText('Paste Command').click()
-  await page
-    .locator('[data-test=paste-command-input] input')
-    .fill('cmd_raw_no_range_check("INST ABORT", validate=False)')
-  await page.locator('[data-test=paste-command-input] input').press('Enter')
+  await expect(commandLine(page)).toBeFocused()
+  await pasteOnPage(
+    page,
+    'cmd_raw_no_range_check("INST ABORT", validate=False)',
+  )
   await expect(page.locator('[data-test=sender-status]')).toContainText(
     'it was written as cmd_raw_no_range_check but the Mode menu sends cmd',
   )
   await expect(page.locator('[data-test=sender-status]')).toContainText(
     'validate false was not applied',
   )
+  // The line shows how Send sends it
+  await expect(commandLine(page)).toHaveValue('cmd("INST ABORT")')
   await expect(historyEntries(page)).toHaveCount(1)
   // Picking a different command clears the status
   await utils.selectTargetPacketItem('INST', 'CLEAR')
@@ -677,11 +697,247 @@ test('pastes a command into the form', async ({ page, utils }) => {
   )
 })
 
+test('shows the form as a script line', async ({ page, utils }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  // TYPE is required and not set yet, so Send wouldn't send it either
+  await expect(commandLine(page)).toHaveValue(
+    'cmd("INST COLLECT with DURATION 1, OPCODE 171, TEMP 0")',
+  )
+  await expect(commandLinePanel(page)).toContainText('Follows the form')
+  // It follows the parameters as they change
+  await selectValue(page, 'TYPE', 'NORMAL')
+  await setValue(page, 'DURATION', '5')
+  await expect(commandLine(page)).toHaveValue(
+    `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 5, OPCODE 171, TEMP 0")`,
+  )
+  // and the Mode menu
+  await toggleMode(page, 'Ignore Range Checks')
+  await expect(commandLine(page)).toHaveValue(/^cmd_no_range_check\("/)
+  await toggleMode(page, 'Ignore Range Checks')
+  await toggleMode(page, 'Disable Parameter Conversions')
+  await expect(commandLine(page)).toHaveValue(
+    'cmd_raw("INST COLLECT with TYPE 0, DURATION 5, OPCODE 171, TEMP 0")',
+  )
+  await toggleMode(page, 'Disable Parameter Conversions')
+  await toggleMode(page, 'Disable Command Validation')
+  await expect(commandLine(page)).toHaveValue(
+    `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 5, OPCODE 171, TEMP 0", validate=False)`,
+  )
+  await toggleMode(page, 'Disable Command Validation')
+  // Copy puts it on the clipboard, ready for a script
+  await page.locator('[data-test=command-line-copy]').click()
+  await expect(page.locator('[data-test=command-line-copy]')).toHaveAttribute(
+    'title',
+    'Copied',
+  )
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 5, OPCODE 171, TEMP 0")`,
+  )
+  // What Send sends is what the line showed
+  await page.locator('[data-test="select-send"]').click()
+  await checkSent(
+    page,
+    `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 5, OPCODE 171, TEMP 0")`,
+  )
+
+  // Obfuscated values are masked, as the history masks them
+  await utils.selectTargetPacketItem('INST', 'SET_PASSWORD')
+  await expect(page.locator('main')).toContainText('Set Password Command')
+  await setValue(page, 'PASSWORD_STR', 'secret')
+  await expect(commandLine(page)).toHaveValue(/PASSWORD_STR '\*\*\*\*\*'/)
+  await expect(commandLine(page)).not.toHaveValue(/secret/)
+})
+
+test('loads valid script lines', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+
+  // A state's value selects the state; numbers are written as sent
+  await pasteLine(
+    page,
+    'cmd("INST COLLECT with TYPE 1, DURATION 2.5, TEMP 1e1")',
+  )
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST COLLECT, press Send to send it.',
+  )
+  await expect(
+    page.locator('tr:has(td:text-is("TYPE")) [data-test=cmd-param-select]'),
+  ).toContainText('SPECIAL')
+  await checkValue(page, 'DURATION', '2.5')
+  await expect(commandLine(page)).toHaveValue(
+    `cmd("INST COLLECT with TYPE 'SPECIAL', DURATION 2.5, OPCODE 171, TEMP 10")`,
+  )
+
+  // Bare command text with strings, binary and a string with a quote
+  await pasteLine(
+    page,
+    `INST ASCIICMD with STRING 'FIRE LASER', BINARY 0xCAFE, ASCII "it's"`,
+  )
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST ASCIICMD',
+  )
+  await checkValue(page, 'BINARY', '0xCAFE')
+  await expect(commandLine(page)).toHaveValue(
+    String.raw`cmd("INST ASCIICMD with STRING 'FIRE LASER', BINARY 0xCAFE, ASCII \"it's\"")`,
+  )
+
+  // Ruby without parentheses, with an array
+  await pasteLine(page, 'cmd "INST ARYCMD with ARRAY [1, 2, 3]"')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST ARYCMD',
+  )
+  await expect(commandLine(page)).toHaveValue(
+    'cmd("INST ARYCMD with ARRAY [ 1, 2, 3 ], CRC 0")',
+  )
+
+  // A trailing comment is ignored
+  await pasteLine(page, 'cmd("INST CLEAR") # clear the counters')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST CLEAR',
+  )
+  await expect(commandLine(page)).toHaveValue('cmd("INST CLEAR")')
+
+  // A BOOL stays a boolean rather than becoming the string 'false'
+  await pasteLine(page, 'cmd("INST JSONCMD with ITEM6 false")')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST JSONCMD',
+  )
+  await expect(commandLine(page)).toHaveValue(/ITEM6 false,/)
+
+  // Parameters the command doesn't have are skipped and noted
+  await pasteLine(page, 'cmd("INST ABORT with NOPE 1")')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'NOPE not parameters of INST ABORT, skipped',
+  )
+  await expect(commandLine(page)).toHaveValue('cmd("INST ABORT")')
+  await expect(page.locator('[data-test="select-send"]')).toBeEnabled()
+  await expect(historyEntries(page)).toHaveCount(0)
+})
+
+test('reports invalid script lines', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await selectValue(page, 'TYPE', 'NORMAL')
+  await setValue(page, 'DURATION', '3')
+  const formLine = `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 3, OPCODE 171, TEMP 0")`
+  await expect(commandLine(page)).toHaveValue(formLine)
+
+  for (const [line, error] of [
+    ['cmd("INST NOPE")', 'Unable to load INST NOPE'],
+    ['cmd("NOPE ABORT")', 'Unable to load NOPE ABORT'],
+    ['cmd("INST", "ABORT")', 'Only the single string form is supported'],
+    ['tlm("INST HEALTH_STATUS TEMP1")', 'Unknown command method tlm'],
+    ['cmd("INST ABORT"', 'Missing the closing parenthesis'],
+    ['cmd("INST ABORT)', 'Unterminated string'],
+    ['INST', 'Both Target Name and Command Name must be given'],
+    ['cmd("INST COLLECT with")', "'with' must be followed by parameters"],
+    ['cmd("INST COLLECT with DURATION")', 'Missing value for DURATION'],
+    [
+      'cmd("INST COLLECT with DURATION 1 TEMP 2")',
+      'Missing comma in command parameters',
+    ],
+    ['cmd("INST ABORT", validate: maybe)', 'validate must be true or false'],
+    ['cmd("INST ABORT", 5)', 'Invalid keyword argument: 5'],
+  ]) {
+    await pasteCommand(page, line)
+    await expect(commandLinePanel(page)).toContainText(error)
+    // The line keeps what was typed, to fix it, and the form is unchanged
+    await expect(commandLine(page)).toHaveValue(line)
+    await expect(page.locator('[data-test="select-send"]')).toBeDisabled()
+  }
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'COLLECT',
+  )
+  await checkValue(page, 'DURATION', '3')
+
+  // Typing clears the error until the line is loaded again
+  await commandLine(page).press('End')
+  await commandLine(page).press('Backspace')
+  await expect(commandLinePanel(page)).not.toContainText('Invalid keyword')
+  await expect(commandLinePanel(page)).toContainText('Not loaded')
+
+  // An empty line has nothing to load
+  await pasteCommand(page, '')
+  await expect(commandLinePanel(page)).toContainText('Enter a command to load')
+
+  // A paste over the whole line reports its error too
+  await pasteLine(page, 'cmd("INST NOPE")')
+  await expect(commandLinePanel(page)).toContainText('Unable to load INST NOPE')
+  await expect(page.locator('[data-test="select-send"]')).toBeDisabled()
+
+  // Esc puts back the form's command, and Send sends the form
+  await commandLine(page).press('Escape')
+  await expect(commandLine(page)).toHaveValue(formLine)
+  await expect(commandLinePanel(page)).not.toContainText('Unable to load')
+  await expect(commandLinePanel(page)).toContainText('Follows the form')
+  await page.locator('[data-test="select-send"]').click()
+  await checkSent(page, formLine)
+})
+
+test('edits the script line', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await selectValue(page, 'TYPE', 'NORMAL')
+  const formLine = `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 1, OPCODE 171, TEMP 0")`
+  await expect(commandLine(page)).toHaveValue(formLine)
+
+  // An edit isn't in the form until Enter, so Send is off
+  await commandLine(page).fill(formLine.replace('DURATION 1', 'DURATION 7'))
+  await expect(commandLinePanel(page)).toContainText('Not loaded')
+  await expect(page.locator('[data-test="select-send"]')).toBeDisabled()
+  await checkValue(page, 'DURATION', '1')
+  // Esc undoes it
+  await commandLine(page).press('Escape')
+  await expect(commandLine(page)).toHaveValue(formLine)
+  await expect(page.locator('[data-test="select-send"]')).toBeEnabled()
+
+  // Enter loads it
+  await commandLine(page).fill(formLine.replace('DURATION 1', 'DURATION 7'))
+  await commandLine(page).press('Enter')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST COLLECT',
+  )
+  await checkValue(page, 'DURATION', '7')
+  await expect(commandLinePanel(page)).toContainText('Follows the form')
+  await expect(page.locator('[data-test="select-send"]')).toBeEnabled()
+
+  // Changing the form drops an edit that wasn't loaded: the form is sent
+  await commandLine(page).fill('cmd("INST ABORT")')
+  await setValue(page, 'TEMP', '5')
+  await expect(commandLine(page)).toHaveValue(
+    `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 7, OPCODE 171, TEMP 5")`,
+  )
+  await expect(page.locator('[data-test="select-send"]')).toBeEnabled()
+  await expect(historyEntries(page)).toHaveCount(0)
+
+  // Editing the line keeps the obfuscated values it masks
+  await utils.selectTargetPacketItem('INST', 'SET_PASSWORD')
+  await expect(page.locator('main')).toContainText('Set Password Command')
+  await setValue(page, 'USERNAME', 'operator')
+  await setValue(page, 'PASSWORD_STR', 'secret')
+  const line = await commandLine(page).inputValue()
+  await commandLine(page).fill(line.replace("'operator'", "'admin'"))
+  await commandLine(page).press('Enter')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST SET_PASSWORD',
+  )
+  await checkValue(page, 'USERNAME', `'admin'`)
+  await checkValue(page, 'PASSWORD_STR', 'secret')
+  // but a pasted command's ***** is unknown, so it's asked for
+  await pasteLine(page, await commandLine(page).inputValue())
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'the history hides the value',
+  )
+  await checkValue(page, 'PASSWORD_STR', '')
+})
+
 test('opens the help dialogs', async ({ page, utils }) => {
   await page.locator('[data-test=command-sender-help]').click()
   await page.getByText('Keyboard Shortcuts').click()
   await expect(page.locator('[data-test=help-dialog-shortcuts]')).toContainText(
-    'Paste a command into the paste box',
+    'Load a command from the clipboard into the form',
   )
   await page.locator('[data-test=help-dialog-ok]').click()
   await page.locator('[data-test=command-sender-help]').click()
@@ -692,18 +948,6 @@ test('opens the help dialogs', async ({ page, utils }) => {
   await page.locator('[data-test=help-dialog-ok]').click()
   await expect(page.locator('[data-test=help-dialog-guide]')).toHaveCount(0)
 })
-
-// Paste text the way the browser does for Mod+V, on the focused element
-async function pasteOnPage(page, text) {
-  await page.evaluate((pasted) => {
-    const data = new DataTransfer()
-    data.setData('text/plain', pasted)
-    const target = document.activeElement || document.body
-    target.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
-    )
-  }, text)
-}
 
 test('pastes and steps through the history with the keyboard', async ({
   page,
@@ -720,29 +964,27 @@ test('pastes and steps through the history with the keyboard', async ({
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
   )
 
-  // Mod+V with no field selected opens the paste box with the text
+  // Mod+V with no field selected loads the text through the Script line
   await page.locator('[data-test=history-count]').click()
   await pasteOnPage(page, `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 4")`)
-  await expect(
-    page.locator('[data-test=paste-command-input] input'),
-  ).toHaveValue(`cmd("INST COLLECT with TYPE 'NORMAL', DURATION 4")`)
-  // Focused once the box has opened, ready for Enter (pressing it while the
-  // box is still opening would go to the page)
-  await expect(
-    page.locator('[data-test=paste-command-input] input'),
-  ).toBeFocused()
-  await page.keyboard.press('Enter')
   await expect(page.locator('[data-test=sender-status]')).toContainText(
     'Loaded INST COLLECT, press Send to send it',
   )
   await checkValue(page, 'DURATION', '4')
+  await expect(commandLine(page)).toHaveValue(
+    `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 4, OPCODE 171, TEMP 0")`,
+  )
 
   // Pasting in a field pastes there instead
   await page
     .locator('tr:has(td:text-is("TEMP")) [data-test=cmd-param-value] input')
     .click()
   await pasteOnPage(page, 'cmd("INST ABORT")')
-  await expect(page.locator('[data-test=paste-command-card]')).toHaveCount(0)
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'COLLECT',
+  )
 
   // Alt+Down / Alt+Up load older / newer history commands, never sending
   await page.locator('[data-test=history-count]').click()

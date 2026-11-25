@@ -102,6 +102,7 @@ import {
   formatDateTimeHMS,
   formatTimeHMS,
 } from '@openc3/vue-common/util'
+import { writeClipboard } from './clipboard'
 
 // The read-only history of sent commands, newest first. Clicking a command
 // loads it into the form (select); it is never sent from here.
@@ -160,27 +161,6 @@ async function copy(item) {
     }, 1500)
   } catch (error) {
     console.error('Failed to copy command:', error)
-  }
-}
-
-// navigator.clipboard only exists in secure contexts (https or localhost),
-// and COSMOS is often served over plain http, so fall back to a selection
-async function writeClipboard(text) {
-  if (navigator.clipboard) {
-    await navigator.clipboard.writeText(text)
-    return
-  }
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.setAttribute('readonly', '')
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-  textarea.select()
-  try {
-    if (!document.execCommand('copy')) throw new Error('Copy was refused')
-  } finally {
-    textarea.remove()
   }
 }
 </script>

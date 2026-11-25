@@ -11,12 +11,20 @@
 # if purchased from OpenC3, Inc.
 */
 
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 // Unit tests for the tool's pure modules (e.g. the history store), run in
 // Node. The components need a browser and a running COSMOS: the Playwright
 // tests cover them.
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@openc3/vue-common/util': fileURLToPath(
+        new URL('./src/__tests__/vueCommonUtil.js', import.meta.url),
+      ),
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/__tests__/**/*.spec.js'],

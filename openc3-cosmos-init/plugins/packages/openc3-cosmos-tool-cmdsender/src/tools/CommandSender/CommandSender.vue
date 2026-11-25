@@ -42,10 +42,20 @@
         :show-hazardous="false"
         @command-changed="commandChanged($event)"
         @command-loaded="onCommandLoaded($event)"
-        @params-changed="checkHazard"
+        @params-changed="paramsChanged"
       />
-      <!-- The only way to send: loading a command from the history or a
-           paste fills in the form above but never sends it -->
+      <!-- The form's command as scripted, rebuilt as it changes. Pasting or
+           editing a command there loads it into the form above. -->
+      <command-line
+        ref="commandLine"
+        class="px-4 pt-6"
+        :command="commandLine"
+        :load="loadCommandLine"
+        :loading="loadingCommand || (!!commandName && !commandReady)"
+        @dirty="lineDirty = $event"
+      />
+      <!-- The only way to send: loading a command from the history or the
+           command line fills in the form above but never sends it -->
       <div class="cs-send-bar d-flex align-center ga-2 px-4 pb-4 pt-2">
         <div
           class="cs-status flex-grow-1 min-w-0 text-body-2"
@@ -65,13 +75,7 @@
         >
           <span class="text-truncate">{{ hazardText }}</span>
         </v-chip>
-        <paste-command
-          ref="pasteCommand"
-          v-model="pasteOpen"
-          :load="pasteCommand"
-          :disabled="sendDisabled"
-        />
-        <v-tooltip :disabled="!readOnlyUser" :open-delay="600" location="top">
+        <v-tooltip :disabled="!sendTooltip" :open-delay="600" location="top">
           <template #activator="{ props }">
             <div v-bind="props" class="flex-shrink-0">
               <v-btn
@@ -88,7 +92,7 @@
               </v-btn>
             </div>
           </template>
-          <span>Viewers cannot send commands</span>
+          <span>{{ sendTooltip }}</span>
         </v-tooltip>
       </div>
     </section>
@@ -213,17 +217,18 @@ import {
   parseCmdLine,
 } from '@openc3/vue-common/util'
 import CommandHistory from './CommandHistory.vue'
-import PasteCommand from './PasteCommand.vue'
+import CommandLine from './CommandLine.vue'
 import HelpDialog from './HelpDialog.vue'
 import { useCommandHistory } from './useCommandHistory'
+import { formatCmd, formatFormCmd } from './commandLine'
 
 export default {
   components: {
     CommandHistory,
+    CommandLine,
     CriticalCmdDialog,
     CommandEditor,
     Openc3Screen,
-    PasteCommand,
     HelpDialog,
     TopBar,
   },
@@ -246,7 +251,7 @@ export default {
       queueName: null,
       // The selected command's parameters are loaded, so Send can build it
       commandReady: false,
-      // A command from the history or a paste is being loaded
+      // A command from the history or the command line is being loaded
       loadingCommand: false,
       // The latest load, so a load it replaced doesn't clear its state
       loadPromise: null,
@@ -265,7 +270,10 @@ export default {
       status: '',
       timeZone: 'local',
       selectedHistoryId: null,
-      pasteOpen: false,
+      // The form's command as scripted, for the command line
+      commandLine: '',
+      // The command line has edits that aren't loaded into the form
+      lineDirty: false,
       // Help menu dialogs: 'shortcuts' or 'guide'
       helpOpen: false,
       helpTopic: 'shortcuts',
@@ -350,17 +358,26 @@ export default {
         ? `Hazardous: ${this.hazardousDescription}`
         : 'Hazardous'
     },
-    // Not while a history entry or paste loads, so Send only ever sends the
-    // command shown in the form
+    // Not while a history entry or the command line loads, or while the
+    // command line has edits that aren't loaded, so Send only ever sends
+    // the command shown in the form and the command line
     canSend() {
       return (
         !this.readOnlyUser &&
         !this.sendDisabled &&
         !this.loadingCommand &&
+        !this.lineDirty &&
         this.commandReady &&
         !!this.targetName &&
         !!this.commandName
       )
+    },
+    sendTooltip() {
+      if (this.readOnlyUser) return 'Viewers cannot send commands'
+      if (this.lineDirty) {
+        return 'Press Enter in the command line to load it, or Esc to undo'
+      }
+      return ''
     },
     // The scripting method the Mode menu sends with, as the history shows it
     sendMethod() {
@@ -381,7 +398,7 @@ export default {
               icon: 'mdi-clipboard-text-outline',
               shortcut: 'Mod+V',
               command: () => {
-                this.pasteOpen = true
+                this.$refs.commandLine.focus()
               },
             },
             {
@@ -461,12 +478,23 @@ export default {
     // A dialog or menu is open, so page shortcuts stand aside
     overlayOpen() {
       return (
-        this.pasteOpen ||
         this.helpOpen ||
         this.displaySendHazardous ||
         this.displayErrorDialog ||
         this.displayCriticalCmd
       )
+    },
+  },
+  watch: {
+    // The Mode menu and queue are part of the command line
+    sendMethod() {
+      this.updateCommandLine()
+    },
+    disableCommandValidation() {
+      this.updateCommandLine()
+    },
+    queueName() {
+      this.updateCommandLine()
     },
   },
   created() {
@@ -517,15 +545,16 @@ export default {
       )
     },
 
-    // Mod+V on the page opens the paste box with the clipboard's text, ready
-    // to Load. The paste event carries the text without the clipboard API,
-    // which only exists in secure contexts.
+    // Mod+V on the page loads the clipboard's command through the command
+    // line, which shows any error. The paste event carries the text without
+    // the clipboard API, which only exists in secure contexts.
     onPaste(event) {
       if (this.sendDisabled || !this.pageHasFocus(event)) return
       const text = event.clipboardData?.getData('text')?.trim()
       if (!text) return
       event.preventDefault()
-      this.$refs.pasteCommand.openWith(text)
+      // The command line shows its own errors
+      void this.$refs.commandLine.loadText(text)
     },
 
     // Alt+Down / Alt+Up load the next older / newer history command
@@ -571,7 +600,7 @@ export default {
         this.hazardRequest++
         // The user picked a different command: drop the history selection
         // and the status, which describes the previous command. Loading
-        // from the history or a paste sets its own status.
+        // from the history or the command line sets its own status.
         if (!this.loadingCommand) {
           this.selectedHistoryId = null
           this.status = ''
@@ -599,6 +628,7 @@ export default {
       this.commandReady = !!command
       this.commandHazardous = !!command?.hazardous
       this.checkHazard()
+      this.updateCommandLine()
       const screenCommand = command
         ? `${command.target_name} ${command.packet_name}`
         : null
@@ -645,6 +675,40 @@ export default {
         this.screenDefinition = null
         this.screenCount += 1
       }
+    },
+
+    paramsChanged() {
+      this.checkHazard()
+      this.updateCommandLine()
+    },
+
+    // Rebuild the command line from the form. While a command loads it keeps
+    // the last one (shown loading) rather than an empty command.
+    updateCommandLine() {
+      const editor = this.$refs.commandEditor
+      if (!editor?.targetName || !editor?.commandName) {
+        this.commandLine = ''
+        return
+      }
+      if (!this.commandReady) return
+      // The editor's names, which change with its rows: this.targetName is
+      // only set once a load from the command line or history finishes
+      this.commandLine = formatFormCmd(
+        this.sendMethod,
+        editor.targetName,
+        editor.commandName,
+        editor.getRows(),
+        {
+          raw: this.cmdRaw,
+          queueName: this.queueName,
+          disableCommandValidation: this.disableCommandValidation,
+          python: this.scriptingPython(),
+        },
+      )
+    },
+
+    scriptingPython() {
+      return AceEditorUtils.getDefaultScriptingLanguage() === 'python'
     },
 
     // Ask the server whether the form's command is hazardous, shortly after
@@ -926,71 +990,17 @@ export default {
     },
 
     // Format the sent command the way the user would script it
-    formatCmd(cmd_sent, response, sendOptions) {
-      const { queueName, disableCommandValidation } = sendOptions
-      let text = `${response['target_name']} ${response['cmd_name']}`
-      let keys = Object.keys(response['cmd_params'])
-      if (keys.length > 0) {
-        text += ' with '
-        for (let i = 0; i < keys.length; i++) {
-          let key = keys[i]
-          let value = ''
-          if (response['obfuscated_items'].includes(key)) {
-            value = '*****'
-          } else {
-            value = this.convertToString(response['cmd_params'][key])
-          }
-          // If the response has unquoted string data we add quotes
-          if (
-            typeof response['cmd_params'][key] === 'string' &&
-            value.charAt(0) !== "'" &&
-            value.charAt(0) !== '"'
-          ) {
-            value = `'${value}'`
-          }
-          text += key + ' ' + value
-          if (i < keys.length - 1) {
-            text += ', '
-          }
-        }
-      }
-      // Escaped like a script string literal, so values with double quotes
-      // (e.g. string arrays) copy into a script and load back from history
-      const escaped = text
-        .replaceAll('\\', String.raw`\\`)
-        .replaceAll('"', String.raw`\"`)
-      let msg = `${cmd_sent}("${escaped}`
-      // Build the closing part with optional parameters
-      const closingParams = []
-      if (queueName !== null) {
-        const queue = queueName === false ? false : `"${queueName}"`
-        closingParams.push(this.formatKeyword('queue', queue))
-      }
-      if (disableCommandValidation) {
-        closingParams.push(this.formatKeyword('validate', false))
-      }
-
-      if (closingParams.length > 0) {
-        msg += '", ' + closingParams.join(', ') + ')'
-      } else {
-        msg += '")'
-      }
-      return msg
+    formatCmd(cmdSent, response, sendOptions) {
+      return formatCmd(cmdSent, response, {
+        ...sendOptions,
+        python: this.scriptingPython(),
+      })
     },
 
     processCmdError(targetName, commandName, response) {
       const context = 'sending ' + targetName + ' ' + commandName
       this.displayError(context, response, true)
       this.sendDisabled = false
-    },
-
-    // Format a keyword parameter for the user's scripting language
-    formatKeyword(name, value) {
-      const python = AceEditorUtils.getDefaultScriptingLanguage() === 'python'
-      if (value === false) {
-        return python ? `${name}=False` : `${name}: false`
-      }
-      return python ? `${name}=${value}` : `${name}: ${value}`
     },
 
     clearHistory() {
@@ -1009,9 +1019,12 @@ export default {
       }
     },
 
-    // For PasteCommand: resolves to an error message, or null once loaded
-    async pasteCommand(text) {
-      const error = await this.loadCommand(text)
+    // For CommandLine: resolves to an error message, or null once loaded.
+    // An edit of the form's line keeps obfuscated values the form has.
+    async loadCommandLine(text, { edited }) {
+      const error = await this.loadCommand(text, {
+        keepObfuscated: edited,
+      })
       if (!error) {
         this.selectedHistoryId = null
       }
@@ -1021,7 +1034,8 @@ export default {
     // Load a command as scripted, e.g. cmd("INST COLLECT with TYPE 'NORMAL'"),
     // into the form without sending it. The Mode menu still decides how it's
     // sent. Resolves to an error message, or null once loaded.
-    loadCommand(text) {
+    // keepObfuscated: see CommandEditor.setCommand
+    loadCommand(text, { keepObfuscated = false } = {}) {
       // The form is what's being sent (or confirmed), so leave it alone
       if (this.sendDisabled) {
         return Promise.resolve('Wait for the command being sent to finish')
@@ -1046,7 +1060,7 @@ export default {
       // also turns on Show Ignored Parameters (v-model) if the command sets
       // ignored parameters, so the form matches it exactly.
       const load = editor
-        .setCommand({ ...parsed, queue })
+        .setCommand({ ...parsed, queue, keepObfuscated })
         .then((result) => {
           const targetName = parsed.target.toUpperCase()
           const commandName = parsed.command.toUpperCase()

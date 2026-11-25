@@ -15,7 +15,7 @@ Command Sender provides the ability to send any command defined by COSMOS. Comma
 
 ### File Menu Items
 
-- Paste a command to load it into the form (see [Pasting Commands](#pasting-commands))
+- Paste a command to load it into the form (see [Script Line](#script-line))
 - Clear the command history
 
 ### Mode Menu Items
@@ -39,7 +39,7 @@ The Mode menu always determines how a command is sent, including commands loaded
 ### Help Menu Items
 
 - Lists the keyboard shortcuts
-- Explains how to use Command Sender: sending, hazardous commands, the history and pasting commands
+- Explains how to use Command Sender: sending, hazardous commands, the history and the script line
 
 ## Sending Commands
 
@@ -65,11 +65,17 @@ Clicking a command in the history loads it into the form above, selecting the ta
 Parameters marked as [obfuscated](../configuration/command.md#obfuscate) are shown as `*****` in the history. When such a command is loaded, these parameters are left empty and Send asks for them, so the defaults are never sent in their place.
 :::
 
-### Pasting Commands
+### Script Line
 
-To send a command from a procedure or script, click the clipboard button next to Send (or select File → Paste Command) and paste the command. You can also press Ctrl+V (⌘V on macOS) when no field is selected to open the paste box with the command already pasted. The script form with single or double quotes, e.g. `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 5")`, the Ruby form without parentheses, and the bare command text, e.g. `INST COLLECT with TYPE 'NORMAL', DURATION 5`, are all accepted, and a trailing comment is ignored. Press Load (or Enter) to load the command into the form, then press Send to send it.
+The Script line below the parameters shows the selected command as it would be written in a script, e.g. `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 5, OPCODE 171, TEMP 0")`. It updates as you change parameter values, the queue or the Mode menu, so you can check exactly what Send will send before pressing it. Like Send, it includes every parameter value, leaves out required parameters that aren't set yet, and shows obfuscated values as `*****`. The copy button copies the line, ready to paste into a script.
 
-![Paste Command](/img/command_sender/paste_command.png)
+![Script Line](/img/command_sender/script_line.png)
+
+To load a command from a procedure or script, paste it over the whole line (select File → Paste Command to select the line first). You can also press Ctrl+V (⌘V on macOS) when no field is selected. The script form with single or double quotes, e.g. `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 5")`, the Ruby form without parentheses, and the bare command text, e.g. `INST COLLECT with TYPE 'NORMAL', DURATION 5`, are all accepted, and a trailing comment is ignored. The command is loaded into the form, then press Send to send it.
+
+You can also edit the line and press Enter to load your changes into the form. Until you do, the line is outlined, Send is disabled and Esc undoes the edit. Changing the form instead discards the edit, since the form is what Send sends. Editing a value in the line keeps the obfuscated values already in the form; a pasted command's `*****` values must be entered again.
+
+If the line can't be loaded, e.g. it isn't valid script syntax or the target or command doesn't exist, the error is shown below the line and the form is left unchanged. Fix the line and press Enter, or press Esc to put back the form's command.
 
 A `queue` keyword selects that queue if it exists; otherwise the queue is left as None and the status says so. Without a `queue` keyword the queue is None, as it would be for the script. Other parts of the command that the Mode menu controls, such as the method (`cmd_no_range_check`, `cmd_raw`, etc.) or a `validate` keyword, are not applied. The status lists anything that was not applied so you can change the Mode menu if needed.
 
@@ -79,10 +85,11 @@ These work when no field is selected and no dialog is open. None of them send a 
 
 | Shortcut                      | Action                                                   |
 | ----------------------------- | -------------------------------------------------------- |
-| Ctrl+V (⌘V on macOS)          | Open the paste box with the clipboard's command          |
+| Ctrl+V (⌘V on macOS)          | Load the clipboard's command into the form               |
 | Alt+↓ (⌥↓ on macOS)           | Load the next older command in the history into the form |
 | Alt+↑ (⌥↑ on macOS)           | Load the next newer command in the history into the form |
-| Enter (in the paste box)      | Load the pasted command into the form                    |
+| Enter (in the Script line)    | Load the edited command into the form                    |
+| Esc (in the Script line)      | Undo the edit                                            |
 | Esc (in the hazardous dialog) | Cancel without sending                                   |
 
 ### Hazardous Commands
