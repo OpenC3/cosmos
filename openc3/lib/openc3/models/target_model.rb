@@ -80,10 +80,6 @@ module OpenC3
     attr_accessor :ignored_parameters
     attr_accessor :ignored_items
     attr_accessor :limits_groups
-    # Set when a target which defines limits groups also has a telemetry packet of
-    # its own named LIMITS_GROUP, by installing it or by LimitsGroupBackfill. The
-    # packet is kept and the target's groups aren't published as telemetry.
-    attr_accessor :own_limits_group_packet
     attr_accessor :stored_limits_mode
     attr_accessor :cmd_tlm_files
     attr_accessor :id
@@ -470,19 +466,6 @@ module OpenC3
       store_for_target(target_name, scope: scope).zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
-    # <TARGET> LIMITS_GROUP is generated from the limits groups of a target which
-    # defines them. A target without limits groups can still have a telemetry
-    # packet of its own named LIMITS_GROUP which behaves like any other packet,
-    # as does one kept by an install or LimitsGroupBackfill (see own_limits_group_packet).
-    #
-    # @return [Boolean] Whether the packet is the generated limits group packet
-    def self.generated_limits_group_packet?(target_name, packet_name, scope:)
-      return false unless packet_name == PacketConfig::LIMITS_GROUP_PACKET
-
-      target = get(name: target_name, scope: scope)
-      (target and !(target['limits_groups'] || []).empty? and !target['own_limits_group_packet']) ? true : false
-    end
-
     # @return [Hash{String => Array<Array<String, String, String>>}] Limits groups keyed
     #   by TARGET__GROUP (see LimitsEventTopic.limits_group_key)
     def self.limits_groups(scope:)
@@ -519,9 +502,8 @@ module OpenC3
       packets = packets(target_name, scope: scope)
       # LATEST never resolves to the generated LIMITS_GROUP packet. Its items are
       # limits groups which can share a name with an item in another packet.
-      skip_limits_group = generated_limits_group_packet?(target_name, PacketConfig::LIMITS_GROUP_PACKET, scope: scope)
       packets.each do |packet|
-        next if skip_limits_group and packet['packet_name'] == PacketConfig::LIMITS_GROUP_PACKET
+        next if packet['packet_name'] == PacketConfig::LIMITS_GROUP_PACKET
 
         items = packet['items']
         items.each do |item|
@@ -555,7 +537,6 @@ module OpenC3
       ignored_parameters: [],
       ignored_items: [],
       limits_groups: [],
-      own_limits_group_packet: false,
       stored_limits_mode: 'PROCESS',
       cmd_tlm_files: [],
       id: nil,
@@ -590,7 +571,6 @@ module OpenC3
       @ignored_parameters = ignored_parameters
       @ignored_items = ignored_items
       @limits_groups = limits_groups
-      @own_limits_group_packet = own_limits_group_packet ? true : false
       @stored_limits_mode = stored_limits_mode.to_s.upcase
       @stored_limits_mode = 'PROCESS' unless %w(PROCESS LOG DISABLE).include?(@stored_limits_mode)
       @cmd_tlm_files = cmd_tlm_files
@@ -628,7 +608,6 @@ module OpenC3
         'ignored_parameters' => @ignored_parameters,
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
-        'own_limits_group_packet' => @own_limits_group_packet,
         'stored_limits_mode' => @stored_limits_mode,
         'cmd_tlm_files' => @cmd_tlm_files,
         'id' => @id,
@@ -1206,8 +1185,6 @@ module OpenC3
       @ignored_items = target.ignored_items
       @cmd_tlm_files = target.cmd_tlm_files
       @limits_groups = (system.limits.groups[@name] || {}).keys
-      # A packet of the target's own named LIMITS_GROUP is kept and its groups aren't published
-      @own_limits_group_packet = system.packet_config.own_limits_group_packet?(@name)
       update()
     end
 

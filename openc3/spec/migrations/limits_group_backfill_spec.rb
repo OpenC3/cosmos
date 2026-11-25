@@ -59,16 +59,34 @@ module OpenC3
       expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).not_to have_key("TEMPS")
     end
 
-    it "keeps and marks a target's own LIMITS_GROUP packet" do
-      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", JSON.generate({ 'items' => [] }))
-      expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be true
-      expect(Logger).to receive(:error).with(/Target SYSTEM in scope DEFAULT has a telemetry packet of its own named LIMITS_GROUP.*renamed and the target reinstalled/)
+    it "fails before changing anything when a target has its own LIMITS_GROUP packet" do
+      own = JSON.generate({ 'items' => [{ 'name' => 'VALUE' }] })
+      # SYSTEM defines limits groups (on db_shard 1) and INST doesn't
+      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", own)
+      Store.hset("DEFAULT__openc3tlm__INST", "LIMITS_GROUP", own)
+      allow(Store).to receive(:instance).and_call_original
+      expect { LimitsGroupBackfill.run }.to raise_error(RuntimeError, /reserved .* SYSTEM \(scope DEFAULT\), INST \(scope DEFAULT\)\. Go back to the previous COSMOS version, rename the packet/)
+      # SYSTEM's packet is only found by reading its db_shard
+      expect(Store).to have_received(:instance).with(db_shard: 1)
+      expect(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP")).to eql own
+      expect(Store.hget("DEFAULT__openc3tlm__INST", "LIMITS_GROUP")).to eql own
+      expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(POWER TEMPS)
+      expect(MicroserviceModel.get_model(name: "DEFAULT__LIMITSGROUP__DEFAULT", scope: "DEFAULT")).to be_nil
+      expect(MicroserviceModel.get_model(name: "OTHER__LIMITSGROUP__OTHER", scope: "OTHER")).to be_nil
+
+      # Renamed and reinstalled on the previous version
+      Store.instance(db_shard: 1).hdel("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP")
+      Store.hdel("DEFAULT__openc3tlm__INST", "LIMITS_GROUP")
       LimitsGroupBackfill.run
-      expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))).to eql({ 'items' => [] })
       expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
-      # So it stays writable, in LATEST and isn't published over
-      expect(TargetModel.get_model(name: "SYSTEM", scope: "DEFAULT").own_limits_group_packet).to be true
-      expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be false
+    end
+
+    it "reruns after a failure which followed storing the LIMITS_GROUP packets" do
+      allow(LimitsGroupBackfill).to receive(:add_microservice).and_raise("boom")
+      expect { LimitsGroupBackfill.run }.to raise_error("boom")
+      allow(LimitsGroupBackfill).to receive(:add_microservice).and_call_original
+      LimitsGroupBackfill.run
+      expect(MicroserviceModel.get_model(name: "DEFAULT__LIMITSGROUP__DEFAULT", scope: "DEFAULT")).to_not be_nil
     end
 
     it "removes groups whose names can't be LIMITS_GROUP items" do
@@ -148,10 +166,10 @@ module OpenC3
       config_name = JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))['config_name']
       # The packet stored by the first run is recognized as the generated one
       expect(Logger).not_to receive(:warn)
+      expect(Logger).not_to receive(:error)
       LimitsGroupBackfill.run
       expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
       expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))['config_name']).to eql config_name
-      expect(TargetModel.get_model(name: "SYSTEM", scope: "DEFAULT").own_limits_group_packet).to be false
       multi = MicroserviceModel.get_model(name: "DEFAULT__SCOPEMULTI__DEFAULT", scope: "DEFAULT")
       expect(multi.cmd.count("DEFAULT__LIMITSGROUP__DEFAULT")).to eql 1
     end

@@ -55,7 +55,6 @@ module OpenC3
       @values = {}           # group => [state, enabled] as last computed (see LimitsRollup.rollup)
       @published = {}        # target => its groups' @values as last published
       @packets = {}          # target => [group names, its LIMITS_GROUP packet]
-      @publishable = {}      # target => whether its LIMITS_GROUP packet is the generated one
       @settings_changed = false # settings must be reread before the next publish
       @changed_groups = Set.new # groups whose members changed since the last flush
       @warned = Set.new
@@ -162,7 +161,6 @@ module OpenC3
         # Installing a target clears its LIMITS_GROUP CVT so publish it again
         # even if its groups' values didn't change
         @published.delete(target_name)
-        @publishable.delete(target_name)
       end
       @groups = TargetModel.limits_groups(scope: @scope)
       build_indexes()
@@ -258,11 +256,9 @@ module OpenC3
       # A target whose groups are all gone has no packet any more
       @published.select! { |target_name, _values| by_target.key?(target_name) }
       @packets.select! { |target_name, _packet| by_target.key?(target_name) }
-      @publishable.select! { |target_name, _publishable| by_target.key?(target_name) }
 
       by_target.each do |target_name, values|
         next if !force and values == @published[target_name]
-        next unless publishable?(target_name)
 
         publish_target(target_name, values)
         @published[target_name] = values
@@ -315,22 +311,6 @@ module OpenC3
       TelemetryDecomTopic.write_packet(packet, scope: @scope)
       @count += 1
       @metric.set(name: 'limits_group_publish_total', value: @count, type: 'counter')
-    end
-
-    # A target which defines limits groups and also has a telemetry packet of its
-    # own named LIMITS_GROUP keeps it and is marked with own_limits_group_packet
-    # (see TargetModel) so never write the rollup over it.
-    #
-    # @return [Boolean] Whether the target's LIMITS_GROUP packet can be published
-    def publishable?(target_name)
-      return @publishable[target_name] if @publishable.key?(target_name)
-
-      json = Store.hget("#{@scope}__openc3_targets", target_name)
-      publishable = !(json and JSON.parse(json, allow_nan: true, create_additions: true)['own_limits_group_packet'])
-      unless publishable
-        warn_once("packet #{target_name}", "#{target_name} #{PacketConfig::LIMITS_GROUP_PACKET} is a packet of the target's own so its limits groups aren't published. Rename the packet and reinstall the target.")
-      end
-      @publishable[target_name] = publishable
     end
 
     def build_indexes

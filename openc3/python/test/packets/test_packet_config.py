@@ -683,25 +683,23 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(packet.get_item("TVAC").states, {"GREEN": 0, "YELLOW": 1, "RED": 2, "BLUE": 3, "DISABLED": 4})
         self.assertEqual(packet.get_item("TVAC_ENABLED").states, {"FALSE": 0, "TRUE": 1, "PARTIAL": 2})
 
-    def test_build_limits_group_packet_keeps_a_targets_own_limits_group_packet_with_a_warning(self):
+    def test_rejects_a_telemetry_packet_named_limits_group(self):
+        # With or without limits groups, and in any case
+        for groups in ["", "LIMITS_GROUP TVAC\n"]:
+            with tempfile.NamedTemporaryFile(mode="w") as tf:
+                tf.write('TELEMETRY TGT1 limits_group BIG_ENDIAN "Packet"\n')
+                tf.write("  ITEM ITEM1 0 8 UINT\n")
+                tf.write(groups)
+                tf.seek(0)
+                with self.assertRaisesRegex(ConfigParser.Error, "Telemetry packet name LIMITS_GROUP is reserved"):
+                    self.pc.process_file(tf.name, "TGT1")
+
+    def test_allows_a_command_packet_named_limits_group(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
-            tf.write('TELEMETRY TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"\n')
-            tf.write("  ITEM ITEM1 0 8 UINT\n")
-            tf.write("LIMITS_GROUP TVAC\n")
+            tf.write('COMMAND TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"\n')
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-        # Not the generated packet even before the builder runs (e.g. from_config)
-        self.assertFalse(self.pc.limits_group_packet_p("TGT1", "LIMITS_GROUP"))
-        with patch("openc3.packets.packet_config.Logger") as logger:
-            self.pc.build_limits_group_packet("TGT1")
-        self.assertRegex(
-            logger.warn.call_args[0][0], "TGT1 LIMITS_GROUP is reserved .* Rename the packet and reinstall the target"
-        )
-        self.assertIsNotNone(self.pc.telemetry["TGT1"]["LIMITS_GROUP"].get_item("ITEM1"))
-        self.assertTrue(self.pc.own_limits_group_packet("TGT1"))
-        self.assertFalse(self.pc.limits_group_packet_p("TGT1", "LIMITS_GROUP"))
-        # Its groups still work
-        self.assertEqual(self.pc.limits_groups["TGT1"], {"TVAC": []})
+        self.assertIsNotNone(self.pc.commands["TGT1"]["LIMITS_GROUP"])
 
     def test_limits_group_item_complains_about_two_parameters(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:

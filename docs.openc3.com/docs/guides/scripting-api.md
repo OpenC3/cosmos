@@ -3922,7 +3922,7 @@ check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
 
 <span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Injects a packet into the system as if it was received from an interface. The LIMITS_GROUP packet of a target which defines limits groups is computed by COSMOS and can't be injected.
+Injects a packet into the system as if it was received from an interface. A target's LIMITS_GROUP packet is computed by COSMOS and can't be injected.
 
 When the item hash includes an item with a `VARIABLE_BIT_SIZE`, its length item is set automatically from the item's value. A value for that length item in the hash is ignored.
 

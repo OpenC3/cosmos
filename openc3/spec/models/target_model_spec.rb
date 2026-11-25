@@ -1292,24 +1292,12 @@ module OpenC3
         expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).to_not have_key("FIRST")
       end
 
-      it "keeps and marks a target's own LIMITS_GROUP packet" do
+      it "fails for a target with a telemetry packet of its own named LIMITS_GROUP" do
         Dir.mktmpdir do |dir|
           FileUtils.cp_r(File.join(@target_dir, "SYSTEM"), dir)
           File.write(File.join(dir, "SYSTEM", "cmd_tlm", "own_tlm.txt"), "TELEMETRY SYSTEM LIMITS_GROUP BIG_ENDIAN \"Mine\"\n  APPEND_ITEM MINE 8 UINT\n")
-          model = TargetModel.new(folder_name: "SYSTEM", name: "SYSTEM", scope: "DEFAULT")
-          model.create
-          expect(Logger).to receive(:warn).with(/SYSTEM LIMITS_GROUP is reserved .* Rename the packet and reinstall the target/)
-          model.update_store(System.new(["SYSTEM"], dir))
+          expect { System.new(["SYSTEM"], dir) }.to raise_error(/Telemetry packet name LIMITS_GROUP is reserved/)
         end
-        target = TargetModel.get(name: "SYSTEM", scope: "DEFAULT")
-        expect(target["own_limits_group_packet"]).to be true
-        # Its groups still work
-        expect(target["limits_groups"]).to eql %w(FIRST SECOND)
-        expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__FIRST SYSTEM__SECOND)
-        items = JSON.parse(Store.hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))["items"].map { |item| item["name"] }
-        expect(items).to include("MINE")
-        expect(items).to_not include("FIRST")
-        expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be false
       end
     end
 

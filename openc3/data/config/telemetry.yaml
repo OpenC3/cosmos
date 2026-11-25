@@ -15,6 +15,7 @@ TELEMETRY:
       description:
         Name of this telemetry packet. Also referred to as its mnemonic.
         Must be unique to telemetry packets in this target. Ideally will be as short and clear as possible.
+        LIMITS_GROUP is reserved for the packet COSMOS generates from the target's limits groups.
       values: \D\S*
     - name: Endianness
       required: true
@@ -71,10 +72,7 @@ LIMITS_GROUP:
     member, FALSE when they're disabled on every member, and PARTIAL otherwise, for example
     when a nested group is disabled. A group whose enabled members have no limits state yet
     is GREEN with no limits color. The LIMITS_GROUP packet
-    name is reserved for targets which define limits groups. If such a target also defines
-    its own LIMITS_GROUP telemetry packet, COSMOS keeps that packet and logs a warning, and
-    the target's groups can still be enabled and disabled but aren't published as
-    telemetry until the packet is renamed and the target reinstalled.
+    name is reserved, so a target can't define a telemetry packet named LIMITS_GROUP.
 
 
     Group names become item names so they follow the same rules as ITEM names

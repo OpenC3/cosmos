@@ -1157,32 +1157,15 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual({override["packet_name"] for override in CvtModel.overrides(scope="DEFAULT")}, {"STATUS"})
         self.assertEqual(CvtModel.get("GRP", "LIMITS_GROUP", scope="DEFAULT"), limits_group)
 
-    def test_limits_group_is_an_ordinary_packet_name_for_a_target_without_limits_groups(self):
+    def test_limits_group_is_never_found_by_latest(self):
+        # LIMITS_GROUP is a reserved telemetry packet name so any such packet is the generated one
         TargetModel(name="NOGRP", scope="DEFAULT").create()
-        with self.assertRaisesRegex(RuntimeError, "does not exist"):
-            inject_tlm("NOGRP", "LIMITS_GROUP", {"TEMPS": 0})
-
-        # Its items are found by LATEST like any other packet's
         packet = {"target_name": "NOGRP", "packet_name": "LIMITS_GROUP", "items": [{"name": "VALUE"}]}
         Store.hset("DEFAULT__openc3tlm__NOGRP", "LIMITS_GROUP", json.dumps(packet))
-        CvtModel.set(
-            {"VALUE": 3, "PACKET_TIMESECONDS": 1.0}, target_name="NOGRP", packet_name="LIMITS_GROUP", scope="DEFAULT"
-        )
-        self.assertEqual(tlm("NOGRP LATEST VALUE"), 3)
-
-    def test_limits_group_is_an_ordinary_packet_for_a_target_which_kept_its_own(self):
-        # Ruby's TargetModel stores the flag set by the LimitsGroupBackfill migration
-        target = {"name": "OWN", "limits_groups": ["TEMPS"], "own_limits_group_packet": True}
-        Store.hset("DEFAULT__openc3_targets", "OWN", json.dumps(target))
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
-            inject_tlm("OWN", "LIMITS_GROUP", {"VALUE": 0})
-
-        packet = {"target_name": "OWN", "packet_name": "LIMITS_GROUP", "items": [{"name": "VALUE"}]}
-        Store.hset("DEFAULT__openc3tlm__OWN", "LIMITS_GROUP", json.dumps(packet))
-        CvtModel.set(
-            {"VALUE": 3, "PACKET_TIMESECONDS": 1.0}, target_name="OWN", packet_name="LIMITS_GROUP", scope="DEFAULT"
-        )
-        self.assertEqual(tlm("OWN LATEST VALUE"), 3)
+            tlm("NOGRP LATEST VALUE")
+        with self.assertRaisesRegex(RuntimeError, "read-only"):
+            inject_tlm("NOGRP", "LIMITS_GROUP", {"VALUE": 0})
 
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])

@@ -514,33 +514,6 @@ module OpenC3
       expect(warnings).to eql ["LIMITS_GROUP INST SPACECRAFT member INST2 LIMITS_GROUP THERMAL is not a defined limits group. Ignoring it until it is."]
     end
 
-    it "never writes over a target's own LIMITS_GROUP packet" do
-      warnings = []
-      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
-      # Kept by the LimitsGroupBackfill migration when INST was upgraded. Its
-      # items happen to match the generated packet's but only the flag counts.
-      own = PacketConfig.generate_limits_group_packet('INST', ['TEMPS'])
-      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__INST", "LIMITS_GROUP", JSON.generate(own.as_json))
-      model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
-      model.own_limits_group_packet = true
-      model.update
-      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
-      change('TEMP1', 'RED')
-      expect(publishes('INST')).to eql 0
-      expect(cvt).to be_nil
-      expect(warnings).to eql ["INST LIMITS_GROUP is a packet of the target's own so its limits groups aren't published. Rename the packet and reinstall the target."]
-      # Other targets still publish
-      expect(publishes('INST2')).to eql 1
-
-      # Renamed and reinstalled which recreates the target model
-      model.own_limits_group_packet = false
-      model.update
-      @microservice.reload(changed_targets: ['INST'])
-      @microservice.flush
-      expect(publishes('INST')).to eql 1
-      expect(cvt['TEMPS__C']).to eql 'RED'
-    end
-
     it "counts a child installed after its parent" do
       start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
       change('TEMP1', 'RED')

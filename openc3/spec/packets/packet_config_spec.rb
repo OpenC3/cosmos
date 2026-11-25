@@ -654,22 +654,25 @@ module OpenC3
           tf.unlink
         end
 
-        it "keeps a target's own LIMITS_GROUP packet with a warning" do
+        it "rejects a telemetry packet named LIMITS_GROUP" do
+          # With or without limits groups, and in any case
+          ['', 'LIMITS_GROUP TVAC'].each do |groups|
+            tf = Tempfile.new('unittest')
+            tf.puts 'TELEMETRY TGT1 limits_group BIG_ENDIAN "Packet"'
+            tf.puts '  ITEM ITEM1 0 8 UINT'
+            tf.puts groups
+            tf.close
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Telemetry packet name LIMITS_GROUP is reserved/)
+            tf.unlink
+          end
+        end
+
+        it "allows a command packet named LIMITS_GROUP" do
           tf = Tempfile.new('unittest')
-          tf.puts 'TELEMETRY TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"'
-          tf.puts '  ITEM ITEM1 0 8 UINT'
-          tf.puts 'LIMITS_GROUP TVAC'
+          tf.puts 'COMMAND TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          # Not the generated packet even before the builder runs (e.g. from_config)
-          expect(@pc.limits_group_packet?("TGT1", "LIMITS_GROUP")).to be false
-          expect(Logger).to receive(:warn).with(/TGT1 LIMITS_GROUP is reserved .* Rename the packet and reinstall the target/)
-          @pc.build_limits_group_packet("TGT1")
-          expect(@pc.telemetry["TGT1"]["LIMITS_GROUP"].get_item("ITEM1")).to_not be_nil
-          expect(@pc.own_limits_group_packet?("TGT1")).to be true
-          expect(@pc.limits_group_packet?("TGT1", "LIMITS_GROUP")).to be false
-          # Its groups still work
-          expect(@pc.limits_groups["TGT1"]).to eql({ "TVAC" => [] })
+          expect(@pc.commands["TGT1"]["LIMITS_GROUP"]).to_not be_nil
           tf.unlink
         end
       end

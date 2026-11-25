@@ -85,8 +85,6 @@ class PacketConfig:
         # the group name. Each member is [target_name, packet_name, item_name] and a
         # nested group is the member [<TARGET>, "LIMITS_GROUP", <GROUP>].
         self.limits_groups = {}
-        self.own_limits_group_packets = set()
-        self.generated_limits_group_packets = set()
         self.limits_sets = ["DEFAULT"]
         self.converted_type = None
         self.converted_bit_size = None
@@ -192,6 +190,11 @@ class PacketConfig:
 
                     case "TELEMETRY":
                         self.finish_packet()
+                        # LIMITS_GROUP is generated from the target's limits groups (see build_limits_group_packet)
+                        if len(params) > 1 and params[1].upper() == self.LIMITS_GROUP_PACKET:
+                            raise parser.error(
+                                f"Telemetry packet name {self.LIMITS_GROUP_PACKET} is reserved for the limits groups a target defines. Rename the packet."
+                            )
                         self.current_packet = PacketParser.parse_telemetry(
                             parser,
                             process_target_name,
@@ -392,7 +395,7 @@ class PacketConfig:
             # Write all telemetry packets for this target
             for packet_name, packet in packets.items():
                 # The limits group packet is generated from the limits groups written below
-                if self.limits_group_packet_p(target_name, packet_name):
+                if packet_name == self.LIMITS_GROUP_PACKET:
                     continue
                 if "../" in filename or "..\\" in filename:
                     raise ValueError(f"Path traversal detected in filename: {filename}")
@@ -1142,29 +1145,9 @@ class PacketConfig:
         groups = self.limits_groups.get(target_name)
         if not groups:
             return
-        target_packets = self.telemetry.setdefault(target_name, {})
-        # Keep a packet of the target's own. Its groups still work but aren't
-        # published as telemetry (see TargetModel own_limits_group_packet).
-        if self.LIMITS_GROUP_PACKET in target_packets:
-            self.own_limits_group_packets.add(target_name)
-            message = (
-                f"Telemetry packet {target_name} {self.LIMITS_GROUP_PACKET} is reserved for the limits groups the target "
-                "defines so they won't be published as telemetry. Rename the packet and reinstall the target."
-            )
-            self.warnings.append(message)
-            Logger.warn(message)
-            return
-        target_packets[self.LIMITS_GROUP_PACKET] = PacketConfig.generate_limits_group_packet(target_name, groups.keys())
-        self.generated_limits_group_packets.add(target_name)
-
-    # Whether the target defines limits groups but has a LIMITS_GROUP packet of its own
-    def own_limits_group_packet(self, target_name):
-        return target_name in self.own_limits_group_packets
-
-    # Whether the packet is the generated limits group packet. A target's own
-    # LIMITS_GROUP packet isn't, even before build_limits_group_packet runs.
-    def limits_group_packet_p(self, target_name, packet_name):
-        return packet_name == self.LIMITS_GROUP_PACKET and target_name in self.generated_limits_group_packets
+        self.telemetry.setdefault(target_name, {})[self.LIMITS_GROUP_PACKET] = (
+            PacketConfig.generate_limits_group_packet(target_name, groups.keys())
+        )
 
     # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.
     # They follow the naming rules of LIMITS_GROUP parameters (see

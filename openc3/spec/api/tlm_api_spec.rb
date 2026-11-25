@@ -603,28 +603,14 @@ module OpenC3
         expect(CvtModel.get(target_name: "GRP", packet_name: "LIMITS_GROUP", scope: "DEFAULT")).to eql({ "TEMPS" => 0, "TEMP1" => 0, "PACKET_TIMESECONDS" => 2.0 })
       end
 
-      it "is an ordinary packet name for a target without limits groups" do
+      it "is never found by LATEST" do
+        # LIMITS_GROUP is a reserved telemetry packet name so any such packet is the generated one
         TargetModel.new(name: "NOGRP", scope: "DEFAULT").create
-        expect { @api.inject_tlm("NOGRP", "LIMITS_GROUP", { TEMPS: 0 }) }.to raise_error(RuntimeError, /does not exist/)
-
-        # Its items are found by LATEST like any other packet's
         packet = { "target_name" => "NOGRP", "packet_name" => "LIMITS_GROUP", "items" => [{ "name" => "VALUE" }] }
         Store.hset("DEFAULT__openc3tlm__NOGRP", "LIMITS_GROUP", JSON.generate(packet))
         TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__NOGRP__item_to_packet_map"] = nil
-        CvtModel.set({ "VALUE" => 3, "PACKET_TIMESECONDS" => 1.0 }, target_name: "NOGRP", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
-        expect(@api.tlm("NOGRP LATEST VALUE")).to eql 3
-      end
-
-      it "is an ordinary packet for a target which kept its own LIMITS_GROUP packet" do
-        # Marked by the LimitsGroupBackfill migration
-        TargetModel.new(name: "OWN", scope: "DEFAULT", limits_groups: ["TEMPS"], own_limits_group_packet: true).create
-        expect { @api.inject_tlm("OWN", "LIMITS_GROUP", { VALUE: 0 }) }.to raise_error(RuntimeError, /does not exist/)
-
-        packet = { "target_name" => "OWN", "packet_name" => "LIMITS_GROUP", "items" => [{ "name" => "VALUE" }] }
-        Store.hset("DEFAULT__openc3tlm__OWN", "LIMITS_GROUP", JSON.generate(packet))
-        TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__OWN__item_to_packet_map"] = nil
-        CvtModel.set({ "VALUE" => 3, "PACKET_TIMESECONDS" => 1.0 }, target_name: "OWN", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
-        expect(@api.tlm("OWN LATEST VALUE")).to eql 3
+        expect { @api.tlm("NOGRP LATEST VALUE") }.to raise_error(RuntimeError, /does not exist/)
+        expect { @api.inject_tlm("NOGRP", "LIMITS_GROUP", { VALUE: 0 }) }.to raise_error(RuntimeError, /read-only/)
       end
     end
 

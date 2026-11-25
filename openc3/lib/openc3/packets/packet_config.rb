@@ -125,8 +125,6 @@ module OpenC3
       @telemetry = {}
       @commands = {}
       @limits_groups = {}
-      @own_limits_group_packets = Set.new
-      @generated_limits_group_packets = Set.new
       @limits_sets = [:DEFAULT]
       # Hash of Hashes. First index by target name and then item name.
       # Returns an array of packets with that target and item.
@@ -226,6 +224,11 @@ module OpenC3
 
           when 'TELEMETRY'
             finish_packet()
+            # LIMITS_GROUP is generated from the target's limits groups (see build_limits_group_packet)
+            if params[1].to_s.upcase == LIMITS_GROUP_PACKET
+              raise parser.error("Telemetry packet name #{LIMITS_GROUP_PACKET} is reserved for the limits groups a target defines. Rename the packet.")
+            end
+
             @current_packet = PacketParser.parse_telemetry(parser, process_target_name, @telemetry, @latest_data, @warnings)
             @current_cmd_or_tlm = TELEMETRY
 
@@ -348,33 +351,7 @@ module OpenC3
       groups = @limits_groups[target_name]
       return if groups.nil? or groups.empty?
 
-      target_packets = (@telemetry[target_name] ||= {})
-      # Keep a packet of the target's own. Its groups still work but aren't
-      # published as telemetry (see TargetModel#own_limits_group_packet).
-      if target_packets[LIMITS_GROUP_PACKET]
-        @own_limits_group_packets << target_name
-        message = "Telemetry packet #{target_name} #{LIMITS_GROUP_PACKET} is reserved for the limits groups the target defines so they won't be published as telemetry. Rename the packet and reinstall the target."
-        @warnings << message
-        Logger.warn(message)
-        return
-      end
-
-      target_packets[LIMITS_GROUP_PACKET] = self.class.generate_limits_group_packet(target_name, groups.keys)
-      @generated_limits_group_packets << target_name
-    end
-
-    # @param target_name [String] The target name
-    # @return [Boolean] Whether the target defines limits groups but has a LIMITS_GROUP packet of its own
-    def own_limits_group_packet?(target_name)
-      @own_limits_group_packets.include?(target_name)
-    end
-
-    # @param target_name [String] The target name
-    # @param packet_name [String] The packet name
-    # @return [Boolean] Whether the packet is the generated limits group packet.
-    #   A target's own LIMITS_GROUP packet isn't, even before build_limits_group_packet runs.
-    def limits_group_packet?(target_name, packet_name)
-      packet_name == LIMITS_GROUP_PACKET and @generated_limits_group_packets.include?(target_name)
+      (@telemetry[target_name] ||= {})[LIMITS_GROUP_PACKET] = self.class.generate_limits_group_packet(target_name, groups.keys)
     end
 
     # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.
@@ -443,7 +420,7 @@ module OpenC3
         end
         packets.each do |packet_name, packet|
           # The limits group packet is generated from the limits groups written below
-          next if limits_group_packet?(target_name, packet_name)
+          next if packet_name == LIMITS_GROUP_PACKET
 
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:TELEMETRY)

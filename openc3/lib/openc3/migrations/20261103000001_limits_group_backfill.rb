@@ -17,21 +17,47 @@ require 'openc3/topics/limits_event_topic'
 
 module OpenC3
   # Backfill limits groups as telemetry for scopes created before it existed:
+  # - Fail before changing anything if a target has a telemetry packet of its own
+  #   named LIMITS_GROUP, which is now reserved (see check_limits_group_packets)
   # - Store each limits group under the target which defines it (TARGET__GROUP)
   #   rather than just its name. Groups whose names can't become LIMITS_GROUP
   #   items are removed with a warning, like installing skips them.
   # - Define the <TARGET> LIMITS_GROUP packet for each target with limits groups
-  #   and add it to the target's TSDB microservice. A target with a packet of its
-  #   own named LIMITS_GROUP keeps it and its groups aren't published.
+  #   and add it to the target's TSDB microservice
   # - Add the limits group microservice to the scope's SCOPEMULTI
   # New scopes get the microservice via ScopeModel#deploy and installing a target
   # stores its groups and defines its packet.
   class LimitsGroupBackfill < Migration
     def self.run
-      ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
+      scopes = ScopeModel.get_all_models(scope: nil)
+      check_limits_group_packets(scopes.keys)
+      scopes.each do |scope, scope_model|
         backfill_targets(scope)
         add_microservice(scope, scope_model)
       end
+    end
+
+    # LIMITS_GROUP is now a reserved telemetry packet name. Raising fails the
+    # upgrade before anything is changed and the migration runs again on the
+    # next start, so the targets can be fixed on the previous version first.
+    def self.check_limits_group_packets(scopes)
+      targets = []
+      scopes.each do |scope|
+        TargetModel.get_all_models(scope: scope).each do |target_name, model|
+          json = Store.instance(db_shard: model.db_shard).hget("#{scope}__openc3tlm__#{target_name}", PacketConfig::LIMITS_GROUP_PACKET)
+          next unless json
+
+          # A previous run which failed later on already stored the generated packet.
+          # config_name hashes the name, layout and states of every item.
+          groups = model.limits_groups || []
+          next if !groups.empty? and JSON.parse(json, allow_nan: true, create_additions: true)['config_name'] == PacketConfig.generate_limits_group_packet(target_name, groups).config_name
+
+          targets << "#{target_name} (scope #{scope})"
+        end
+      end
+      return if targets.empty?
+
+      raise "Telemetry packet name #{PacketConfig::LIMITS_GROUP_PACKET} is now reserved for the limits groups a target defines, but these targets have a telemetry packet named #{PacketConfig::LIMITS_GROUP_PACKET}: #{targets.join(', ')}. Go back to the previous COSMOS version, rename the packet in each target's telemetry definition, reinstall the plugins, then upgrade again."
     end
 
     # Every step can run again: the migration is only recorded once every scope
@@ -44,21 +70,8 @@ module OpenC3
         group_names = valid_group_names(model, stored)
         next if group_names.empty?
 
-        packet = PacketConfig.generate_limits_group_packet(target_name, group_names)
-        json = Store.instance(db_shard: model.db_shard).hget("#{scope}__openc3tlm__#{target_name}", PacketConfig::LIMITS_GROUP_PACKET)
-        # A previous run already stored the generated packet so finish adding it.
-        # config_name hashes the name, layout and states of every item.
-        if json.nil? or JSON.parse(json, allow_nan: true, create_additions: true)['config_name'] == packet.config_name
-          add_limits_group_packet(model, packet)
-        else
-          Logger.error("Target #{target_name} in scope #{scope} has a telemetry packet of its own named #{PacketConfig::LIMITS_GROUP_PACKET}, which is now reserved for the limits groups the target defines. Its limits groups still work but won't be published as telemetry until the packet is renamed and the target reinstalled.")
-          # Keeps the packet writable and in LATEST and stops the limits group
-          # microservice publishing over it (see TargetModel.generated_limits_group_packet?)
-          unless model.own_limits_group_packet
-            model.own_limits_group_packet = true
-            model.update
-          end
-        end
+        # Storing the packet again on a rerun is harmless (see add_limits_group_packet)
+        add_limits_group_packet(model, PacketConfig.generate_limits_group_packet(target_name, group_names))
       end
     end
 
