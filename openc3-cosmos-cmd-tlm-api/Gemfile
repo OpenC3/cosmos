@@ -28,7 +28,7 @@ gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 3.0'
 
 # Use gem to get JSON logs
-gem 'rails_semantic_logger', '~> 4.17'
+gem 'rails_semantic_logger', '~> 5.3'
 
 # For downloading files to the server (e.g. plugin install from the OpenC3 Store)
 gem 'down', '~> 5.4', '>= 5.4.2'

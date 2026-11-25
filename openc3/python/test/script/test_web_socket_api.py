@@ -976,6 +976,27 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
         data = self._action_data(api)[0]
         self.assertNotIn("start_time", data)
         self.assertNotIn("end_time", data)
+        self.assertNotIn("time_type", data)
+        self.assertNotIn("include_times", data)
+
+    def test_add_sends_the_time_type_upcased(self):
+        api = self._make_api()
+        api.add(items=["ITEM"], start_time=1_000_000_000, time_type="received")
+        self.assertEqual(self._action_data(api)[0]["time_type"], "RECEIVED")
+
+    def test_add_asks_for_both_times_when_include_times_is_set(self):
+        api = self._make_api()
+        api.add(items=["ITEM"], include_times=True)
+        self.assertIs(self._action_data(api)[0]["include_times"], True)
+    def test_remove_omits_the_time_type_when_not_given(self):
+        api = self._make_api()
+        api.remove(items=["ITEM"])
+        self.assertNotIn("time_type", self._action_data(api)[0])
+
+    def test_remove_sends_the_time_type_upcased(self):
+        api = self._make_api()
+        api.remove(items=["ITEM"], time_type="received")
+        self.assertEqual(self._action_data(api)[0]["time_type"], "RECEIVED")
 
     def test_add_subscribes_before_sending_the_action(self):
         api = self._make_api()
@@ -1028,6 +1049,14 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
                 "token": "test_token",
             },
         )
+
+    def test_passes_the_time_type_to_add(self):
+        self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
+        StreamingWebSocketApi.read_all(
+            items=["ITEM"], start_time=1, end_time=2, time_type="RECEIVED", include_times=True
+        )
+        self.assertEqual(action_data(self.stream)[0]["time_type"], "RECEIVED")
+        self.assertIs(action_data(self.stream)[0]["include_times"], True)
 
     # Guards against blocking forever on a stream whose end marker never comes
     def test_returns_the_data_collected_so_far_once_the_timeout_elapses(self):

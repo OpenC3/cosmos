@@ -12,11 +12,11 @@
 """
 Performance benchmarks for command building and decom paths.
 
-Run with: poetry run pytest test/performance/test_command_performance.py -v -s
-Skip in CI with: CI=true poetry run pytest (tests are skipped when CI env var is set)
+Run with: uv run pytest test/performance/test_command_performance.py -v -s
+Skip in CI with: CI=true uv run pytest (tests are skipped when CI env var is set)
 
 For profiling:
-    poetry run python -m cProfile -s cumulative test/performance/test_command_performance.py
+    uv run python -m cProfile -s cumulative test/performance/test_command_performance.py
 """
 
 import os

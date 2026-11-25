@@ -237,6 +237,23 @@ module OpenC3
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
       end
 
+      it "does not publish the limits changes made while resyncing" do
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", JSON.generate({ 'enabled' => false }))
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "GREEN")
+        System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.state = :GREEN
+        allow(LimitsEventTopic).to receive(:events_trimmed?).and_return(true)
+        expect(LimitsEventTopic).to receive(:write).with(hash_including(type: :LIMITS_CHANGE, item_name: "TEMP1"), scope: 'DEFAULT', publish: false).and_call_original
+
+        capture_io do |stdout|
+          @dm.resync_if_limits_events_trimmed
+          expect(stdout.string).to include("resyncing limits")
+        end
+        # The store is still updated so the overall limits state is correct
+        expect(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1")).to eql ""
+        expect(LimitsEventTopic.read(0, scope: "DEFAULT").map { |_, event| event['item_name'] }).not_to include("TEMP1")
+        expect(@dm.instance_variable_get(:@resyncing_limits)).to be false
+      end
+
       it "queues the decom writes every 0.1s by default" do
         expect(@dm.instance_variable_get(:@queued)).to be true
         expect(EphemeralStoreQueued.instance(db_shard: 0).instance_variable_get(:@update_interval)).to eql 0.1
@@ -328,7 +345,10 @@ module OpenC3
             # Simple stub to test the callback
           end
         end
-        System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.response = klass.new
+        temp1 = System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1')
+        temp1.limits.response = klass.new
+        # Disabling only fires the callback when the item has a limits state to clear
+        temp1.limits.state = :RED_LOW
 
         Store.hset(
           "DEFAULT__current_limits_settings",
@@ -566,8 +586,10 @@ module OpenC3
     end
 
     it "reports a persisted limits disable once, not once per decom" do
-      # Disabling limits calls the target's limits change callback every time,
-      # so each decom syncing every target would report it once per decom
+      # Each decom syncing every target would disable the item, and run its
+      # target's limits change callback, once per decom. Give it a state so
+      # the disable is reported (disabling an item with no state isn't).
+      System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.state = :GREEN
       Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", JSON.generate({ 'enabled' => false }))
       capture_io { start() }
       disabled = LimitsEventTopic.read(0, scope: "DEFAULT").select do |_id, event|

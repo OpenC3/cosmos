@@ -14,3 +14,8 @@
 export { prependBasePath } from './routeUtils'
 export { formatBytesToString } from './formatter'
 export { tokenizedFilter, tokenizedSort } from './search'
+export {
+  sharedResourceMembers,
+  sharedResourceActive,
+  sharedResourceStatus,
+} from './sharedResources'

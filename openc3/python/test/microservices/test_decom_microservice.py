@@ -138,7 +138,7 @@ class TestDecomMicroservice(unittest.TestCase):
         self.assertEqual(events[0][1].get("target_name"), "INST")
         self.assertEqual(events[0][1].get("packet_name"), "HEALTH_STATUS")
         self.assertEqual(events[0][1].get("item_name"), "TEMP1")
-        self.assertEqual(events[0][1].get("old_limits_state"), "None")
+        self.assertEqual(events[0][1].get("old_limits_state"), "")
         self.assertEqual(events[0][1].get("new_limits_state"), "RED_LOW")
         self.assertEqual(
             events[0][1].get("message"),
@@ -193,7 +193,7 @@ class TestDecomMicroservice(unittest.TestCase):
         self.assertEqual(events[0][1]["packet_name"], "HEALTH_STATUS")
         self.assertEqual(events[0][1]["item_name"], "TEMP3")
         self.assertEqual(events[0][1]["old_limits_state"], "RED_LOW")
-        self.assertEqual(events[0][1]["new_limits_state"], "None")
+        self.assertEqual(events[0][1]["new_limits_state"], "")
         self.assertEqual(events[0][1]["message"], "INST HEALTH_STATUS TEMP3 is disabled")
         assert re.search(
             r"INST HEALTH_STATUS TEMP1 = .* is BLUE \(-20.0 to 20.0\)",
@@ -338,6 +338,31 @@ class TestDecomMicroservice(unittest.TestCase):
                 )
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
+    def test_does_not_publish_the_limits_changes_made_while_resyncing(self):
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", json.dumps({"enabled": False}))
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "GREEN")
+        System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits.state = "GREEN"
+        writes = []
+        original_write = LimitsEventTopic.write
+
+        def record_write(event, scope, publish=True):
+            writes.append((event.get("item_name"), publish))
+            return original_write(event, scope, publish=publish)
+
+        with (
+            patch.object(LimitsEventTopic, "events_trimmed", return_value=True),
+            patch.object(LimitsEventTopic, "write", side_effect=record_write),
+        ):
+            for stdout in capture_io():
+                self.dm.resync_if_limits_events_trimmed()
+                self.assertIn("resyncing limits", stdout.getvalue())
+        self.assertIn(("TEMP1", False), writes)
+        # The store is still updated so the overall limits state is correct
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1"), b"")
+        item_names = [event.get("item_name") for _, event in LimitsEventTopic.read(0, scope="DEFAULT")]
+        self.assertNotIn("TEMP1", item_names)
+        self.assertFalse(self.dm.resyncing_limits)
+
     def test_queues_the_decom_writes_every_tenth_of_a_second_by_default(self):
         self.assertTrue(self.dm.queued)
         self.assertEqual(EphemeralStoreQueued.all_shards_update_interval, 0.1)
@@ -444,7 +469,10 @@ class TestDecomMicroservice(unittest.TestCase):
                 pass
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.get_item("TEMP1").limits.response = NoOpLimitsResponse()
+        temp1 = packet.get_item("TEMP1")
+        temp1.limits.response = NoOpLimitsResponse()
+        # Disabling only fires the callback when the item has a limits state to clear
+        temp1.limits.state = "RED_LOW"
 
         Store.hset(
             "DEFAULT__current_limits_settings",
@@ -655,8 +683,10 @@ class TestDecomMicroserviceSharingAProcess(unittest.TestCase):
         self.assertEqual(list(self.decoms["SYSTEM"].limits_telemetry.keys()), ["SYSTEM"])
 
     def test_reports_a_persisted_limits_disable_once_not_once_per_decom(self):
-        # Disabling limits calls the target's limits change callback every time,
-        # so each decom syncing every target would report it once per decom
+        # Each decom syncing every target would disable the item, and run its
+        # target's limits change callback, once per decom. Give it a state so
+        # the disable is reported (disabling an item with no state isn't).
+        System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits.state = "GREEN"
         Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", json.dumps({"enabled": False}))
         self.start()
         disabled = [

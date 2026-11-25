@@ -1268,6 +1268,23 @@ module OpenC3
       end
     end
 
+    describe "check_command_default_sizes" do
+      def build_system(packet)
+        packet_config = double("PacketConfig", telemetry: {}, commands: { "INST" => { "PKT" => packet } })
+        double("System", packet_config: packet_config)
+      end
+
+      it "raises if a command STRING default doesn't fit" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        item = packet.append_item("ITEM", 32, :STRING)
+        item.default = "TOO LONG"
+        expect { model.check_command_default_sizes(build_system(packet)) }.to raise_error(ArgumentError, /INST PKT ITEM: default value of 8 bytes/)
+        item.default = "FITS"
+        expect { model.check_command_default_sizes(build_system(packet)) }.to_not raise_error
+      end
+    end
+
     describe "destroy" do
       before(:each) do
         @target_dir = File.join(SPEC_DIR, "install", "config")
@@ -1482,19 +1499,47 @@ module OpenC3
           expect { TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT") }.not_to raise_error
         end
 
-        it "logs a warning for the stale key" do
+        # GitHub issue #2868: a microservice still running the old packet
+        # definitions during an upgrade can recreate counts for removed packets
+        it "removes the count of a packet the target no longer defines" do
           Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
           Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
 
-          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET/)
+          expect(Logger).to receive(:info).with("Removed stale tlmcnt Redis keys for INST packets that are no longer defined: OLD_PACKET")
+          expect(Logger).not_to receive(:warn)
           TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+
+          expect(Store.hgetall("DEFAULT__TELEMETRYCNTS__{INST}")).to eql({ "HEALTH_STATUS" => "10" })
         end
 
-        it "warns only once per stale key per init (epoch reset)" do
+        it "keeps the count of a packet that is defined but not loaded and warns" do
+          # DYNAMIC_PACKET is in the target's packet definitions (e.g. added with
+          # dynamic_update) but this System didn't load it
+          Store.hset("DEFAULT__openc3tlm__INST", "DYNAMIC_PACKET", "{}")
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET", 5)
+
+          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST DYNAMIC_PACKET/)
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+
+          expect(Store.hget("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET")).to eql("5")
+        end
+
+        it "keeps the counts and warns when the target isn't installed" do
+          Store.hdel("DEFAULT__openc3_targets", "INST")
           Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
 
+          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET/)
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+
+          expect(Store.hget("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET")).to eql("5")
+        end
+
+        it "warns only once per unloaded packet per init (epoch reset)" do
+          Store.hset("DEFAULT__openc3tlm__INST", "DYNAMIC_PACKET", "{}")
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET", 5)
+
           warn_count = 0
-          allow(Logger).to receive(:warn) { |msg| warn_count += 1 if msg.include?("OLD_PACKET") }
+          allow(Logger).to receive(:warn) { |msg| warn_count += 1 if msg.include?("DYNAMIC_PACKET") }
 
           # First init — warns once
           TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
@@ -1796,6 +1841,49 @@ module OpenC3
         expect(@db_shard1.hexists("DEFAULT__tlm__INST", "HEALTH_STATUS")).to be false
         # SYSTEM on db_shard 0 is untouched
         expect(@db_shard0.exists?("DEFAULT__openc3tlm__SYSTEM")).to be true
+      end
+    end
+
+    describe "shared resource" do
+      before(:each) do
+        allow(Logger).to receive(:info)
+      end
+
+      def parse(model, *lines)
+        parser = ConfigParser.new
+        tf = nil
+        tf = Tempfile.new
+        lines.each { |line| tf.puts line }
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+      ensure
+        tf&.unlink
+      end
+
+      it "parses SHARED_RESOURCE" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        parse(model, "SHARED_RESOURCE chamber")
+        expect(model.shared_resource).to eql "CHAMBER"
+        expect(model.as_json['shared_resource']).to eql "CHAMBER"
+        expect { parse(model, "SHARED_RESOURCE bad name") }.to raise_error(ConfigParser::Error)
+      end
+
+      it "joins the shared resource when created" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        model.create
+        record = SharedResourceModel.get("CHAMBER")
+        expect(record['members']['DEFAULT']).to eql [{ 'type' => 'TARGET', 'name' => 'TEST' }]
+        expect(SharedResourceModel).not_to receive(:add_member)
+        model.update
+      end
+
+      it "leaves the shared resource if the create fails" do
+        TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT").create
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
       end
     end
   end

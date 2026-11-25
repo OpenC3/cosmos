@@ -290,6 +290,22 @@ module OpenC3
         token = auth.token(include_bearer: false)
         expect(token).to eq("access_token_123")
       end
+
+      # Script processes remove OPENC3_API_PASSWORD from ENV after the client is
+      # built and before the first token request (ScriptEnv.clear_credentials)
+      it "uses the user and password captured when it was created" do
+        auth # build the client while the credentials are in ENV
+        ENV.delete('OPENC3_API_USER')
+        ENV.delete('OPENC3_API_PASSWORD')
+        expect(mock_http).to receive(:post) do |_uri, body, _headers|
+          form = URI.decode_www_form(body).to_h
+          expect(form['grant_type']).to eq('password')
+          expect(form['username']).to eq('testuser')
+          expect(form['password']).to eq('testpassword')
+          mock_success_response
+        end
+        expect(auth.token).to eq("Bearer access_token_123")
+      end
     end
 
     describe "client_credentials authentication" do

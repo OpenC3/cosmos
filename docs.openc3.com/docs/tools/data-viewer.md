@@ -40,6 +40,8 @@ The collapsible panel at the top of the tool sets the time range that is streame
 - **Start Date / Start Time** are required and default to the current date and time.
 - **End Date / End Time** are optional. Leave them blank to stream indefinitely.
 
+- **Packet Time / Received Time** selects which timestamp the Start and End times apply to. Packet Time (the default) is the time stored in the packet, or the time COSMOS received it if the packet has no time item. Received Time is the time COSMOS received each packet, which is useful when packet times don't match the COSMOS clock, for example when testing against a simulator whose time is in the past or the future. Raw packets are always selected by packet time because the raw logs are stored by packet time. The selection is saved with the configuration and can't be changed while streaming.
+
 Data Viewer plays back logged data from the Start time up to the End time, then continues in real time if the End time is in the future or is blank. A start time in the future, or a start time equal to the end time, is rejected with a warning.
 
 Click **Start** to begin streaming and **Stop** to disconnect. Changing the time range requires stopping and starting again.
@@ -59,7 +61,7 @@ Right click a tab to rename it. Click the X on a tab to delete it.
 | Component               | Input   | Description                                                                       |
 | ----------------------- | ------- | --------------------------------------------------------------------------------- |
 | COSMOS Packet Raw/Decom | Packets | Dumps whole packets as a hex/ASCII buffer (Raw) or as item name / value text (Decom) |
-| COSMOS Item Value       | Items   | Prints selected items on a single line per packet, e.g. `TEMP1: 10.0  TEMP2: 20.0`   |
+| COSMOS Item Value       | Items   | Prints selected items on a single line per packet, e.g. `Packet Time: 2024-04-05T18:14:38.901Z  Received Time: 2024-04-05T18:14:38.912Z  TEMP1: 10.0  TEMP2: 20.0` |
 | COSMOS Event Message    | Items   | Prints just the item values, one per line, expanding arrays into individual lines    |
 
 Plugins can add their own components. Any widget named `DATAVIEWER<NAME>` (declared with `WIDGET DATAVIEWER<NAME>` in plugin.txt) is automatically listed in the Select Component dropdown. See the [demo plugin](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo) `DataviewertimeWidget` and `DataviewerquaternionWidget` for examples.
@@ -92,8 +94,10 @@ In Decom mode the component prints one line per item as `ITEM_NAME: value`. Whic
 
 ```text
 ********************************************
-* Received seconds: 1712345678.9012345
-* Received time: 2024-04-05T18:14:38.901Z
+* Packet seconds: 1712345678.9012345
+* Packet time: 2024-04-05T18:14:38.901Z
+* Received seconds: 1712345678.9123456
+* Received time: 2024-04-05T18:14:38.912Z
 ********************************************
 PACKET_TIMESECONDS: 1712345678.901
 RECEIVED_COUNT: 143
@@ -149,7 +153,8 @@ Click the gear icon on a component to bring up the Display Settings dialog.
 
 | Setting          | Description                                                                             |
 | ---------------- | ----------------------------------------------------------------------------------------- |
-| Show timestamp   | Prepend the received seconds and received time to each entry                                |
+| Show packet time | Prepend the packet time to each entry                                                       |
+| Show received time | Prepend the time COSMOS received the packet to each entry                                 |
 | Show ASCII       | (Raw only) Append the ASCII representation of each line of bytes                            |
 | Show line address | (Raw only) Prepend the byte offset to each line                                            |
 | Print newest to the | Whether new entries are added at the top or the bottom                                  |

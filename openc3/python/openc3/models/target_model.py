@@ -358,21 +358,33 @@ class TargetModel(Model):
         return counts
 
     @classmethod
-    def init_tlm_packet_counts(cls, tlm_target_names, scope):
+    def init_tlm_packet_counts(cls, tlm_target_names: list[str], scope: str) -> None:
+        """Load the global telemetry packet counts from Redis into System.
+
+        Called when an interface microservice starts. Sets each known packet's
+        received_count from its TELEMETRYCNTS field and passes the fields for
+        packets System doesn't know to prune_stale_telemetry_counts. Also starts
+        a new epoch for the stale key warnings, so each start warns again.
+
+        Args:
+            tlm_target_names: Names of the targets the interface receives
+                telemetry for. The UNKNOWN target is always loaded too.
+            scope: Scope the targets are installed in.
+        """
         cls.sync_packet_count_time = time.time()
         cls.stale_packet_keys_warned = set()
 
         # Get all the packet counts with the global counters
         for target_name in tlm_target_names:
+            unknown_packet_names = []
             for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
                 try:
                     update_packet = System.telemetry.packet(target_name, packet_name.decode())
                     update_packet.received_count = int(count)
                 except RuntimeError:
-                    key = f"{target_name} {packet_name.decode()}"
-                    if key not in cls.stale_packet_keys_warned:
-                        cls.stale_packet_keys_warned.add(key)
-                        Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+                    unknown_packet_names.append(packet_name.decode())
+            if unknown_packet_names:
+                cls.prune_stale_telemetry_counts(target_name, unknown_packet_names, scope)
         for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
             try:
                 update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
@@ -382,6 +394,45 @@ class TargetModel(Model):
                 if key not in cls.stale_packet_keys_warned:
                     cls.stale_packet_keys_warned.add(key)
                     Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+
+    @classmethod
+    def prune_stale_telemetry_counts(cls, target_name: str, unknown_packet_names: list[str], scope: str) -> None:
+        """Delete the telemetry counts of packets the target no longer defines.
+
+        A microservice still running the old packet definitions during a plugin
+        upgrade can write counts for removed packets after the upgrade cleared
+        the counts. A packet that is still in the target's Redis packet
+        definitions but that this System didn't load (e.g. a dynamic packet)
+        keeps its count and is warned about once per epoch instead. If the
+        target isn't installed, every count is kept and warned about.
+
+        Args:
+            target_name: Target whose TELEMETRYCNTS hash holds the fields.
+            unknown_packet_names: Packet names that have a count field but
+                aren't in System.
+            scope: Scope the target is installed in.
+        """
+        try:
+            defined_packet_names = cls.packet_names(target_name, type="TLM", scope=scope)
+        except RuntimeError:
+            # The target isn't installed so there's nothing to compare against
+            defined_packet_names = unknown_packet_names
+        stale_packet_names = [name for name in unknown_packet_names if name not in defined_packet_names]
+        if stale_packet_names:
+            cls._store_for_target(target_name, scope).hdel(
+                f"{scope}__TELEMETRYCNTS__{{{target_name}}}", *stale_packet_names
+            )
+            Logger.info(
+                f"Removed stale tlmcnt Redis keys for {target_name} packets that are no longer defined: "
+                + ", ".join(stale_packet_names)
+            )
+        for packet_name in unknown_packet_names:
+            if packet_name not in defined_packet_names:
+                continue
+            key = f"{target_name} {packet_name}"
+            if key not in cls.stale_packet_keys_warned:
+                cls.stale_packet_keys_warned.add(key)
+                Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
@@ -584,6 +635,7 @@ class TargetModel(Model):
         stored_limits_mode="PROCESS",
         microservice_group=None,
         language=None,
+        shared_resource: str | None = None,
         scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
@@ -604,6 +656,7 @@ class TargetModel(Model):
         self.stored_limits_mode = mode if mode in ("PROCESS", "LOG", "DISABLE") else "PROCESS"
         self.microservice_group = microservice_group
         self.language = language
+        self.shared_resource = shared_resource
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,

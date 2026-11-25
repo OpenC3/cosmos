@@ -277,13 +277,15 @@ file. See `docs.openc3.com/CLAUDE.md` for the docs build and
 
 ### Python docstrings and type hints
 
-Python API methods carry a Google-style docstring and full type hints, and the
-same change that edits a method's parameters, return value, or behavior updates
-its `Args:`, `Returns:`, `Raises:`, and annotations. Ruff's `D` and `ANN` rules
-check that they exist for the packages listed in `per-file-ignores` in
-`openc3/python/pyproject.toml` (currently `openc3/api` and `openc3/script`).
-When you convert another package, add it there. Ruff can't check that they're
-accurate, so:
+Every Python function or method you add or change under `openc3/python/openc3`
+gets a Google-style docstring and full type hints, in any package. The docstring
+opens with a one-line summary, then `Args:`, `Returns:`, and `Raises:` for each
+that applies. The same change that edits a method's parameters, return value, or
+behavior updates its docstring and annotations. Ruff's `D` and `ANN` rules
+enforce this only for the packages listed in `per-file-ignores` in
+`openc3/python/pyproject.toml` (currently `openc3/api` and `openc3/script`), so
+elsewhere you are the check. When you convert a whole package, add it there.
+Ruff can't check that they're accurate, so:
 
 - Make return types truthful: read what the method returns (often a model
   method) and use `Any` when the shape varies, rather than a guess. COSMOS
@@ -293,6 +295,16 @@ accurate, so:
   `OverrideValueType` from `openc3/python/openc3/api/api_types.py`.
 - Follow the existing modules (e.g. `openc3/python/openc3/api/tlm_api.py`) for
   calling styles, `Deprecated: use x.` notes, and `scope: str = OPENC3_SCOPE`.
+
+## Release Notes
+
+Fill in the "Release notes" section of the PR description
+(`.github/pull_request_template.md`): one or two plain-language sentences for
+users, or "None" for changes users won't notice. When users must act on
+upgrade (a migration, a change to a file they keep a copy of such as
+`compose.yaml`, `.env`, or `openc3-redis/users.acl`, a behavior change that
+custom plugins, tools, or scripts depend on, or a removal), say exactly what
+to do. The `release-notes` skill builds the release notes from these sections.
 
 ## Commit Messages
 

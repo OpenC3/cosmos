@@ -378,6 +378,31 @@ module OpenC3
         expect(result).to eql "CriticalCmdError\nabc-123"
       end
 
+      # Command Sender treats any command as hazardous when range checks are
+      # ignored or parameter conversions are disabled, so a manual command sent
+      # that way must also get critical approval. ABORT isn't hazardous itself.
+      { 'range_check' => 'false', 'raw' => 'true' }.each do |key, value|
+        it "holds a manual command sent with #{key} #{value} for critical approval" do
+          critical_model = double("CriticalCmdModel", create: nil, name: 'abc-123')
+          model_class = double(new: critical_model)
+          stub_const("OpenC3::CriticalCmdModel", model_class)
+          expect(@interface).to_not receive(:write)
+          msg_hash = { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")',
+                       'hazardous_check' => 'false', 'manual' => 'true', key => value }
+          result = handle(msg_hash, critical_commanding: 'NORMAL')
+          expect(result).to eql "CriticalCmdError\nabc-123"
+          expect(model_class).to have_received(:new).with(hash_including(type: 'HAZARDOUS'))
+        end
+
+        it "doesn't hold a script command sent with #{key} #{value} for critical approval" do
+          stub_const("OpenC3::CriticalCmdModel", double("CriticalCmdModel"))
+          expect(@interface).to receive(:write)
+          msg_hash = { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")',
+                       'hazardous_check' => 'true', 'manual' => 'false', key => value }
+          expect(handle(msg_hash, critical_commanding: 'NORMAL')).to eql 'SUCCESS'
+        end
+      end
+
       it "doesn't count a command returned for hazardous confirmation" do
         expect(TargetModel).to_not receive(:increment_command_count)
         expect(@interface).to_not receive(:write)
@@ -410,6 +435,23 @@ module OpenC3
         expect(Logger).to receive(:error).with("INST_INT: Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'", scope: 'DEFAULT')
         result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
         expect(result).to eql "Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'"
+      end
+
+      it "logs only the message for command parameter errors" do
+        messages = []
+        allow(Logger).to receive(:error) { |message, **_kwargs| messages << message }
+        [
+          [{ 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'DURATION' => 1 }) },
+           "Required command parameter 'INST COLLECT TYPE' not given"],
+          [{ 'cmd_name' => 'ARYCMD', 'cmd_params' => JSON.generate({ 'ARRAY' => 10 }) },
+           "Command parameter 'INST ARYCMD ARRAY': values must be an Array type class is Integer"],
+          [{ 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'TYPE' => 'NORMAL', 'DURATION' => 100 }) },
+           "Command parameter 'INST COLLECT DURATION' = 100 not in valid range of 0.0 to 10.0"],
+        ].each do |msg_hash, error|
+          messages.clear
+          expect(handle(msg_hash.merge('target_name' => 'INST'))).to eql error
+          expect(messages).to eql ["INST_INT: #{error}"]
+        end
       end
 
       it "range checks a command that omits range_check" do

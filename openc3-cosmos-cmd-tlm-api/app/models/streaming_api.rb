@@ -39,10 +39,14 @@ class StreamingApi
     @realtime_thread = nil
     @logged_threads = []
     @notices = false
+    @include_times = false
   end
 
+  # True once a client asked for __packet_time and __received_time in each result
+  attr_reader :include_times
+
   # Create new StreamingObjects using the data['items'] and add them to the StreamingObjectCollection
-  def build_item_collection(collection, data, start_time: nil, end_time: nil, scope: nil, token: nil)
+  def build_item_collection(collection, data, start_time: nil, end_time: nil, scope: nil, token: nil, time_type: :PACKET)
     data["items"].each do |key, item_key|
       item_key = key unless item_key
       # Unwrap LATEST packet into individual items
@@ -58,7 +62,7 @@ class StreamingApi
         added = false
         packet_names.each do |packet_name|
           new_key = parsed.with(packet_name: packet_name).to_key_string
-          collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, source_key: key, scope: scope, token: token))
+          collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, source_key: key, scope: scope, token: token, time_type: time_type))
           added = true
         rescue OpenC3::AuthError, OpenC3::ForbiddenError => e
           OpenC3::Logger.info("Skipping unauthorized LATEST packet: #{new_key}")
@@ -66,7 +70,7 @@ class StreamingApi
         end
         raise auth_error if auth_error and not added
       else
-        collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+        collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token, time_type: time_type))
       end
     end
   end
@@ -179,6 +183,11 @@ class StreamingApi
   # token: authorization token
   # start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
   # end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
+  # time_type: PACKET (default) or RECEIVED - Whether start_time and end_time select data by
+  #   packet time or received time. The chosen time is also what is returned as __time.
+  #   RECEIVED is not supported for historical RAW packets.
+  # include_times: true to also return __packet_time and __received_time (nanoseconds) in each
+  #   result, regardless of time_type. Not added to REDUCED results, which only have a bucket time.
   # notices: true to also receive notice Hashes, e.g. { "__type" => "NOTICE", "notice" => "SKIPPED",
   #   "message" => "...", "skipped_seconds" => 12.3 } when realtime streaming falls behind and skips ahead
   # items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
@@ -208,9 +217,12 @@ class StreamingApi
       end_time = data["end_time"].to_i if data["end_time"]
       scope = data["scope"]
       token = data["token"]
+      time_type = StreamingObject.parse_time_type(data["time_type"])
       # Clients opt in to out-of-band notices (a Hash rather than the usual
       # Array of results) so older clients never see a message they can't parse
       @notices = true if data["notices"]
+      # Same opt in for the extra time fields so older clients see results unchanged
+      @include_times = true if data["include_times"]
 
       # Expand ALL wildcards in packets before building the collection
       expand_all_packets(data, scope: scope)
@@ -220,12 +232,12 @@ class StreamingApi
       # Build the collection of streaming objects for this request
       collection = StreamingObjectCollection.new
       if data["items"]
-        build_item_collection(collection, data, start_time: start_time, end_time: end_time, scope: scope, token: token)
+        build_item_collection(collection, data, start_time: start_time, end_time: end_time, scope: scope, token: token, time_type: time_type)
       end
       if data["packets"]
         data["packets"].each do |key|
           begin
-            collection.add(StreamingObject.new(key, start_time, end_time, scope: scope, token: token))
+            collection.add(StreamingObject.new(key, start_time, end_time, scope: scope, token: token, time_type: time_type))
           rescue OpenC3::AuthError, OpenC3::ForbiddenError
             OpenC3::Logger.info("Skipping unauthorized packet: #{key}")
           end
@@ -257,6 +269,8 @@ class StreamingApi
   # data format:
   # scope: scope name
   # token: authorization token
+  # time_type: PACKET or RECEIVED - Only remove subscriptions added with this time_type.
+  #   If not present remove the subscriptions for every time_type.
   # items: [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE ]
   #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
   #   CMDORTLM - CMD or TLM
@@ -281,17 +295,21 @@ class StreamingApi
     # Expand glob patterns in item keys before building the collection
     expand_item_globs(data, scope: scope)
 
+    time_types = data["time_type"] ? [StreamingObject.parse_time_type(data["time_type"])] : StreamingObject::TIME_TYPES
+
     # Build the collection of streaming objects for this request
     collection = StreamingObjectCollection.new
-    if data["items"]
-      build_item_collection(collection, data, scope: scope, token: token)
-    end
-    if data["packets"]
-      data["packets"].each do |key|
-        begin
-          collection.add(StreamingObject.new(key, nil, nil, scope: scope, token: token))
-        rescue OpenC3::AuthError, OpenC3::ForbiddenError
-          OpenC3::Logger.info("Skipping unauthorized packet: #{key}")
+    time_types.each do |time_type|
+      if data["items"]
+        build_item_collection(collection, data, scope: scope, token: token, time_type: time_type)
+      end
+      if data["packets"]
+        data["packets"].each do |key|
+          begin
+            collection.add(StreamingObject.new(key, nil, nil, scope: scope, token: token, time_type: time_type))
+          rescue OpenC3::AuthError, OpenC3::ForbiddenError
+            OpenC3::Logger.info("Skipping unauthorized packet: #{key}")
+          end
         end
       end
     end

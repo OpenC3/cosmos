@@ -75,7 +75,7 @@ script = [script for script in list if script["name"] == str(id)]
 # Script is stopped so it should NOT be in the running list
 check_expression(f"{len(script)} == 0")
 
-list = completed_script_list()
+list = completed_script_list(limit = 100, offset = 0)
 script = [script for script in list if script["name"] == str(id)]
 # Script is completed so it should be in the completed list
 check_expression(f"{len(script)} == 1")

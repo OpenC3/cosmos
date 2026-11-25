@@ -90,3 +90,101 @@ class TestPacketParser(unittest.TestCase):
             self.pc.process_file(tf.name, "SYSTEM")
             self.assertIn(f"{keyword.capitalize()} Packet TGT1 PKT1 redefined.", self.pc.warnings)
             tf.close()
+
+
+class TestPacketParserNilDefaults(unittest.TestCase):
+    def setUp(self):
+        self.pc = PacketConfig()
+
+    def process(self, *lines):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
+        for line in lines:
+            tf.write(line + "\n")
+        tf.seek(0)
+        try:
+            self.pc.process_file(tf.name, "TGT1")
+        finally:
+            tf.close()
+        return self.pc.commands["TGT1"]["PKT1"]
+
+    def test_allows_nil_none_or_null_defaults_for_required_parameters(self):
+        packet = self.process(
+            '  APPEND_PARAMETER ITEM1 16 UINT MIN MAX nil "UINT"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM2 16 INT MIN MAX None "INT"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM3 32 FLOAT MIN MAX NULL "FLOAT"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM4 32 STRING nil "STRING"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM5 32 BLOCK "none" "BLOCK"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM6 8 BOOL null "BOOL"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM7 64 ARRAY nil "ARRAY"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM8 64 OBJECT nil "OBJECT"',
+            "    REQUIRED",
+            # DEFAULT_VALUE and REQUIRED can come in either order
+            '  APPEND_PARAMETER ITEM9 16 UINT MIN MAX 0 "UINT"',
+            "    REQUIRED",
+            "    DEFAULT_VALUE nil",
+        )
+        for i in range(1, 10):
+            self.assertIsNone(packet.get_item(f"ITEM{i}").default)
+
+    def test_complains_about_nil_defaults_for_numeric_parameters_that_are_not_required(self):
+        with self.assertRaisesRegex(
+            TypeError, "TGT1 PKT1 ITEM1: default of nil is only allowed for REQUIRED parameters"
+        ):
+            self.process('  APPEND_PARAMETER ITEM1 16 UINT MIN MAX nil "UINT"')
+        self.pc = PacketConfig()
+        with self.assertRaisesRegex(
+            TypeError, "TGT1 PKT1 ITEM1: default of NONE is only allowed for REQUIRED parameters"
+        ):
+            self.process('  APPEND_PARAMETER ITEM1 8 BOOL NONE "BOOL"')
+
+    def test_keeps_nil_defaults_for_parameters_with_a_write_conversion_or_derived(self):
+        # The write conversion or a DERIVED write handles the value
+        packet = self.process(
+            '  APPEND_PARAMETER ITEM1 16 UINT MIN MAX NONE "UINT"',
+            "    POLY_WRITE_CONVERSION 0 1",
+            '  APPEND_PARAMETER ITEM2 0 DERIVED nil nil null "DERIVED"',
+        )
+        self.assertEqual(packet.get_item("ITEM1").default, "NONE")
+        self.assertEqual(packet.get_item("ITEM2").default, "null")
+
+    def test_keeps_nil_defaults_as_strings_for_string_and_block_parameters_that_are_not_required(self):
+        packet = self.process(
+            '  APPEND_PARAMETER ITEM1 32 STRING NONE "STRING"',
+            '  APPEND_PARAMETER ITEM2 32 BLOCK null "BLOCK"',
+        )
+        self.assertEqual(packet.get_item("ITEM1").default, "NONE")
+        self.assertEqual(packet.get_item("ITEM2").default, "null")
+
+    def test_writes_nil_defaults_to_the_config(self):
+        packet = self.process(
+            '  APPEND_PARAMETER ITEM1 16 UINT MIN MAX nil "UINT"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM2 32 STRING nil "STRING"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM3 8 BOOL nil "BOOL"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM4 64 ARRAY nil "ARRAY"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM5 64 OBJECT nil "OBJECT"',
+            "    REQUIRED",
+        )
+        config = packet.to_config("COMMAND")
+        self.assertIn('PARAMETER ITEM1 0 16 UINT 0 65535 nil "UINT"', config)
+        self.assertIn('PARAMETER ITEM2 16 32 STRING nil "STRING"', config)
+        # Only numeric types have a range
+        self.assertIn('PARAMETER ITEM3 48 8 BOOL nil "BOOL"', config)
+        self.assertIn('PARAMETER ITEM4 56 64 ARRAY nil "ARRAY"', config)
+        self.assertIn('PARAMETER ITEM5 120 64 OBJECT nil "OBJECT"', config)
+        # The config loads back the same way
+        self.pc = PacketConfig()
+        packet = self.process(*config.split("\n")[1:])
+        for i in range(1, 6):
+            self.assertIsNone(packet.get_item(f"ITEM{i}").default)

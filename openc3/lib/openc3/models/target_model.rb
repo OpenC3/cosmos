@@ -26,6 +26,7 @@ require 'openc3/models/model'
 require 'openc3/models/cvt_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/microservice_group'
+require 'openc3/models/shared_resource_model'
 require 'openc3/topics/limits_event_topic'
 require 'openc3/topics/config_topic'
 require 'openc3/system'
@@ -101,6 +102,7 @@ module OpenC3
     attr_accessor :db_shard
     attr_accessor :microservice_group
     attr_accessor :language
+    attr_accessor :shared_resource
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -552,6 +554,7 @@ module OpenC3
       db_shard: 0,
       microservice_group: nil,
       language: nil,
+      shared_resource: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -584,6 +587,7 @@ module OpenC3
       @db_shard = db_shard.to_i # to_i to handle nil
       @microservice_group = microservice_group
       @language = language
+      @shared_resource = shared_resource
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -621,7 +625,25 @@ module OpenC3
         'db_shard' => @db_shard,
         'microservice_group' => @microservice_group,
         'language' => @language,
+        'shared_resource' => @shared_resource,
       }
+    end
+
+    # Join the shared resource (if any) when first created. Targets are members
+    # without a process: their microservices keep running in every scope but
+    # commands are only accepted in the scope where the resource is active.
+    def create(update: false, force: false, queued: false)
+      added = false
+      if @shared_resource and not update
+        existed = SharedResourceModel.member?(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name)
+        SharedResourceModel.add_member(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name)
+        added = !existed
+      end
+      super(update: update, force: force, queued: queued)
+    rescue
+      # Don't leave a member behind for a target that wasn't created
+      SharedResourceModel.remove_member(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name) if added
+      raise
     end
 
     # Handles Target specific configuration keywords
@@ -741,6 +763,14 @@ module OpenC3
         end
         @stored_limits_mode = mode
 
+      when 'SHARED_RESOURCE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shared Resource Name>")
+        begin
+          @shared_resource = SharedResourceModel.validate_name(parameters[0])
+        rescue => e
+          raise parser.error(e.message)
+        end
+
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
       end
@@ -818,6 +848,7 @@ module OpenC3
         check_column_header_lengths(system)
         @language = system.targets[@name].language
         MicroserviceGroup.validate_member(self) if @microservice_group
+        check_command_default_sizes(system)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
           if variables['time_association_name'].to_s.empty?
@@ -920,7 +951,24 @@ module OpenC3
       end
     end
 
+    # Check that command STRING and BLOCK defaults fit. This is only done at
+    # install so targets installed before the check was added still load.
+    def check_command_default_sizes(system)
+      system.packet_config.commands.each do |_target_name, packets|
+        packets.each do |_packet_name, packet|
+          PacketParser.check_item_default_sizes(packet)
+        end
+      end
+    end
+
     def undeploy
+      if @shared_resource
+        begin
+          SharedResourceModel.remove_member(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name)
+        rescue => error
+          Logger.error("Error removing target #{@name} from shared resource #{@shared_resource} in scope #{@scope} due to #{error}")
+        end
+      end
       prefix = "#{@scope}/targets/#{@name}/"
       objects = @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix)
       keys = objects.map(&:key)
@@ -1600,18 +1648,16 @@ module OpenC3
 
       # Get all the packet counts with the global counters
       tlm_target_names.each do |target_name|
+        unknown_packet_names = []
         get_all_telemetry_counts(target_name, scope: scope).each do |packet_name, count|
           begin
             update_packet = System.telemetry.packet(target_name, packet_name)
             update_packet.received_count = count.to_i
           rescue RuntimeError
-            key = "#{target_name} #{packet_name}"
-            unless @@stale_packet_keys_warned.include?(key)
-              @@stale_packet_keys_warned.add(key)
-              Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
-            end
+            unknown_packet_names << packet_name
           end
         end
+        prune_stale_telemetry_counts(target_name, unknown_packet_names, scope: scope) unless unknown_packet_names.empty?
       end
       get_all_telemetry_counts('UNKNOWN', scope: scope).each do |packet_name, count|
         begin
@@ -1623,6 +1669,32 @@ module OpenC3
             @@stale_packet_keys_warned.add(key)
             Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
           end
+        end
+      end
+    end
+
+    # A microservice still running the old packet definitions during a plugin
+    # upgrade can write counts for removed packets after the upgrade cleared
+    # the counts. Delete the counts for packets the target no longer defines.
+    # Keep the count of a packet that is still defined but this System didn't
+    # load (e.g. a dynamic packet) and warn about it instead.
+    def self.prune_stale_telemetry_counts(target_name, unknown_packet_names, scope:)
+      begin
+        defined_packet_names = packet_names(target_name, type: :TLM, scope: scope)
+      rescue RuntimeError
+        # The target isn't installed so there's nothing to compare against
+        defined_packet_names = unknown_packet_names
+      end
+      stale_packet_names = unknown_packet_names - defined_packet_names
+      unless stale_packet_names.empty?
+        store_for_target(target_name, scope: scope).hdel("#{scope}__TELEMETRYCNTS__{#{target_name}}", *stale_packet_names)
+        Logger.info("Removed stale tlmcnt Redis keys for #{target_name} packets that are no longer defined: #{stale_packet_names.join(', ')}")
+      end
+      (unknown_packet_names & defined_packet_names).each do |packet_name|
+        key = "#{target_name} #{packet_name}"
+        unless @@stale_packet_keys_warned.include?(key)
+          @@stale_packet_keys_warned.add(key)
+          Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
         end
       end
     end

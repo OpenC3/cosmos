@@ -153,6 +153,37 @@ module OpenC3
                                   "TGT2__PKT1__ITEM1" => { 'enabled' => false } })
       end
 
+      it "clears the current limits state of items a LIMITS_ENABLE_STATE event disables" do
+        # After a decom restart the item has no local state so disabling it can't publish a
+        # LIMITS_CHANGE, while current_limits still holds the state from before the restart
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM1", "RED_LOW")
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM2", "RED_LOW")
+        event = { type: :LIMITS_ENABLE_STATE, target_name: "TGT1", packet_name: "PKT1",
+                  item_name: "ITEM1", enabled: true, time_nsec: 123456789, message: "test" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        expect(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1")).to eql "RED_LOW"
+        event[:enabled] = false
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        expect(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1")).to eql ""
+        expect(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM2")).to eql "RED_LOW"
+      end
+
+      it "clears the current limits state of items a LIMITS_GROUP_ENABLE_STATE event disables" do
+        Store.hset("DEFAULT__limits_groups", "GROUP", JSON.generate([%w(TGT1 PKT1 ITEM1), %w(TGT2 PKT1 ITEM1)]))
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM1", "RED_LOW")
+        Store.hset("DEFAULT__current_limits", "TGT2__PKT1__ITEM1", "YELLOW_HIGH")
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM2", "RED_LOW")
+        event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: "GROUP", enabled: true,
+                  time_nsec: 123456789, message: "test" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        expect(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1")).to eql "RED_LOW"
+        event[:enabled] = false
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        expect(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1")).to eql ""
+        expect(Store.hget("DEFAULT__current_limits", "TGT2__PKT1__ITEM1")).to eql ""
+        expect(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM2")).to eql "RED_LOW"
+      end
+
       it "writes and reads LIMITS_SET" do
         sets = LimitsEventTopic.sets(scope: "DEFAULT")
         expect(sets).to eql({})
@@ -321,6 +352,116 @@ module OpenC3
         expect(System.limits.get("INST", "HEALTH_STATUS", "TEMP3")[1..6]).to eql [2, true, -50.0, -40.0, 40.0, 50.0]
       ensure
         limits&.change_type = nil
+      end
+
+      it "clears a state color that was cleared with a LIMITS_STATE_COLOR event" do
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        expect(item.state_colors['CONNECTED']).to eql :GREEN
+        event = { type: :LIMITS_STATE_COLOR, target_name: "INST", packet_name: "HEALTH_STATUS", item_name: "GROUND1STATUS",
+                  state_name: "CONNECTED", color: nil, time_nsec: Time.now.to_nsec_from_epoch, message: "Clearing color" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        settings = JSON.parse(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__GROUND1STATUS"))
+        expect(settings['state_colors']).to eql({ 'CONNECTED' => nil })
+        LimitsEventTopic.resync_system(scope: "DEFAULT")
+        expect(item.state_colors).to_not have_key('CONNECTED')
+      end
+
+      it "treats a state color saved as an empty string as cleared" do
+        # Earlier versions saved a cleared color as "" which isn't a valid color
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__GROUND1STATUS",
+          JSON.generate({ 'state_colors' => { 'CONNECTED' => '' } }))
+        expect { LimitsEventTopic.resync_system(scope: "DEFAULT") }.to_not raise_error
+        expect(item.state_colors).to_not have_key('CONNECTED')
+      end
+    end
+
+    describe "write with publish: false" do
+      it "updates the store without writing to the stream" do
+        event = { type: :LIMITS_CHANGE, target_name: "TGT", packet_name: "PKT", item_name: "ITEM",
+                  old_limits_state: :GREEN, new_limits_state: :RED_HIGH, time_nsec: 123456789, message: "test" }
+        LimitsEventTopic.write(event, scope: "DEFAULT", publish: false)
+        expect(Store.hget("DEFAULT__current_limits", "TGT__PKT__ITEM")).to eql "RED_HIGH"
+        expect(LimitsEventTopic.read(0, scope: "DEFAULT")).to be_empty
+      end
+    end
+
+    describe "_active_db_shards" do
+      it "caches the db_shards until the cache times out or is cleared" do
+        now = 1000.0
+        allow(Process).to receive(:clock_gettime).and_call_original
+        allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC) { now }
+        expect(Store).to receive(:hgetall).with("DEFAULT__openc3_targets").exactly(3).times.and_call_original
+
+        expect(LimitsEventTopic._active_db_shards(scope: "DEFAULT")).to eql Set[0]
+        set_target_db_shard("INST", 1) # Clears the cache
+        expect(LimitsEventTopic._active_db_shards(scope: "DEFAULT")).to eql Set[0, 1]
+        Store.hset("DEFAULT__openc3_targets", "INST2", JSON.generate({ 'name' => 'INST2', 'db_shard' => 2 }))
+        now += LimitsEventTopic::ACTIVE_DB_SHARDS_CACHE_TIMEOUT - 1
+        expect(LimitsEventTopic._active_db_shards(scope: "DEFAULT")).to eql Set[0, 1] # Cached
+        now += 2
+        expect(LimitsEventTopic._active_db_shards(scope: "DEFAULT")).to eql Set[0, 1, 2]
+      end
+
+      it "only uses the cache for LIMITS_CHANGE events" do
+        written_db_shards = []
+        allow(Topic).to receive(:write_topic) { |*_args, db_shard:| written_db_shards << db_shard }
+        expect(LimitsEventTopic._active_db_shards(scope: "DEFAULT")).to eql Set[0] # Fills the cache
+        # Another process installs a target on a new db_shard, which can't clear this process's cache
+        Store.hset("DEFAULT__openc3_targets", "INST2", JSON.generate({ 'name' => 'INST2', 'db_shard' => 2 }))
+
+        change = { type: :LIMITS_CHANGE, target_name: "INST", packet_name: "HEALTH_STATUS", item_name: "TEMP1",
+                   old_limits_state: :GREEN, new_limits_state: :RED_HIGH, time_nsec: 123456789, message: "test" }
+        LimitsEventTopic.write(change, scope: "DEFAULT")
+        expect(written_db_shards).to eql [0] # Cached
+
+        # Events that change decom limits must reach the decom on the new db_shard
+        written_db_shards.clear
+        enable = { type: :LIMITS_ENABLE_STATE, target_name: "INST", packet_name: "HEALTH_STATUS", item_name: "TEMP1",
+                   enabled: false, time_nsec: 123456789, message: "test" }
+        LimitsEventTopic.write(enable, scope: "DEFAULT")
+        expect(written_db_shards).to contain_exactly(0, 2)
+
+        # The lookup refreshed the cache for later LIMITS_CHANGE events
+        written_db_shards.clear
+        LimitsEventTopic.write(change, scope: "DEFAULT")
+        expect(written_db_shards).to contain_exactly(0, 2)
+      end
+    end
+
+    describe "sync_system" do
+      def persist_disabled(*item_names)
+        item_names.each do |item_name|
+          Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__#{item_name}", JSON.generate({ 'enabled' => false }))
+        end
+      end
+
+      after(:each) do
+        System.telemetry.limits_change_callback = nil
+      end
+
+      it "only calls the limits change callback for items with a limits state to clear" do
+        calls = []
+        System.telemetry.limits_change_callback = ->(_packet, item, old_state, _value, _log) { calls << [item.name, old_state] }
+        persist_disabled("TEMP1", "TEMP2")
+        System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits.state = :RED_LOW
+
+        LimitsEventTopic.sync_system(scope: "DEFAULT")
+        expect(calls).to eql [["TEMP1", :RED_LOW]]
+        # Re-syncing items that are already disabled must not fire again
+        LimitsEventTopic.sync_system(scope: "DEFAULT")
+        expect(calls).to eql [["TEMP1", :RED_LOW]]
+      end
+
+      it "clears the current limits state of disabled items" do
+        persist_disabled("TEMP1", "TEMP2")
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "RED_LOW")
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP3", "RED_HIGH")
+        LimitsEventTopic.sync_system(scope: "DEFAULT")
+        expect(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1")).to eql ""
+        expect(Store.hexists("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP2")).to be false
+        expect(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP3")).to eql "RED_HIGH" # Not disabled
+        expect(LimitsEventTopic.out_of_limits(scope: "DEFAULT")).to eql [["INST", "HEALTH_STATUS", "TEMP3", "RED_HIGH"]]
       end
     end
 

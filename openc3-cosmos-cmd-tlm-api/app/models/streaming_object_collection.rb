@@ -55,9 +55,16 @@ class StreamingObjectCollection
     end
   end
 
-  def remove(object)
+  # exact: true removes only this object. Use it when the thread already holds the
+  # object (finishing or handing off), since key-only matching would also remove
+  # other subscriptions to the same key, like aliases with a later end time.
+  def remove(object, exact: false)
     @mutex.synchronize do
       found_object = @objects_by_id[object.id]
+      if exact
+        _remove_found(found_object) if found_object
+        return
+      end
       # Items can be added as [key, item_key] pairs but removed by key alone
       # (the item_key defaults to the key) so remove every item object subscribed with the same key.
       # Match on source_key so removing an explicit item doesn't also remove a
@@ -67,7 +74,7 @@ class StreamingObjectCollection
         # An explicit item_key that wasn't found exactly must also match on item_key
         # so an unknown [key, item_key] pair can't remove other subscriptions
         @objects.select do |obj|
-          obj.item_key and obj.source_key == object.source_key and (key_only or obj.item_key == object.item_key)
+          obj.item_key and obj.time_type == object.time_type and obj.source_key == object.source_key and (key_only or obj.item_key == object.item_key)
         end.each do |obj|
           _remove_found(obj)
         end
