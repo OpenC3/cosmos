@@ -16,71 +16,123 @@
 -->
 
 <template>
-  <div>
+  <div class="cmd-sender d-flex flex-column ga-3">
     <top-bar :menus="menus" :title="title" />
-    <command-editor
-      ref="commandEditor"
-      :initial-target-name="$route.params.target"
-      :initial-packet-name="$route.params.packet"
-      :send-disabled="sendDisabled"
-      :read-only="readOnlyUser"
-      :states-in-hex="statesInHex"
-      :show-ignored-params="showIgnoredParams"
-      :cmd-raw="cmdRaw"
-      :ignore-range-checks="ignoreRangeChecks"
-      @command-changed="commandChanged($event)"
-      @command-loaded="onCommandLoaded($event)"
-      @build-cmd="buildCmd($event)"
-    />
-    <v-card class="pa-3">Status: {{ status }}</v-card>
-    <div style="height: 15px" />
-    <v-row no-gutters>
-      <v-col class="pr-4">
-        <v-card class="pb-2">
-          <v-card-subtitle>
-            <v-row>
-              <v-col class="pt-6">
-                Editable Command History: (Pressing Enter on the line
-                re-executes the command)
-              </v-col>
-              <v-col>
-                <v-tooltip :open-delay="600" location="top">
-                  <template #activator="{ props }">
-                    <div v-bind="props" class="float-right">
-                      <v-btn
-                        icon="mdi-delete-sweep"
-                        variant="text"
-                        data-test="clear-history"
-                        @click="clearHistory"
-                      />
-                    </div>
-                  </template>
-                  <span> Clear History </span>
-                </v-tooltip>
-              </v-col>
-            </v-row>
-          </v-card-subtitle>
-          <v-row no-gutters class="mt-2 mb-2">
-            <v-col>
-              <pre ref="editor" class="editor" data-test="sender-history"></pre>
-            </v-col>
-          </v-row>
-        </v-card>
-      </v-col>
-      <v-col v-if="screenDefinition" md="auto">
-        <div style="position: relative">
-          <openc3-screen
-            :target="screenTarget"
-            :screen="screenName"
-            :definition="screenDefinition"
-            :keywords="keywords"
-            :count="screenCount"
-            :show-close="false"
-          />
+    <!-- Hazardous commands ring the panel, as Dashboards marks a panel
+         that needs attention, so nothing above the table moves -->
+    <section
+      :class="[
+        'cs-panel cs-command rounded-lg',
+        { 'ring-caution': sendHazardous },
+      ]"
+      aria-label="Command"
+    >
+      <command-editor
+        ref="commandEditor"
+        v-model:show-ignored-params="showIgnoredParams"
+        class="cs-editor"
+        :initial-target-name="$route.params.target"
+        :initial-packet-name="$route.params.packet"
+        :send-disabled="sendDisabled"
+        :read-only="readOnlyUser"
+        :states-in-hex="statesInHex"
+        :cmd-raw="cmdRaw"
+        :ignore-range-checks="ignoreRangeChecks"
+        :show-command-button="false"
+        :show-hazardous="false"
+        @command-changed="commandChanged($event)"
+        @command-loaded="onCommandLoaded($event)"
+        @params-changed="paramsChanged"
+      />
+    </section>
+    <!-- The command as it will be sent, and Send, on their own panel. Also
+         ringed for a hazardous command, since Send will ask to confirm. -->
+    <section
+      :class="[
+        'cs-panel cs-send-panel rounded-lg',
+        { 'ring-caution': sendHazardous },
+      ]"
+      aria-label="Send"
+    >
+      <!-- The form's command as scripted, rebuilt as it changes. Pasting or
+           editing a command there loads it into the form above. -->
+      <command-line
+        ref="commandLine"
+        class="px-4 pt-5"
+        :command="commandLine"
+        :load="loadCommandLine"
+        :loading="loadingCommand || (!!commandName && !commandReady)"
+        @dirty="lineDirty = $event"
+      />
+      <!-- The only way to send: loading a command from the history or the
+           command line fills in the form above but never sends it -->
+      <div class="cs-send-bar d-flex align-center ga-2 px-4 pb-4 pt-2">
+        <div
+          class="cs-status flex-grow-1 min-w-0 text-body-2"
+          aria-live="polite"
+          data-test="sender-status"
+        >
+          {{ status }}
         </div>
-      </v-col>
-    </v-row>
-    <div style="height: 15px" />
+        <v-chip
+          v-if="sendHazardous"
+          size="small"
+          variant="tonal"
+          prepend-icon="mdi-alert"
+          class="cs-hazard openc3-yellow flex-shrink-1 font-weight-bold"
+          :title="hazardTitle"
+          data-test="command-hazardous"
+        >
+          <span class="text-truncate">{{ hazardText }}</span>
+        </v-chip>
+        <v-tooltip :disabled="!sendTooltip" :open-delay="600" location="top">
+          <template #activator="{ props }">
+            <div v-bind="props" class="flex-shrink-0">
+              <v-btn
+                size="large"
+                :color="sendHazardous ? 'warning' : 'primary'"
+                :prepend-icon="sendHazardous ? 'mdi-alert' : 'mdi-send-outline'"
+                :disabled="!canSend"
+                :loading="sendInFlight"
+                class="cs-send"
+                data-test="select-send"
+                @click="buildCmd"
+              >
+                Send
+              </v-btn>
+            </div>
+          </template>
+          <span>{{ sendTooltip }}</span>
+        </v-tooltip>
+      </div>
+    </section>
+    <div class="cs-lower d-flex ga-3 align-start">
+      <command-history
+        ref="commandHistory"
+        class="flex-grow-1 flex-shrink-1"
+        :entries="historyEntries"
+        :selected-id="selectedHistoryId"
+        :time-zone="timeZone"
+        @select="selectHistory"
+        @clear="clearHistory"
+      />
+      <section
+        v-if="screenDefinition"
+        class="cs-panel cs-screen rounded-lg"
+        aria-label="Related telemetry"
+      >
+        <openc3-screen
+          :target="screenTarget"
+          :screen="screenName"
+          :definition="screenDefinition"
+          :keywords="keywords"
+          :count="screenCount"
+          :show-close="false"
+        />
+      </section>
+    </div>
+
+    <help-dialog v-if="helpOpen" v-model="helpOpen" :topic="helpTopic" />
 
     <critical-cmd-dialog
       v-model="displayCriticalCmd"
@@ -91,7 +143,7 @@
 
     <!-- This dialog is informational, should not be persistent -->
     <v-dialog v-model="displayErrorDialog" max-width="600">
-      <v-card>
+      <v-card class="cs-dialog">
         <v-toolbar height="24">
           <v-spacer />
           <span> Error </span>
@@ -125,7 +177,7 @@
       persistent
       @keydown.esc="cancelHazardousCmd"
     >
-      <v-card>
+      <v-card class="cs-dialog">
         <v-toolbar height="24">
           <v-spacer />
           <span> Hazardous Warning </span>
@@ -152,65 +204,15 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <v-dialog
-      v-model="displaySendRaw"
-      max-width="600"
-      persistent
-      @keydown.esc="cancelRawCmd"
-    >
-      <v-card>
-        <v-toolbar height="24">
-          <v-spacer />
-          <span> Send Raw </span>
-          <v-spacer />
-        </v-toolbar>
-        <v-card-text>
-          <div class="mx-1">
-            <v-row class="my-2">
-              <v-col>Interface:</v-col>
-              <v-col>
-                <v-select
-                  v-model="selectedInterface"
-                  variant="solo"
-                  hide-details
-                  density="compact"
-                  :items="interfaces"
-                  item-title="label"
-                  item-value="value"
-                />
-              </v-col>
-            </v-row>
-            <v-row no-gutters>
-              <v-col>Filename:</v-col>
-              <v-col>
-                <input type="file" @change="selectRawCmdFile($event)" />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-spacer />
-              <v-btn
-                variant="outlined"
-                data-test="raw-cancel"
-                @click="cancelRawCmd"
-              >
-                Cancel
-              </v-btn>
-              <v-btn class="bg-primary" data-test="raw-ok" @click="sendRawCmd">
-                Ok
-              </v-btn>
-            </v-row>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
 <script>
-import * as ace from 'ace-builds'
-import 'ace-builds/src-min-noconflict/mode-ruby'
-import 'ace-builds/src-min-noconflict/theme-twilight'
+import '@fontsource/ibm-plex-sans/400.css'
+import '@fontsource/ibm-plex-sans/500.css'
+import '@fontsource/ibm-plex-sans/600.css'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
   CriticalCmdDialog,
@@ -219,48 +221,83 @@ import {
   Openc3Screen,
   TopBar,
 } from '@openc3/vue-common/components'
-import { CmdUtilities } from '@openc3/vue-common/util'
+import {
+  CmdUtilities,
+  getCachedSetting,
+  parseCmdLine,
+} from '@openc3/vue-common/util'
+import CommandHistory from './CommandHistory.vue'
+import CommandLine from './CommandLine.vue'
+import HelpDialog from './HelpDialog.vue'
+import { useCommandHistory } from './useCommandHistory'
+import { formatCmd, formatFormCmd } from './commandLine'
 
 export default {
   components: {
+    CommandHistory,
+    CommandLine,
     CriticalCmdDialog,
     CommandEditor,
-    TopBar,
     Openc3Screen,
+    HelpDialog,
+    TopBar,
   },
   mixins: [CmdUtilities],
+  setup() {
+    const history = useCommandHistory()
+    return {
+      historyEntries: history.entries,
+      addHistory: history.add,
+      clearHistoryEntries: history.clear,
+    }
+  },
   data() {
     return {
       title: 'Command Sender',
-      editor: null,
       targetName: '',
       commandName: '',
       commandDescription: '',
       hazardousDescription: '',
-      paramList: '',
       queueName: null,
-      validateParameter: null,
-      lastTargetName: '',
-      lastCommandName: '',
-      lastParamList: '',
-      lastQueueName: null,
+      // The selected command's parameters are loaded, so Send can build it
+      commandReady: false,
+      // A command from the history or the command line is being loaded
+      loadingCommand: false,
+      // The latest load, so a load it replaced doesn't clear its state
+      loadPromise: null,
+      // The selected command's definition is HAZARDOUS
+      commandHazardous: false,
+      // Target and command whose screen is shown, so reloading the same
+      // command (e.g. from the history) doesn't rebuild it
+      screenCommand: null,
+      // The command waiting on the hazardous confirmation
+      pendingCmd: null,
       ignoreRangeChecks: false,
       statesInHex: false,
       showIgnoredParams: false,
       cmdRaw: false,
       disableCommandValidation: false,
-      interfaces: [],
-      selectedInterface: '',
-      rawCmdFile: null,
       status: '',
-      history: '',
+      timeZone: 'local',
+      selectedHistoryId: null,
+      // The form's command as scripted, for the command line
+      commandLine: '',
+      // The command line has edits that aren't loaded into the form
+      lineDirty: false,
+      // Help menu dialogs: 'shortcuts' or 'guide'
+      helpOpen: false,
+      helpTopic: 'shortcuts',
+      // The server's answer to whether the form's command is hazardous,
+      // null while checking or unknown. Colors the Send button.
+      hazardPreview: null,
+      hazardTimer: null,
+      hazardRequest: 0,
       hazardousCommand: '',
       commandIsHazardous: false,
       hazardousDialogDescription: '',
       hazardousDialogHazardousDescription: '',
       displaySendHazardous: false,
       displayErrorDialog: false,
-      displaySendRaw: false,
       displayCriticalCmd: false,
       criticalCmdUuid: null,
       criticalCmdString: null,
@@ -298,24 +335,91 @@ export default {
         return `${command} is considered Hazardous because ${this.hazardousModes}`
       }
     },
+    // The command or its values are hazardous, from the server's answer for
+    // the current values or, until it answers, the definition
+    commandIsHazardousNow() {
+      return this.hazardPreview ?? this.commandHazardous
+    },
+    // Waiting on the server, not on the user confirming in a dialog
+    sendInFlight() {
+      return (
+        this.sendDisabled &&
+        !this.displaySendHazardous &&
+        !this.displayCriticalCmd
+      )
+    },
+    // Send will ask to confirm
+    sendHazardous() {
+      return this.commandIsHazardousNow || !!this.hazardousModes
+    },
+    // The chip shows the command's hazardous description, if any; the
+    // tooltip also says why when it's only the Mode menu
+    hazardText() {
+      if (this.commandIsHazardousNow && this.hazardousDescription) {
+        return `Hazardous: ${this.hazardousDescription}`
+      }
+      return 'Hazardous'
+    },
+    hazardTitle() {
+      if (!this.commandIsHazardousNow) {
+        return `Hazardous because ${this.hazardousModes}`
+      }
+      return this.hazardousDescription
+        ? `Hazardous: ${this.hazardousDescription}`
+        : 'Hazardous'
+    },
+    // Not while a history entry or the command line loads, or while the
+    // command line has edits that aren't loaded, so Send only ever sends
+    // the command shown in the form and the command line
+    canSend() {
+      return (
+        !this.readOnlyUser &&
+        !this.sendDisabled &&
+        !this.loadingCommand &&
+        !this.lineDirty &&
+        this.commandReady &&
+        !!this.targetName &&
+        !!this.commandName
+      )
+    },
+    sendTooltip() {
+      if (this.readOnlyUser) return 'Viewers cannot send commands'
+      if (this.lineDirty) {
+        return 'Press Enter in the command line to load it, or Esc to undo'
+      }
+      return ''
+    },
+    // The scripting method the Mode menu sends with, as the history shows it
+    sendMethod() {
+      const raw = this.cmdRaw ? '_raw' : ''
+      return this.ignoreRangeChecks ? `cmd${raw}_no_range_check` : `cmd${raw}`
+    },
     readOnlyUser: function () {
       const roles = OpenC3Auth.userroles() || []
       return roles.length > 0 && roles.every((role) => role === 'viewer')
     },
     menus: function () {
       return [
-        // TODO: Implement send raw
-        // {
-        //   label: 'File',
-        //   items: [
-        //     {
-        //       label: 'Send Raw',
-        //       command: () => {
-        //         this.setupRawCmd()
-        //       },
-        //     },
-        //   ],
-        // },
+        {
+          label: 'File',
+          items: [
+            {
+              label: 'Paste Command',
+              icon: 'mdi-clipboard-text-outline',
+              shortcut: 'Mod+V',
+              command: () => {
+                this.$refs.commandLine.focus()
+              },
+            },
+            {
+              label: 'Clear History',
+              icon: 'mdi-delete-sweep',
+              command: () => {
+                this.clearHistory()
+              },
+            },
+          ],
+        },
         {
           label: 'Mode',
           items: [
@@ -341,6 +445,8 @@ export default {
               checked: this.showIgnoredParams,
               command: () => {
                 this.showIgnoredParams = !this.showIgnoredParams
+                // Send waits for the reloaded rows (command-loaded)
+                this.commandReady = false
                 this.$refs.commandEditor.triggerUpdateCmdParams()
               },
             },
@@ -362,7 +468,43 @@ export default {
             },
           ],
         },
+        {
+          label: 'Help',
+          items: [
+            {
+              label: 'Keyboard Shortcuts',
+              icon: 'mdi-keyboard-outline',
+              command: () => this.openHelp('shortcuts'),
+            },
+            {
+              label: 'Using Command Sender',
+              icon: 'mdi-information-outline',
+              command: () => this.openHelp('guide'),
+            },
+          ],
+        },
       ]
+    },
+    // A dialog or menu is open, so page shortcuts stand aside
+    overlayOpen() {
+      return (
+        this.helpOpen ||
+        this.displaySendHazardous ||
+        this.displayErrorDialog ||
+        this.displayCriticalCmd
+      )
+    },
+  },
+  watch: {
+    // The Mode menu and queue are part of the command line
+    sendMethod() {
+      this.updateCommandLine()
+    },
+    disableCommandValidation() {
+      this.updateCommandLine()
+    },
+    queueName() {
+      this.updateCommandLine()
     },
   },
   created() {
@@ -377,88 +519,84 @@ export default {
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.keywords = response.data
     })
-  },
-  mounted() {
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
-    this.editor.session.setMode('ace/mode/ruby')
-    this.editor.session.setTabSize(2)
-    this.editor.session.setUseWrapMode(true)
-    this.editor.setHighlightActiveLine(false)
-    this.editor.setValue(localStorage['command_sender__history'])
-    this.history = this.editor.getValue().trim()
-    this.editor.clearSelection()
-    this.editor.focus()
-    this.editor.setAutoScrollEditorIntoView(true)
-    // This only limits the displayed lines, history can grow in a scrollable window
-    this.editor.setOption('maxLines', 30)
-    this.editor.setOption('minLines', 1)
-    this.editor.container.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        // Don't start another command while one is in flight or waiting on the
-        // hazardous confirmation. Sending would overwrite the last* variables
-        // the pending command still needs.
-        if (this.sendDisabled) {
-          return
-        }
-        let command = this.editor.session.getLine(
-          this.editor.getCursorPosition().row,
-        )
-        // Blank commands can happen if typing return on a blank line
-        if (command === '') {
-          return
-        }
-        // Parse queue parameter if present (e.g., cmd("...", queue: "Foo") or cmd("...", queue = "Foo")
-        // or cmd("...", queue: false) or cmd("...", queue=False)
-        // Reset queue to null first
-        this.queueName = null
-        const queueMatch = command.match(
-          /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
-        )
-        if (queueMatch) {
-          if (queueMatch[1]) {
-            this.queueName = queueMatch[1]
-          } else {
-            this.queueName = false
-          }
-          // Remove the queue parameter from the command string
-          command = command.replace(
-            /,\s*queue(?::|\s*=)\s*(?:"([^"]+)"|([f|F]alse))/, // codespell:ignore
-            '',
-          )
-        }
-        // Parse validate parameter if present (e.g., cmd("...", validate: false) or cmd("...", validate=True)
-        this.validateParameter = null
-        const validateMatch = command.match(
-          /,\s*validate(?::|\s*=)\s*(false|true)/i,
-        )
-        if (validateMatch) {
-          this.validateParameter = validateMatch[1]
-          // Remove the validate parameter from the command string
-          command = command.replace(
-            /,\s*validate(?::|\s*=)\s*(false|true)/i,
-            '',
-          )
-        }
-
-        // Remove the cmd("") wrapper
-        let firstQuote = command.indexOf('"')
-        let lastQuote = command.lastIndexOf('"')
-        command = command.substr(firstQuote + 1, lastQuote - firstQuote - 1)
-        this.sendCmd(command)
+    getCachedSetting('time_zone').then((timeZone) => {
+      if (timeZone) {
+        this.timeZone = timeZone
       }
     })
   },
+  mounted() {
+    window.addEventListener('paste', this.onPaste)
+    window.addEventListener('keydown', this.onKeydown)
+  },
   beforeUnmount() {
+    window.removeEventListener('paste', this.onPaste)
+    window.removeEventListener('keydown', this.onKeydown)
+    clearTimeout(this.hazardTimer)
     for (const watcher of Object.values(this.criticalCmdWatchers)) {
       clearTimeout(watcher)
     }
     this.criticalCmdWatchers = {}
-    this.editor.destroy()
-    this.editor.container.remove()
   },
   methods: {
+    openHelp(topic) {
+      this.helpTopic = topic
+      this.helpOpen = true
+    },
+
+    // Shortcuts only apply to the page itself, not while typing in a field
+    // (where Mod+V pastes and Alt+arrows move the cursor) or in a dialog
+    pageHasFocus(event) {
+      return (
+        !this.overlayOpen &&
+        !event.target?.closest?.(
+          'input, textarea, select, [contenteditable], .v-overlay__content',
+        )
+      )
+    },
+
+    // Mod+V on the page loads the clipboard's command through the command
+    // line, which shows any error. The paste event carries the text without
+    // the clipboard API, which only exists in secure contexts.
+    onPaste(event) {
+      if (this.sendDisabled || !this.pageHasFocus(event)) return
+      const text = event.clipboardData?.getData('text')?.trim()
+      if (!text) return
+      event.preventDefault()
+      // The command line shows its own errors
+      void this.$refs.commandLine.loadText(text)
+    },
+
+    // Alt+Down / Alt+Up load the next older / newer history command
+    onKeydown(event) {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return
+      }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+      if (!this.pageHasFocus(event)) return
+      event.preventDefault()
+      this.stepHistory(event.key === 'ArrowDown' ? 1 : -1)
+    },
+
+    // The history is newest first, so down (+1) is older. With nothing
+    // loaded from it yet, either direction starts at the newest.
+    stepHistory(direction) {
+      const entries = this.historyEntries
+      if (!entries.length || this.loadingCommand || this.sendDisabled) return
+      const current = entries.findIndex(
+        (entry) => entry.id === this.selectedHistoryId,
+      )
+      const index =
+        current === -1
+          ? 0
+          : Math.min(Math.max(current + direction, 0), entries.length - 1)
+      if (index === current) return
+      const entry = entries[index]
+      this.$refs.commandHistory.scrollToEntry(entry.id)
+      // selectHistory reports its own errors in the status
+      void this.selectHistory(entry)
+    },
+
     commandChanged(event) {
       if (
         this.targetName !== event.targetName ||
@@ -466,26 +604,18 @@ export default {
       ) {
         this.targetName = event.targetName
         this.commandName = event.packetName
-        if (this.targetName && this.commandName) {
-          this.$router
-            .replace({
-              name: 'CommandSender',
-              params: {
-                target: this.targetName,
-                packet: this.commandName,
-              },
-            })
-            // catch the error in case we route to where we already are
-            .catch((err) => {})
-        } else {
-          // Handle targets with any commands
-          this.$router
-            .replace({
-              name: 'CommandSender',
-            })
-            // catch the error in case we route to where we already are
-            .catch((err) => {})
+        this.commandReady = false
+        this.hazardPreview = null
+        // Drop an answer still in flight for the previous command
+        this.hazardRequest++
+        // The user picked a different command: drop the history selection
+        // and the status, which describes the previous command. Loading
+        // from the history or the command line sets its own status.
+        if (!this.loadingCommand) {
+          this.selectedHistoryId = null
+          this.status = ''
         }
+        this.updateRoute()
       }
       // Update queue selection if it changed
       if (event.queueName !== undefined) {
@@ -493,7 +623,32 @@ export default {
       }
     },
 
+    updateRoute() {
+      const params =
+        this.targetName && this.commandName
+          ? { target: this.targetName, packet: this.commandName }
+          : undefined
+      this.$router
+        .replace({ name: 'CommandSender', params })
+        // catch the error in case we route to where we already are
+        .catch((err) => {})
+    },
+
     onCommandLoaded(command) {
+      this.commandReady = !!command
+      this.commandHazardous = !!command?.hazardous
+      this.checkHazard()
+      this.updateCommandLine()
+      const screenCommand = command
+        ? `${command.target_name} ${command.packet_name}`
+        : null
+      // The same command reloaded, e.g. from the history: keep its screen
+      if (command && screenCommand === this.screenCommand) {
+        this.commandDescription = command.description
+        this.hazardousDescription = command.hazardous_description || ''
+        return
+      }
+      this.screenCommand = screenCommand
       if (command) {
         this.commandDescription = command.description
         this.hazardousDescription = command.hazardous_description || ''
@@ -532,22 +687,101 @@ export default {
       }
     },
 
+    paramsChanged() {
+      this.checkHazard()
+      this.updateCommandLine()
+    },
+
+    // Rebuild the command line from the form. While a command loads it keeps
+    // the last one (shown loading) rather than an empty command.
+    updateCommandLine() {
+      const editor = this.$refs.commandEditor
+      if (!editor?.targetName || !editor?.commandName) {
+        this.commandLine = ''
+        return
+      }
+      if (!this.commandReady) return
+      // The editor's names, which change with its rows: this.targetName is
+      // only set once a load from the command line or history finishes
+      this.commandLine = formatFormCmd(
+        this.sendMethod,
+        editor.targetName,
+        editor.commandName,
+        editor.getRows(),
+        {
+          raw: this.cmdRaw,
+          queueName: this.queueName,
+          disableCommandValidation: this.disableCommandValidation,
+          python: this.scriptingPython(),
+        },
+      )
+    },
+
+    scriptingPython() {
+      return AceEditorUtils.getDefaultScriptingLanguage() === 'python'
+    },
+
+    // Ask the server whether the form's command is hazardous, shortly after
+    // the values stop changing, to color the Send button before it's pressed
+    // The last answer stays until the new one arrives so the button doesn't
+    // flicker; commandChanged clears it for a different command.
+    checkHazard() {
+      clearTimeout(this.hazardTimer)
+      if (!this.commandReady || !this.targetName || !this.commandName) return
+      this.hazardTimer = setTimeout(() => this.previewHazard(), 300)
+    },
+
+    async previewHazard() {
+      const request = ++this.hazardRequest
+      let paramList
+      try {
+        paramList = this.createParamList()
+      } catch {
+        // An invalid value, Send reports it
+        return
+      }
+      try {
+        const hazardous = await this.api.get_cmd_hazardous(
+          this.targetName,
+          this.commandName,
+          paramList,
+          { 'Ignore-Errors': '500' },
+        )
+        // Ignore an answer for values that have since changed
+        if (request === this.hazardRequest) {
+          this.hazardPreview = !!hazardous
+        }
+      } catch {
+        // E.g. a value out of range: leave it unknown, Send reports it
+      }
+    },
+
     createParamList() {
       let paramList = {}
+      const hidden = []
       for (const row of this.$refs.commandEditor.getRows()) {
         // A null val marks a required parameter the user hasn't set (see
         // CommandEditor). Omit it entirely so the backend reports it as "not
         // given" rather than receiving an empty value and reporting that it is
         // "not one of" the valid states.
         if (row.val === null) {
+          // Loaded from the history, which hides the value: never send the
+          // default in its place
+          if (row.obfuscated) hidden.push(row.parameter_name)
           continue
         }
         paramList[row.parameter_name] = this.convertToValue(row)
+      }
+      if (hidden.length) {
+        throw new Error(
+          `Enter ${hidden.join(', ')}: the history hides obfuscated values`,
+        )
       }
       return paramList
     },
 
     buildCmd() {
+      if (!this.canSend) return
       let paramList
       try {
         paramList = this.createParamList()
@@ -556,65 +790,38 @@ export default {
         this.displayErrorDialog = true
         return
       }
-      this.sendCmd(this.targetName, this.commandName, paramList)
+      this.sendCmd({
+        targetName: this.targetName,
+        commandName: this.commandName,
+        paramList,
+        queueName: this.queueName,
+        // For the hazardous dialog, as shown when Send was pressed
+        description: this.commandDescription,
+        hazardousDescription: this.hazardousDescription,
+      })
     },
 
-    // Note targetName can also be the entire command to send, e.g. "INST ABORT" or
-    // "INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 10" when being
-    // sent from the history. In that case commandName and paramList are undefined
-    // and the api calls handle that.
-    sendCmd(targetName, commandName, paramList) {
-      // The command history editor doesn't go through the Send button
+    sendCmd(cmdInfo) {
+      const { targetName, commandName, paramList } = cmdInfo
       if (this.readOnlyUser) {
         this.status = 'Viewers cannot send commands'
         return
       }
-      // Snapshot what's being sent. The history editor stays editable while the
-      // hazardous check is in flight so this.queueName and the last* variables
-      // can change out from under us before the command actually goes out.
-      const cmdInfo = {
-        targetName,
-        commandName,
-        paramList,
-        queueName: this.queueName,
-      }
-      // Store what was actually sent for use in resending hazardous commands
-      this.lastTargetName = targetName
-      this.lastCommandName = commandName
-      this.lastParamList = paramList
-      this.lastQueueName = this.queueName
-
+      // Kept for the hazardous confirmation, which sends exactly this
+      this.pendingCmd = cmdInfo
       this.sendDisabled = true
       this.api.get_cmd_hazardous(targetName, commandName, paramList).then(
-        async (hazardous) => {
+        (hazardous) => {
           // Ignoring range checks allows arbitrary values (e.g. manually
           // entered states) and disabling conversions bypasses any that make
           // a command safe so treat every command as hazardous
           if (hazardous || this.hazardousModes) {
             this.commandIsHazardous = hazardous
-            // If it was sent from history it's all in targetName and may
-            // differ from the selected command so look up its descriptions
-            if (commandName === undefined) {
-              this.hazardousCommand = targetName
-                .split(' ')
-                .slice(0, 2)
-                .join(' ')
-              let command = null
-              try {
-                command = await this.api.get_cmd(
-                  ...this.hazardousCommand.split(' '),
-                )
-              } catch {
-                // fall through with no description
-              }
-              this.showHazardousDialog(command)
-            } else {
-              this.hazardousCommand = `${targetName} ${commandName}`
-              this.showHazardousDialog({
-                description: this.commandDescription,
-                hazardous_description: this.hazardousDescription,
-              })
-            }
+            this.hazardousCommand = `${targetName} ${commandName}`
+            this.hazardousDialogDescription = cmdInfo.description
+            this.hazardousDialogHazardousDescription =
+              cmdInfo.hazardousDescription
+            this.displaySendHazardous = true
           } else {
             this.executeCmd(cmdInfo, false)
           }
@@ -625,24 +832,9 @@ export default {
       )
     },
 
-    showHazardousDialog(command) {
-      this.hazardousDialogDescription = command?.description || ''
-      this.hazardousDialogHazardousDescription =
-        command?.hazardous_description || ''
-      this.displaySendHazardous = true
-    },
-
     sendHazardousCmd() {
       this.displaySendHazardous = false
-      this.executeCmd(
-        {
-          targetName: this.lastTargetName,
-          commandName: this.lastCommandName,
-          paramList: this.lastParamList,
-          queueName: this.lastQueueName,
-        },
-        true,
-      )
+      this.executeCmd(this.pendingCmd, true)
     },
 
     // Sends the command described by cmdInfo using the api method matching the
@@ -654,13 +846,10 @@ export default {
       // if they change before a critical command is approved
       const sendOptions = {
         queueName,
-        validateParameter: this.validateParameter,
         disableCommandValidation: this.disableCommandValidation,
       }
       let kwparams = {}
-      if (this.validateParameter !== null) {
-        kwparams.validate = this.validateParameter.toLowerCase() === 'true'
-      } else if (this.disableCommandValidation) {
+      if (this.disableCommandValidation) {
         kwparams.validate = false
       }
       // Add queue parameter if a queue is selected
@@ -670,9 +859,7 @@ export default {
       const raw = this.cmdRaw ? '_raw' : ''
       // The no_hazardous_check variants are an implementation detail of the
       // confirmation dialog so the history shows the checked equivalent
-      const cmd = this.ignoreRangeChecks
-        ? `cmd${raw}_no_range_check`
-        : `cmd${raw}`
+      const cmd = this.sendMethod
       let method
       if (this.ignoreRangeChecks) {
         method = skipHazardousCheck
@@ -760,7 +947,7 @@ export default {
               // which can still fail to send it (e.g. disconnected), so don't
               // claim it was sent
               const msg = this.formatCmd(cmd, command, sendOptions)
-              this.insertHistory(msg)
+              this.addHistory(msg)
               const released = response.data.interface_name
                 ? ` and released to ${response.data.interface_name}`
                 : ''
@@ -795,7 +982,7 @@ export default {
 
     processCmdSuccess(cmd_sent, response, sendOptions) {
       let msg = this.formatCmd(cmd_sent, response, sendOptions)
-      this.addToHistory(msg)
+      this.addHistory(msg)
       msg += ' sent.'
       // Add the number of commands sent to the status message
       if (this.status.includes(msg)) {
@@ -813,116 +1000,167 @@ export default {
     },
 
     // Format the sent command the way the user would script it
-    formatCmd(cmd_sent, response, sendOptions) {
-      const { queueName, validateParameter, disableCommandValidation } =
-        sendOptions
-      let msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
-      let keys = Object.keys(response['cmd_params'])
-      if (keys.length > 0) {
-        msg += ' with '
-        for (let i = 0; i < keys.length; i++) {
-          let key = keys[i]
-          let value = ''
-          if (response['obfuscated_items'].includes(key)) {
-            value = '*****'
-          } else {
-            value = this.convertToString(response['cmd_params'][key])
-          }
-          // If the response has unquoted string data we add quotes
-          if (
-            typeof response['cmd_params'][key] === 'string' &&
-            value.charAt(0) !== "'" &&
-            value.charAt(0) !== '"'
-          ) {
-            value = `'${value}'`
-          }
-          msg += key + ' ' + value
-          if (i < keys.length - 1) {
-            msg += ', '
-          }
-        }
-      }
-      // Build the closing part with optional parameters
-      const closingParams = []
-      if (queueName !== null) {
-        const queue = queueName === false ? false : `"${queueName}"`
-        closingParams.push(this.formatKeyword('queue', queue))
-      }
-      if (validateParameter !== null) {
-        closingParams.push(this.formatKeyword('validate', validateParameter))
-      } else if (disableCommandValidation) {
-        closingParams.push(this.formatKeyword('validate', false))
-      }
-
-      if (closingParams.length > 0) {
-        msg += '", ' + closingParams.join(', ') + ')'
-      } else {
-        msg += '")'
-      }
-      return msg
-    },
-
-    // Add a command that completed in the background (e.g. an approved
-    // critical command) to the top of the history without disturbing the
-    // user's cursor, selection or edits. Ace shifts them down with the insert.
-    insertHistory(msg) {
-      const value = this.editor.getValue()
-      if (!value.includes(msg)) {
-        this.editor.session.insert(
-          { row: 0, column: 0 },
-          value.length !== 0 ? `${msg}\n` : msg,
-        )
-      }
-      this.saveHistory()
-    },
-
-    addToHistory(msg) {
-      if (!this.history.includes(msg)) {
-        let value = msg
-        if (this.history.length !== 0) {
-          value += `\n${this.history}`
-        }
-        this.editor.setValue(value)
-        this.editor.moveCursorTo(0, 0)
-      }
-      this.saveHistory()
+    formatCmd(cmdSent, response, sendOptions) {
+      return formatCmd(cmdSent, response, {
+        ...sendOptions,
+        python: this.scriptingPython(),
+      })
     },
 
     processCmdError(targetName, commandName, response) {
-      // If it was sent from history it's all in targetName, see sendCmd for details
-      if (commandName === undefined) {
-        ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
-      }
       const context = 'sending ' + targetName + ' ' + commandName
       this.displayError(context, response, true)
-
-      this.processCmdResponse()
-    },
-
-    processCmdResponse() {
-      this.saveHistory()
       this.sendDisabled = false
     },
 
-    saveHistory() {
-      // Make a copy of the history
-      this.history = this.editor.getValue()
-      localStorage['command_sender__history'] = this.editor.getValue()
-    },
-
-    // Format a keyword parameter for the user's scripting language
-    formatKeyword(name, value) {
-      const python = AceEditorUtils.getDefaultScriptingLanguage() === 'python'
-      if (value === false) {
-        return python ? `${name}=False` : `${name}: false`
-      }
-      return python ? `${name}=${value}` : `${name}: ${value}`
-    },
-
     clearHistory() {
-      this.editor.setValue('')
-      this.history = ''
-      localStorage.removeItem('command_sender__history')
+      this.clearHistoryEntries()
+      this.selectedHistoryId = null
+    },
+
+    async selectHistory(entry) {
+      this.selectedHistoryId = entry.id
+      const error = await this.loadCommand(entry.cmd)
+      // Ignore the error of a load replaced by another entry, which is
+      // selected and loading now
+      if (error && this.selectedHistoryId === entry.id) {
+        this.selectedHistoryId = null
+        this.status = error
+      }
+    },
+
+    // For CommandLine: resolves to an error message, or null once loaded.
+    // An edit of the form's line keeps obfuscated values the form has.
+    async loadCommandLine(text, { edited }) {
+      const error = await this.loadCommand(text, {
+        keepObfuscated: edited,
+      })
+      if (!error) {
+        this.selectedHistoryId = null
+      }
+      return error
+    },
+
+    // Load a command as scripted, e.g. cmd("INST COLLECT with TYPE 'NORMAL'"),
+    // into the form without sending it. The Mode menu still decides how it's
+    // sent. Resolves to an error message, or null once loaded.
+    // keepObfuscated: see CommandEditor.setCommand
+    loadCommand(text, { keepObfuscated = false } = {}) {
+      // The form is what's being sent (or confirmed), so leave it alone
+      if (this.sendDisabled) {
+        return Promise.resolve('Wait for the command being sent to finish')
+      }
+      let parsed
+      try {
+        parsed = parseCmdLine(text)
+      } catch (error) {
+        return Promise.resolve(error.message)
+      }
+      const editor = this.$refs.commandEditor
+      // The command's queue, or None (null) without a queue keyword: None
+      // sends no queue keyword either, so the server uses its default queue
+      // just as it would for the command as written. queue: false (skip the
+      // default queue) has no choice in the queue list, None is the closest.
+      const queue =
+        parsed.queue === undefined || parsed.queue === false
+          ? null
+          : parsed.queue
+      this.loadingCommand = true
+      // setCommand fills in the form off screen and swaps it in at once. It
+      // also turns on Show Ignored Parameters (v-model) if the command sets
+      // ignored parameters, so the form matches it exactly.
+      const load = editor
+        .setCommand({ ...parsed, queue, keepObfuscated })
+        .then((result) => {
+          const targetName = parsed.target.toUpperCase()
+          const commandName = parsed.command.toUpperCase()
+          if (
+            targetName !== this.targetName ||
+            commandName !== this.commandName
+          ) {
+            // The previous command's hazard answer doesn't apply, and one
+            // still in flight mustn't land on this command
+            this.hazardPreview = null
+            this.hazardRequest++
+          }
+          this.targetName = targetName
+          this.commandName = commandName
+          // The chooser only reports its queue once its packet list loads,
+          // so take it now in case Send is pressed before then
+          this.queueName = result.unknownQueue === null ? queue : null
+          this.commandReady = true
+          this.updateRoute()
+          this.status = this.loadedStatus(parsed, result)
+          this.checkHazard()
+          return null
+        })
+        .catch((error) => {
+          // setCommand changes nothing when the command doesn't exist
+          const reason = error?.message || String(error)
+          return `Unable to load ${parsed.target} ${parsed.command}: ${reason}`
+        })
+        .finally(() => {
+          // A load replaced by a newer one leaves the newer one loading
+          if (this.loadPromise === load) {
+            this.loadingCommand = false
+            this.loadPromise = null
+          }
+        })
+      this.loadPromise = load
+      return load
+    },
+
+    loadedStatus(parsed, result) {
+      const name = `${parsed.target.toUpperCase()} ${parsed.command.toUpperCase()}`
+      const notes = []
+      if (parsed.method) {
+        // How the Mode menu would have written it: the no_hazardous_check
+        // variants only skip the confirmation, which Send always asks for
+        const written = parsed.method
+          .replace('_no_hazardous_check', '')
+          .replace('_no_checks', '_no_range_check')
+        if (written !== this.sendMethod) {
+          notes.push(
+            `it was written as ${parsed.method} but the Mode menu sends ${this.sendMethod}`,
+          )
+        }
+      }
+      if (
+        parsed.validate !== undefined &&
+        parsed.validate === this.disableCommandValidation
+      ) {
+        notes.push(
+          `validate ${parsed.validate} was not applied, use Mode > Disable Command Validation`,
+        )
+      }
+      if (parsed.queue === false) {
+        notes.push('queue false is not supported here, the queue is None')
+      } else if (result.queueLookupFailed) {
+        notes.push(
+          `the queue list couldn't be loaded to check queue "${result.unknownQueue}", the queue is None`,
+        )
+      } else if (result.unknownQueue) {
+        notes.push(
+          `queue "${result.unknownQueue}" doesn't exist, the queue is None`,
+        )
+      }
+      if (parsed.ignored.length) {
+        notes.push(`${parsed.ignored.join(', ')} not applied`)
+      }
+      if (result.unknown.length) {
+        notes.push(
+          `${result.unknown.join(', ')} not parameters of ${name}, skipped`,
+        )
+      }
+      if (result.obfuscated.length) {
+        notes.push(
+          `set ${result.obfuscated.join(', ')}, the history hides the value`,
+        )
+      }
+      const loaded = `Loaded ${name}, press Send to send it`
+      return notes.length
+        ? `${loaded}. Note: ${notes.join('; ')}.`
+        : `${loaded}.`
     },
 
     displayError(context, error, showDialog = false) {
@@ -955,87 +1193,121 @@ export default {
         },
       })
     },
-
-    // setupRawCmd() {
-    //   this.api.get_interface_names().then(
-    //     (response) => {
-    //       let interfaces = []
-    //       for (let i = 0; i < response.length; i++) {
-    //         interfaces.push({ label: response[i], value: response[i] })
-    //       }
-    //       this.interfaces = interfaces
-    //       this.selectedInterface = interfaces[0].value
-    //       this.displaySendRaw = true
-    //     },
-    //     (error) => {
-    //       this.displaySendRaw = false
-    //       this.displayError('getting interface names', error, true)
-    //     }
-    //   )
-    // },
-
-    // selectRawCmdFile(event) {
-    //   this.rawCmdFile = event.target.files[0]
-    // },
-
-    // onLoad(event) {
-    //   let bufView = new Uint8Array(event.target.result)
-    //   let jstr = { json_class: 'String', raw: [] }
-    //   for (let i = 0; i < bufView.length; i++) {
-    //     jstr.raw.push(bufView[i])
-    //   }
-
-    //   this.api.send_raw(this.selectedInterface, jstr).then(
-    //     () => {
-    //       this.displaySendRaw = false
-    //       this.status =
-    //         'Sent ' +
-    //         bufView.length +
-    //         ' bytes to interface ' +
-    //         this.selectedInterface
-    //     },
-    //     (error) => {
-    //       this.displaySendRaw = false
-    //       this.displayError('sending raw data', error, true)
-    //     }
-    //   )
-    // },
-
-    // sendRawCmd() {
-    //   let self = this
-    //   let reader = new FileReader()
-    //   reader.onload = function (e) {
-    //     self.onLoad(e)
-    //   }
-    //   reader.onerror = function (e) {
-    //     self.displaySendRaw = false
-    //     let target = e.target
-    //     self.displayError('sending raw data', target.error, true)
-    //   }
-    //   // TBD - use the other event handlers to implement a progress bar for the
-    //   // file upload.  Handle abort as well?
-    //   //reader.onloadstart = function(e) {}
-    //   //reader.onprogress = function(e) {}
-    //   //reader.onloadend = function(e) {}
-    //   //reader.onabort = function(e) {}
-
-    //   reader.readAsArrayBuffer(this.rawCmdFile)
-    // },
-
-    cancelRawCmd() {
-      this.displaySendRaw = false
-      this.status = 'Raw command not sent'
-    },
   },
 }
 </script>
 
 <style scoped>
-.editor {
-  margin-left: 30px;
-  height: 50px;
-  width: 95%;
-  position: relative;
-  font-size: 16px;
+/* The Dashboards type and surfaces: IBM Plex, 13px, flat bordered panels */
+.cmd-sender {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  padding-bottom: 16px;
+}
+/* Vuetify's typography classes (text-body-2, text-caption) set Roboto, so
+   keep their sizes but use the Command Sender type */
+.cmd-sender :deep(.text-body-2),
+.cmd-sender :deep(.text-caption) {
+  font-family: inherit;
+}
+.cmd-sender :deep(.mono) {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+.cmd-sender :deep(.num) {
+  font-variant-numeric: tabular-nums;
+}
+.cmd-sender :deep(.min-w-0) {
+  min-width: 0;
+}
+.cmd-sender :deep(.cs-panel) {
+  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  /* The theme's card color (Astro's surface token, as COSMOS cards use), not
+     Vuetify's surface, which is a neutral gray */
+  background: var(
+    --color-background-surface-default,
+    rgb(var(--v-theme-surface))
+  );
+}
+.cmd-sender :deep(.cs-panel-header) {
+  min-height: 40px;
+  padding-top: 4px;
+}
+.cmd-sender :deep(.cs-panel-title) {
+  font-size: 14px;
+  font-weight: 700;
+}
+/* CommandEditor's cards sit flat inside the panel */
+.cs-editor,
+.cs-editor :deep(.v-card) {
+  background: transparent;
+  box-shadow: none;
+}
+.cs-editor :deep(.v-card-title) {
+  padding: 4px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.cs-editor :deep(.parameters-table) {
+  background: transparent;
+  font-size: 13px;
+  /* The whole table, the page scrolls: CommandEditor caps it at 50vh for
+     the dialogs it's used in, which would scroll it inside the page */
+  max-height: none;
+}
+/* Wide enough for state names like NORMAL in the 13px type; the editor's
+   inline 120px truncates them */
+.cs-editor :deep(.v-autocomplete[data-test='cmd-param-select']) {
+  min-width: 160px !important;
+}
+.cs-editor :deep(.parameters-table thead th) {
+  font-weight: 600;
+}
+.cs-editor :deep(.parameters-table tbody td:first-child) {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+/* Command Sender's own dialogs are teleported out of .cmd-sender, so they
+   set the type themselves. (The critical command dialog is shared with
+   Script Runner and keeps the standard type.) */
+.cs-dialog {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+/* Dashboards' caution ring (dashboards.scss .panel-frame.ring-caution) */
+.cs-command,
+.cs-send-panel {
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.cs-command.ring-caution,
+.cs-send-panel.ring-caution {
+  border-color: color-mix(
+    in srgb,
+    var(--color-status-caution) 60%,
+    transparent
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-status-caution) 25%, transparent),
+    0 10px 30px -14px
+      color-mix(in srgb, var(--color-status-caution) 60%, transparent);
+}
+.cs-hazard {
+  max-width: 40%;
+}
+.cs-status {
+  min-height: 20px;
+  overflow-wrap: anywhere;
+}
+.cs-send {
+  min-width: 120px;
+}
+/* The related screen keeps its own width (up to half) and long history
+   commands wrap instead of squeezing it */
+.cs-screen {
+  flex: 0 0 auto;
+  max-width: 50%;
+  overflow: auto;
 }
 </style>

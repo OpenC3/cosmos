@@ -80,6 +80,108 @@ test('inserts and edits commands', async ({ page, utils }) => {
   )
 })
 
+test('asks for required parameters when inserting a command', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.getByText('Insert Command').click()
+  // TYPE is required and starts unset
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.getByRole('dialog')).toContainText(
+    'Required parameter TYPE not set',
+  )
+  await expect(page.locator('.ace_content')).not.toContainText('INST COLLECT')
+  // Setting it inserts the command
+  await page
+    .locator('[data-test="cmd-param-select"]')
+    .getByRole('combobox')
+    .first()
+    .click()
+  await page.getByRole('option', { name: 'NORMAL' }).click()
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.locator('.ace_content')).toContainText(
+    `cmd("INST COLLECT with TYPE 'NORMAL'`,
+  )
+})
+
+test('edits the parameters of an inserted command', async ({ page, utils }) => {
+  // Insert a command with parameters, including a quoted state
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.getByText('Insert Command').click()
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await page
+    .locator('[data-test="cmd-param-select"]')
+    .getByRole('combobox')
+    .first()
+    .click()
+  await page.getByRole('option', { name: 'SPECIAL' }).click()
+  await page
+    .locator('tr:has(td:text-is("DURATION")) [data-test=cmd-param-value] input')
+    .fill('3')
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.locator('.ace_content')).toContainText(
+    `cmd("INST COLLECT with TYPE 'SPECIAL', DURATION 3, OPCODE 0xAB, TEMP 0")`,
+  )
+
+  // Edit Command loads the line's values back into the dialog, the quoted
+  // state included. The menu acts on the cursor's line, which a right click
+  // doesn't move, so put the cursor on the command first.
+  // (Ace re-renders its lines, so click the content at the first line.)
+  const firstLine = { x: 100, y: 8 }
+  await page.locator('.ace_content').click({ position: firstLine })
+  await page
+    .locator('.ace_content')
+    .click({ button: 'right', position: firstLine })
+  await page.getByText('Edit Command').click()
+  await expect(page.locator('[data-test="select-packet"]')).toContainText(
+    'COLLECT',
+  )
+  await expect(
+    page.locator('tr:has(td:text-is("TYPE")) [data-test=cmd-param-select]'),
+  ).toContainText('SPECIAL')
+  await expect(
+    page.locator(
+      'tr:has(td:text-is("DURATION")) [data-test=cmd-param-value] input',
+    ),
+  ).toHaveValue('3')
+
+  // Changing a value replaces the line rather than adding another
+  await page
+    .locator('tr:has(td:text-is("DURATION")) [data-test=cmd-param-value] input')
+    .fill('7')
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.locator('.ace_content')).toContainText(
+    `cmd("INST COLLECT with TYPE 'SPECIAL', DURATION 7, OPCODE 0xAB, TEMP 0")`,
+  )
+  await expect(page.locator('.ace_content')).not.toContainText('DURATION 3')
+})
+
+test('keeps quoted strings with spaces when editing a command', async ({
+  page,
+  utils,
+}) => {
+  await page
+    .locator('textarea')
+    .fill(
+      `cmd("INST ASCIICMD with STRING 'NOOP', BINARY 0xDEADBEEF, ASCII 'hello world'")`,
+    )
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.getByText('Edit Command').click()
+  await expect(
+    page.locator(
+      'tr:has(td:text-is("ASCII")) [data-test=cmd-param-value] input',
+    ),
+  ).toHaveValue(`'hello world'`)
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  // The value was already quoted, so it isn't quoted again ('' hello world '')
+  await expect(page.locator('.ace_content')).toContainText(
+    `ASCII 'hello world'")`,
+  )
+  await expect(page.locator('.ace_content')).not.toContainText(`''hello`)
+})
+
 test('preserves a trailing comment when editing a command', async ({
   page,
   utils,

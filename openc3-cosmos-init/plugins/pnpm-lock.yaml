@@ -141,15 +141,18 @@ importers:
 
   packages/openc3-cosmos-tool-cmdsender:
     dependencies:
+      '@fontsource/ibm-plex-mono':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource/ibm-plex-sans':
+        specifier: 5.3.0
+        version: 5.3.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      ace-builds:
-        specifier: 1.45.2
-        version: 1.45.2
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -172,6 +175,9 @@ importers:
       vite:
         specifier: 7.3.8
         version: 7.3.8(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.108.2)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@types/node@25.0.3)(vite@7.3.8(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.108.2))
       vue:
         specifier: 3.5.45
         version: 3.5.45(typescript@6.0.3)
@@ -826,6 +832,9 @@ importers:
       vite:
         specifier: 7.3.8
         version: 7.3.8(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.108.2)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@types/node@25.0.3)(vite@7.3.8(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.108.2))
 
 packages:
 

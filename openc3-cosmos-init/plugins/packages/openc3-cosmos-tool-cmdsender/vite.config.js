@@ -14,6 +14,16 @@ export default defineConfig((options) => {
   const coverageBuild =
     process.env.COVERAGE_BUILD === '1' || options.mode !== 'production'
   return {
+    // Where the built tool is served, so bundled assets (the IBM Plex fonts)
+    // are requested from /tools/cmdsender/assets rather than /assets. Builds
+    // only: the dev server (pnpm serve, for import map overrides) serves the
+    // package folder, where the build lands in tools/cmdsender already.
+    // vite preview (serve:standalone) serves the build, so it needs the same
+    // base as the build for those asset URLs to resolve.
+    base:
+      options.command === 'build' || options.isPreview
+        ? '/tools/cmdsender/'
+        : '/',
     build: {
       sourcemap: coverageBuild,
       outDir: 'tools/cmdsender',

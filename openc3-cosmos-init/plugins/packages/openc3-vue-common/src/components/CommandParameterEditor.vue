@@ -120,25 +120,27 @@ export default {
   },
   computed: {
     textFieldValue() {
-      // null marks a required parameter that isn't set (see CommandEditor)
-      if (this.modelValue === null) {
-        return ''
-      }
+      // Unset (e.g. a required parameter) shows empty, not 'null'
+      if (this.modelValue === null || this.modelValue === undefined) return ''
       return this.convertToString(this.modelValue)
     },
     requiredPlaceholder() {
       return this.modelValue === null ? 'Required' : undefined
     },
     stateValue() {
-      // null marks a required parameter that isn't set (see CommandEditor)
-      if (this.modelValue === null) {
+      // Unset, e.g. a required parameter (null) or a manually entered value
+      // being cleared ('')
+      if (
+        this.modelValue === null ||
+        this.modelValue === undefined ||
+        this.modelValue === ''
+      ) {
         return ''
       }
-      if (this.statesInHex) {
+      if (this.statesInHex && typeof this.modelValue === 'number') {
         return '0x' + this.modelValue.toString(16)
-      } else {
-        return this.modelValue
       }
+      return this.modelValue
     },
     selectValue() {
       if (this.manuallyEntered) {

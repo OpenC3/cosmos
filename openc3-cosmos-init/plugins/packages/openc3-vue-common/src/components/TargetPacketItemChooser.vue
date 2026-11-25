@@ -208,7 +208,7 @@
       <v-col :cols="colSize">
         <div>Description: {{ description }}</div>
         <div
-          v-if="isHazardous"
+          v-if="isHazardous && showHazardous"
           class="openc3-yellow font-weight-bold mt-2"
           data-test="hazardous-description"
         >
@@ -310,6 +310,12 @@ export default {
       type: Boolean,
       default: true,
     },
+    // Show the hazardous warning below the description. Command Sender
+    // marks hazardous commands itself, without moving the parameters.
+    showHazardous: {
+      type: Boolean,
+      default: true,
+    },
     parameterHazardous: {
       type: Boolean,
       default: false,
@@ -348,6 +354,9 @@ export default {
       hazardousDescription: '',
       internalDisabled: false,
       packetsDisabled: false,
+      // Incremented by every updatePackets, see there
+      packetsRequest: 0,
+      queuesReady: null,
       itemsDisabled: false,
       api: null,
       // Restrict the dropdown search to the displayed name. Without this
@@ -529,8 +538,11 @@ export default {
     this.api = new OpenC3Api()
 
     // Fetch queues if in command mode
+    // Resolves true once the queue list has loaded, false if it couldn't be
+    // loaded, so setSelection's caller can check a queue against it
+    this.queuesReady = Promise.resolve(true)
     if (this.mode === 'cmd') {
-      Api.get('/openc3-api/queues')
+      this.queuesReady = Api.get('/openc3-api/queues')
         .then((response) => {
           this.queueNames = [{ label: 'None', value: null }]
           if (response.data && Array.isArray(response.data)) {
@@ -538,10 +550,12 @@ export default {
               this.queueNames.push({ label: queue.name, value: queue.name })
             })
           }
+          return true
         })
         .catch((error) => {
           console.error('Error fetching queues:', error)
           // Keep default "None" option even if fetch fails
+          return false
         })
     }
 
@@ -678,6 +692,9 @@ export default {
       })
     },
     updatePackets: function () {
+      // Replies to an earlier call (e.g. a target selected right after
+      // another) are ignored
+      const request = ++this.packetsRequest
       if (this.selectedTargetName === 'UNKNOWN') {
         this.packetNames = [this.UNKNOWN]
         this.selectedPacketName = this.packetNames[0].value
@@ -697,6 +714,7 @@ export default {
         this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
       this.api[cmd](this.selectedTargetName, this.hidden)
         .then((names) => {
+          if (request !== this.packetsRequest) return
           this.packetNames = names.map((name) => {
             return {
               label: name,
@@ -738,6 +756,7 @@ export default {
           this.internalDisabled = false
         })
         .catch(() => {
+          if (request !== this.packetsRequest) return
           // The request failed, e.g. the user doesn't have permission on this
           // target. Clear the packets but re-enable the dropdowns so they can
           // select a different target. The error itself is displayed by the
@@ -893,6 +912,40 @@ export default {
       this.emitOnSet()
     },
 
+    // Select a target and packet from code, e.g. a command pasted into
+    // Command Sender. Loads the packet list and details and emits on-set like
+    // a user selection. queueName (cmd mode) is left as is when undefined,
+    // and only selected if it's in the queue list: otherwise the queue is
+    // None and this returns false so the caller can say so. The caller
+    // checks that the target and packet exist.
+    setSelection: function (targetName, packetName, queueName) {
+      let queueSelected = true
+      if (queueName !== undefined) {
+        queueSelected = this.queueNames.some(
+          (queue) => queue.value === queueName,
+        )
+        this.selectedQueueName = queueSelected ? queueName : null
+      }
+      const target = targetName.toUpperCase()
+      const packet = packetName.toUpperCase()
+      // Reloading the packet list disables the dropdowns while it loads, so
+      // only do it for a different target
+      const sameTarget =
+        target === this.selectedTargetName && this.packetNames.length > 0
+      const samePacket = sameTarget && packet === this.selectedPacketName
+      this.selectedTargetName = target
+      this.selectedPacketName = packet
+      this.selectedItemName = ''
+      if (samePacket) {
+        this.emitOnSet()
+      } else if (sameTarget) {
+        this.updatePacketDetails(packet)
+      } else {
+        this.updatePackets()
+      }
+      return queueSelected
+    },
+
     updatePacketDetails: function (value) {
       if (value === 'ALL') {
         this.itemsDisabled = true
@@ -911,13 +964,21 @@ export default {
         if (packet) {
           this.selectedPacketName = packet.value
           const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-          this.api[cmd](this.selectedTargetName, this.selectedPacketName)
+          // Only for the packet still selected when the reply arrives
+          const target = this.selectedTargetName
+          const selected = this.selectedPacketName
+          const current = () =>
+            this.selectedTargetName === target &&
+            this.selectedPacketName === selected
+          this.api[cmd](target, selected)
             .then((packet) => {
+              if (!current()) return
               this.description = packet.description
               this.hazardous = packet.hazardous
               this.hazardousDescription = packet.hazardous_description || ''
             })
             .catch(() => {
+              if (!current()) return
               this.description = ''
               this.hazardous = false
               this.hazardousDescription = ''
