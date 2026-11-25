@@ -56,3 +56,28 @@ class TestScopeModel(unittest.TestCase):
         # Scopes saved before critical_cmd_approvers existed default to 1
         model = ScopeModel.from_json({"name": "DEFAULT", "critical_commanding": "ALL"})
         self.assertEqual(model.critical_cmd_approvers, 1)
+
+    def test_enabled_defaults_to_true(self):
+        self.assertTrue(ScopeModel(name="OTHER").enabled)
+        # Scopes saved before enabled existed are enabled
+        self.assertTrue(ScopeModel.from_json({"name": "OTHER"}).enabled)
+        self.assertTrue(ScopeModel(name="OTHER", enabled="true").enabled)
+        self.assertFalse(ScopeModel(name="OTHER", enabled="false").enabled)
+
+    def test_disabled_scopes(self):
+        ScopeModel(name="DEFAULT").create()
+        ScopeModel(name="ON").create()
+        ScopeModel(name="OFF", enabled=False).create()
+        self.assertEqual(ScopeModel.disabled_scopes(), ["OFF"])
+        self.assertTrue(ScopeModel.scope_enabled("ON"))
+        self.assertFalse(ScopeModel.scope_enabled("OFF"))
+        self.assertTrue(ScopeModel.scope_enabled("MISSING"))
+        self.assertFalse(ScopeModel.get_model("OFF").as_json()["enabled"])
+
+    def test_default_scope_cannot_be_disabled(self):
+        model = ScopeModel(name="DEFAULT")
+        model.create()
+        model.enabled = False
+        with self.assertRaisesRegex(RuntimeError, "DEFAULT scope cannot be disabled"):
+            model.update()
+        self.assertTrue(ScopeModel.scope_enabled("DEFAULT"))

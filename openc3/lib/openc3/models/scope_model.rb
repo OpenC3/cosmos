@@ -88,6 +88,9 @@ module OpenC3
     attr_accessor :critical_commanding
     attr_accessor :critical_cmd_approvers
     attr_accessor :shard
+    # Whether the microservices in this scope run. A disabled scope keeps its
+    # configuration and data but the operators stop all of its microservices.
+    attr_accessor :enabled
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -121,6 +124,19 @@ module OpenC3
       end
     end
 
+    # @return [Array<String>] Names of the scopes which have been disabled
+    def self.disabled_scopes
+      all().select { |_name, json| json['enabled'] == false }.keys
+    end
+
+    # @return [Boolean] Whether the named scope's microservices should run.
+    #   Unknown scopes are reported as enabled.
+    def self.enabled?(name)
+      json = get(name: name)
+      return true unless json
+      json['enabled'] != false
+    end
+
     def initialize(name:,
       text_log_cycle_time: 600,
       text_log_cycle_size: 50_000_000,
@@ -131,6 +147,7 @@ module OpenC3
       critical_commanding: "OFF",
       critical_cmd_approvers: 1,
       shard: 0,
+      enabled: true,
       updated_at: nil)
       super(
         PRIMARY_KEY,
@@ -160,6 +177,8 @@ module OpenC3
         raise "Invalid value for critical_cmd_approvers: #{critical_cmd_approvers} (must be 1 to #{MAX_CRITICAL_CMD_APPROVERS})"
       end
       @shard = shard.to_i # to_i to handle nil
+      # Scopes created before this setting existed are enabled
+      @enabled = !(enabled == false or enabled.to_s.downcase == 'false')
       @children = []
     end
 
@@ -170,6 +189,8 @@ module OpenC3
       raise "Invalid scope name: #{@name} (double underscore not allowed)" if @name.include?("__")
       @name = @name.upcase
       @scope = @name # Ensure @scope matches @name
+      # DEFAULT runs the cluster wide microservices (NOSCOPE logging, periodic, etc)
+      raise "DEFAULT scope cannot be disabled" if @name == "DEFAULT" and !@enabled
       # Ensure the various cycle and retain times are integers
       @text_log_cycle_time = @text_log_cycle_time.to_i
       @text_log_cycle_size = @text_log_cycle_size.to_i
@@ -225,7 +246,8 @@ module OpenC3
        "command_authority" => @command_authority,
        "critical_commanding" => @critical_commanding,
        "critical_cmd_approvers" => @critical_cmd_approvers,
-       "shard" => @shard}
+       "shard" => @shard,
+       "enabled" => @enabled}
     end
 
     # Every scope gets a DEFAULT bridge_microservice: the Iroh hub that lets

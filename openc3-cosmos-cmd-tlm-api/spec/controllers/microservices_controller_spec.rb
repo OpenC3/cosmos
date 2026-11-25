@@ -10,6 +10,7 @@
 
 require "rails_helper"
 require "openc3/models/microservice_model"
+require "openc3/models/scope_model"
 
 RSpec.describe MicroservicesController, type: :controller do
   before(:each) do
@@ -54,6 +55,30 @@ RSpec.describe MicroservicesController, type: :controller do
       post :start, params: {id: "MICRO1"}
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "POST start in a disabled scope" do
+    before(:each) do
+      @micro = OpenC3::MicroserviceModel.new(name: "OTHER__USER__MICRO", enabled: false, scope: "OTHER")
+      @micro.create
+      OpenC3::ScopeModel.new(name: "OTHER", enabled: false).create
+    end
+
+    it "refuses to start the microservice" do
+      post :start, params: {id: "OTHER__USER__MICRO", scope: "OTHER"}
+      expect(response).to have_http_status(:bad_request)
+      expect(JSON.parse(response.body)["message"]).to include("scope OTHER is disabled")
+      expect(OpenC3::MicroserviceModel.get_model(name: "OTHER__USER__MICRO", scope: "OTHER").enabled).to be false
+    end
+
+    it "starts the microservice once the scope is enabled" do
+      model = OpenC3::ScopeModel.get_model(name: "OTHER")
+      model.enabled = true
+      model.update
+      post :start, params: {id: "OTHER__USER__MICRO", scope: "OTHER"}
+      expect(response).to have_http_status(:ok)
+      expect(OpenC3::MicroserviceModel.get_model(name: "OTHER__USER__MICRO", scope: "OTHER").enabled).to be true
     end
   end
 

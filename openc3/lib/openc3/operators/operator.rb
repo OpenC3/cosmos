@@ -278,6 +278,35 @@ module OpenC3
       raise "Implement in subclass"
     end
 
+    # Disable every top level microservice in a disabled scope. The rest of
+    # update then handles them like any other disabled microservice: killed if
+    # running and not spawned until the scope is enabled again. Children aren't
+    # touched as they only run inside their (now disabled) parent.
+    #
+    # @param microservices [Hash] MicroserviceModel.all, updated in place
+    def apply_disabled_scopes(microservices)
+      # Required here as scope_model requires (via process_manager) this file
+      require 'openc3/models/scope_model'
+      disabled_scopes = ScopeModel.disabled_scopes
+      return if disabled_scopes.empty?
+      microservices.each do |microservice_name, microservice_config|
+        next if microservice_config['parent']
+        scope = microservice_name.split("__")[0]
+        microservice_config['enabled'] = false if disabled_scopes.include?(scope)
+      end
+    end
+
+    # Whether a microservice was enabled or disabled between two cycles, which
+    # must be acted on even for a microservice with ignore_changes set
+    #
+    # @param previous_config [Hash] Microservice config from the last cycle
+    # @param config [Hash] Microservice config from this cycle
+    # @return [Boolean]
+    def enabled_changed?(previous_config, config)
+      # A missing enabled (nil) means enabled
+      (previous_config['enabled'] != false) != (config['enabled'] != false)
+    end
+
     # Report cpu and memory for every microservice this operator is running.
     #
     # Microservices that are themselves OpenC3::Microservices could report this

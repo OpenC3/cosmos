@@ -154,6 +154,39 @@ module OpenC3
       end
     end
 
+    describe "enabled" do
+      it "defaults to enabled, including scopes stored before the setting existed" do
+        expect(ScopeModel.new(name: "OTHER").enabled).to be true
+        Store.hset('openc3_scopes', 'OLD', JSON.generate({ 'name' => 'OLD' }))
+        expect(ScopeModel.get_model(name: "OLD").enabled).to be true
+        expect(ScopeModel.enabled?("OLD")).to be true
+      end
+
+      it "accepts string values" do
+        expect(ScopeModel.new(name: "OTHER", enabled: "false").enabled).to be false
+        expect(ScopeModel.new(name: "OTHER", enabled: "true").enabled).to be true
+      end
+
+      it "lists the disabled scopes" do
+        ScopeModel.new(name: "DEFAULT").create
+        ScopeModel.new(name: "ON").create
+        ScopeModel.new(name: "OFF", enabled: false).create
+        expect(ScopeModel.disabled_scopes).to eql ["OFF"]
+        expect(ScopeModel.enabled?("ON")).to be true
+        expect(ScopeModel.enabled?("OFF")).to be false
+        expect(ScopeModel.enabled?("MISSING")).to be true
+        expect(ScopeModel.get_model(name: "OFF").as_json['enabled']).to be false
+      end
+
+      it "doesn't allow the DEFAULT scope to be disabled" do
+        model = ScopeModel.new(name: "DEFAULT")
+        model.create
+        model.enabled = false
+        expect { model.update }.to raise_error("DEFAULT scope cannot be disabled")
+        expect(ScopeModel.enabled?("DEFAULT")).to be true
+      end
+    end
+
     describe "update" do
       it "updates command_authority and works in core" do
         model = ScopeModel.new(name: "DEFAULT", command_authority: true, critical_commanding: "ALL", updated_at: 12345)
@@ -177,6 +210,7 @@ module OpenC3
         expect(json['name']).to eql "DEFAULT"
         expect(json['updated_at']).to eql 12345
         expect(json['critical_cmd_approvers']).to eql 1
+        expect(json['enabled']).to be true
       end
     end
 
