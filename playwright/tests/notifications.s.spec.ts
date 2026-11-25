@@ -37,7 +37,11 @@ async function runLog(page: Page, ruby: string) {
 // own out-of-limits telemetry (which would raise unrelated limit alerts and
 // pollute the toasts these tests assert on). Runs in its own authenticated
 // context since before/afterAll have no test-scoped page.
-async function setQuiet(browser: Browser, baseURL: string | undefined, state: string) {
+async function setQuiet(
+  browser: Browser,
+  baseURL: string | undefined,
+  state: string,
+) {
   const context = await browser.newContext({ storageState: STORAGE_STATE })
   const page = await context.newPage()
   await page.goto(`${baseURL}/tools/scriptrunner`, {
@@ -230,6 +234,120 @@ test('acking a toast marks the same alert read in the menu (event round trip)', 
   await expect(
     menuRow(page, alertText).locator('[data-test=ack-notification]'),
   ).toHaveCount(0)
+})
+
+// Open a second tab of the same tool in the same browser context, which shares
+// localStorage and BroadcastChannel with the fixture's page like a real tab.
+async function openSecondTab(page: Page) {
+  const second = await page.context().newPage()
+  await second.goto(page.url(), { waitUntil: 'domcontentloaded' })
+  await expect(second.locator('.v-app-bar')).toContainText('Script Runner', {
+    timeout: 60000,
+  })
+  return second
+}
+
+test('acking a toast in one tab acks the alert in other tabs', async ({
+  page,
+  utils,
+}) => {
+  // Budget: 60s second-tab boot + two 20s toast waits + ack assertions.
+  test.setTimeout(120000)
+  const second = await openSecondTab(page)
+  const alertText = 'Playwright cross-tab toast ack'
+  await runLog(
+    page,
+    `OpenC3::Logger.error("${alertText}", type: OpenC3::Logger::ALERT)`,
+  )
+  const toast = page.locator('[data-test=toast]', { hasText: alertText })
+  const secondToast = second.locator('[data-test=toast]', {
+    hasText: alertText,
+  })
+  await expect(toast).toBeVisible({ timeout: 20000 })
+  await expect(secondToast).toBeVisible({ timeout: 20000 })
+
+  // Acknowledging in the first tab clears the toast and the menu Ack button
+  // in the second without touching it.
+  await toast.getByRole('button', { name: 'Acknowledge' }).click()
+  await expect(toast).toBeHidden()
+  await expect(secondToast).toBeHidden()
+  await second.locator('[data-test=notifications]').click()
+  await expect(menuRow(second, alertText)).toBeVisible()
+  await expect(
+    menuRow(second, alertText).locator('[data-test=ack-notification]'),
+  ).toHaveCount(0)
+  await second.close()
+})
+
+test('acking an alert from the menu in one tab acks it in other tabs', async ({
+  page,
+  utils,
+}) => {
+  // Budget: 60s second-tab boot + two 20s toast waits + ack assertions.
+  test.setTimeout(120000)
+  const second = await openSecondTab(page)
+  const alertText = 'Playwright cross-tab menu ack'
+  await runLog(
+    page,
+    `OpenC3::Logger.error("${alertText}", type: OpenC3::Logger::ALERT)`,
+  )
+  const toast = page.locator('[data-test=toast]', { hasText: alertText })
+  const secondToast = second.locator('[data-test=toast]', {
+    hasText: alertText,
+  })
+  await expect(toast).toBeVisible({ timeout: 20000 })
+  await expect(secondToast).toBeVisible({ timeout: 20000 })
+
+  await page.locator('[data-test=notifications]').click()
+  const ack = menuRow(page, alertText).locator('[data-test=ack-notification]')
+  await expect(ack).toBeVisible()
+  await ack.click()
+  await expect(ack).toHaveCount(0)
+  await expect(toast).toBeHidden()
+  await expect(secondToast).toBeHidden()
+  await second.locator('[data-test=notifications]').click()
+  await expect(menuRow(second, alertText)).toBeVisible()
+  await expect(
+    menuRow(second, alertText).locator('[data-test=ack-notification]'),
+  ).toHaveCount(0)
+  await second.close()
+})
+
+test('Acknowledge All in one tab acks those alerts in other tabs', async ({
+  page,
+  utils,
+}) => {
+  // Budget: 60s second-tab boot + multi-toast waits + ack-all assertions.
+  test.setTimeout(120000)
+  const second = await openSecondTab(page)
+  const textA = 'Playwright cross-tab ack-all A'
+  const textB = 'Playwright cross-tab ack-all B'
+  await runLog(
+    page,
+    `OpenC3::Logger.error("${textA}", type: OpenC3::Logger::ALERT)\n` +
+      `OpenC3::Logger.error("${textB}", type: OpenC3::Logger::ALERT)`,
+  )
+  const secondToastA = second.locator('[data-test=toast]', { hasText: textA })
+  const secondToastB = second.locator('[data-test=toast]', { hasText: textB })
+  await expect(secondToastA).toBeVisible({ timeout: 20000 })
+  await expect(secondToastB).toBeVisible()
+  // Wait for the first tab to have both alerts too, so Acknowledge All
+  // covers them.
+  await expect(
+    page.locator('[data-test=toast]', { hasText: textB }),
+  ).toBeVisible()
+
+  await page.locator('[data-test=notifications]').click()
+  await page.locator('[data-test=ack-all-notifications]').click()
+  await expect(secondToastA).toBeHidden()
+  await expect(secondToastB).toBeHidden()
+  await second.locator('[data-test=notifications]').click()
+  await expect(
+    second.locator(
+      '[data-test=notification-list] [data-test=ack-notification]',
+    ),
+  ).toHaveCount(0)
+  await second.close()
 })
 
 test('acknowledging an alert from the menu marks it read and clears its toast', async ({

@@ -244,6 +244,7 @@ export default {
       scriptCable: new Cable('/script-api/cable'),
       subscription: null,
       scriptSubscription: null,
+      ackChannel: null,
       numScripts: 0,
       notifications: [],
       showNotificationPane: false,
@@ -326,6 +327,14 @@ export default {
       localStorage.toastPosition === 'bottom' ? 'bottom' : 'top'
     // Acknowledging an alert from its toast also acks it in the menu
     window.addEventListener('openc3-ack-alert', this.onAckAlert)
+    // Other tabs share the persisted acks in localStorage but not this tab's
+    // alert list or toasts, so tell them about each ack as it happens
+    if (typeof BroadcastChannel !== 'undefined') {
+      this.ackChannel = new BroadcastChannel(
+        `openc3-alert-acks-${window.openc3Scope}`,
+      )
+      this.ackChannel.onmessage = this.onRemoteAck
+    }
     this.subscribe()
     // Get the initial number of running scripts
     Api.get('/script-api/running-script')
@@ -336,6 +345,7 @@ export default {
   },
   unmounted: function () {
     window.removeEventListener('openc3-ack-alert', this.onAckAlert)
+    this.ackChannel?.close()
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -376,8 +386,31 @@ export default {
     ackNotification: function (notification) {
       this.acknowledgeAlert(notification)
       this.persistStreamOffset()
+      this.broadcastAcks([notification.msg_id])
       // Also dismiss the matching toast if it's still showing
       this.$notify?.dismiss((toast) => toast.msg_id === notification.msg_id)
+    },
+    // Tell this browser's other tabs which alerts were just acknowledged.
+    broadcastAcks: function (msgIds) {
+      if (msgIds.length) {
+        this.ackChannel?.postMessage({ msg_ids: msgIds })
+      }
+    },
+    // Handles alerts acknowledged in another tab. BroadcastChannel doesn't
+    // deliver to the sender, so this never sees this tab's own acks.
+    onRemoteAck: function (event) {
+      const msgIds = new Set(event.data?.msg_ids || [])
+      if (!msgIds.size) {
+        return
+      }
+      msgIds.forEach((msgId) => this.persistAckedAlert(msgId))
+      this.notifications.forEach((notification) => {
+        if (msgIds.has(notification.msg_id)) {
+          notification.read = true
+        }
+      })
+      this.persistStreamOffset()
+      this.$notify?.dismiss((toast) => msgIds.has(toast.msg_id))
     },
     // Handles an alert acknowledged from its toast (fired in the Toast app
     // instance) so the menu marks the same alert read.
@@ -394,14 +427,20 @@ export default {
         this.persistAckedAlert(msgId)
       }
       this.persistStreamOffset()
+      this.broadcastAcks([msgId])
     },
     ackAllAlerts: function () {
+      const msgIds = []
       this.notifications.forEach((notification) => {
         if (notification.type === 'alert' && !notification.read) {
           this.acknowledgeAlert(notification)
+          msgIds.push(notification.msg_id)
         }
       })
       this.persistStreamOffset()
+      // Send the ids rather than "ack all" so another tab doesn't ack an alert
+      // that reached it but not this tab yet, which the user hasn't seen
+      this.broadcastAcks(msgIds)
       this.$notify?.dismiss((toast) => toast.type === 'alert')
     },
     // The reconnect stream offset must sit just below the oldest
