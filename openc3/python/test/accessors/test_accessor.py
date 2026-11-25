@@ -10,7 +10,11 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+from decimal import Decimal
+from fractions import Fraction
 from unittest.mock import Mock
+
+import numpy as np
 
 from openc3.accessors.accessor import Accessor
 
@@ -120,8 +124,10 @@ class TestAccessor(unittest.TestCase):
         for data_type, values in cases.items():
             item.data_type = data_type
             for value in values:
-                padded = "-000" + str(-value) if value < 0 else "000" + str(value)
-                for input_value in (value, str(value), padded):
+                spaced = f"  {value}\n"
+                zero_padded = f"-000{-value}" if value < 0 else f"000{value}"
+                inputs = (value, str(value), spaced, zero_padded, hex(value), Decimal(value), str(value).encode())
+                for input_value in inputs:
                     with self.subTest(data_type=data_type, value=input_value):
                         self.assertEqual(Accessor.convert_to_type(input_value, item), value)
 
@@ -135,8 +141,37 @@ class TestAccessor(unittest.TestCase):
                 with self.subTest(data_type=data_type, values=input_values):
                     self.assertEqual(Accessor.convert_to_type(input_values, item), values)
 
-    def test_preserves_fractional_integer_conversion(self):
-        cases = [(3.7, 3), (-3.7, -3), ("3.7", 3), ("-3.7", -3), ("1e3", 1000), ("010", 10), (True, 1), (False, 0)]
+    def test_preserves_numpy_integer_values(self):
+        cases = {
+            "INT": [np.int64(-(2**63)), np.int64(-(2**53 + 1)), np.int64(2**63 - 1), np.int8(-5)],
+            "UINT": [np.uint64(2**53 + 1), np.uint64(2**64 - 1), np.uint8(255)],
+        }
+        item = Mock()
+        for data_type, values in cases.items():
+            item.data_type = data_type
+            for value in values:
+                with self.subTest(data_type=data_type, value=value):
+                    item.array_size = None
+                    result = Accessor.convert_to_type(value, item)
+                    self.assertEqual(result, int(value))
+                    self.assertIs(type(result), int)
+            with self.subTest(data_type=data_type, values=values):
+                item.array_size = 64 * len(values)
+                self.assertEqual(Accessor.convert_to_type(np.array(values), item), [int(v) for v in values])
+
+    def test_truncates_non_integer_numbers(self):
+        cases = [
+            (3.7, 3),
+            (-3.7, -3),
+            (np.float64(3.7), 3),
+            (np.float32(-3.7), -3),
+            (Decimal("3.7"), 3),
+            (Decimal("-3.7"), -3),
+            (Decimal("18446744073709551615.9"), 2**64 - 1),
+            (Fraction(7, 2), 3),
+            (True, 1),
+            (False, 0),
+        ]
         item = Mock()
         for data_type in ("INT", "UINT"):
             item.data_type = data_type
@@ -149,11 +184,83 @@ class TestAccessor(unittest.TestCase):
                     item.array_size = 64
                     self.assertEqual(Accessor.convert_to_type([value], item), [expected])
 
-    def test_rejects_non_decimal_integer_strings(self):
+    def test_rejects_non_finite_numbers(self):
+        item = Mock(data_type="INT", array_size=None)
+        for value in (float("nan"), Decimal("NaN")):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                Accessor.convert_to_type(value, item)
+        for value in (float("inf"), float("-inf"), Decimal("Infinity")):
+            with self.subTest(value=value), self.assertRaises(OverflowError):
+                Accessor.convert_to_type(value, item)
+
+    # These cases match convert_to_int in accessor.rb
+    def test_parses_integer_strings(self):
+        cases = [
+            ("0", 0),
+            ("-0", 0),
+            ("+10", 10),
+            (" -10\n", -10),
+            ("1_000", 1000),
+            ("0x10", 16),
+            ("-0X1f", -31),
+            ("0x1_F", 31),
+            ("0b101", 5),
+            ("0B1_0", 2),
+            ("0o17", 15),
+            ("010", 10),
+            ("-010", -10),
+            ("0_10", 10),
+            ("08", 8),
+            ("0089", 89),
+            ("-007", -7),
+            ("\n0042\t", 42),
+            ("0x010", 16),
+            ("00", 0),
+            ("0d10", 10),
+            ("0D09", 9),
+            (b"0x10", 16),
+            (bytearray(b"42"), 42),
+        ]
         item = Mock()
         for data_type in ("INT", "UINT"):
             item.data_type = data_type
-            for value in ("0x10", "0b10", "invalid"):
+            for value, expected in cases:
+                with self.subTest(data_type=data_type, value=value):
+                    item.array_size = None
+                    self.assertEqual(Accessor.convert_to_type(value, item), expected)
+                    item.array_size = 64
+                    self.assertEqual(Accessor.convert_to_type([value], item), [expected])
+
+    def test_rejects_non_integer_strings(self):
+        cases = [
+            "3.7",
+            "-3.7",
+            "1.0",
+            "1e3",
+            "0o8",
+            "00x10",
+            "0b2",
+            "0xg",
+            "0x",
+            "0x_10",
+            "0__10",
+            "1__000",
+            "_1",
+            "1_",
+            "- 10",
+            "--10",
+            "1 0",
+            "",
+            "   ",
+            "invalid",
+            "\u00a010",
+            "\u0661\u0662",
+            "10\x00",
+        ]
+        item = Mock()
+        for data_type in ("INT", "UINT"):
+            item.data_type = data_type
+            for value in cases:
                 with self.subTest(data_type=data_type, value=value):
                     item.array_size = None
                     with self.assertRaises(ValueError):

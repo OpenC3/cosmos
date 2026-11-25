@@ -9,6 +9,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import signal
+import subprocess
+import sys
 import time
 import unittest
 from unittest.mock import *
@@ -130,3 +133,67 @@ class TestMicroservice(unittest.TestCase):
                 Microservice("DEFAULT__TYPE__NAME", is_plugin=True)
         finally:
             del os.environ["OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT"]
+
+
+# Runs in a subprocess so the SIGTERM doesn't hit the test runner
+SIGTERM_CHILD = """
+import os
+import time
+
+from test.test_helper import mock_redis
+
+
+class Cleanups:
+    def addCleanup(self, *args, **kwargs):
+        pass
+
+
+mock_redis(Cleanups())
+
+from openc3.microservices.microservice import Microservice
+
+
+class SigtermMicroservice(Microservice):
+    def run(self):
+        print("running", flush=True)
+        while not self.cancel_thread:
+            time.sleep(0.05)
+
+    def shutdown(self, state="STOPPED"):
+        print("shutdown ran", flush=True)
+        super().shutdown(state)
+
+
+os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
+SigtermMicroservice.class_run()
+"""
+
+
+class TestMicroserviceSigterm(unittest.TestCase):
+    def test_shuts_down_on_sigterm(self):
+        # Kubernetes stops a microservice's pod with SIGTERM. Python skips atexit
+        # handlers when SIGTERM kills it, so shutdown must still run or the
+        # microservice and interface status are left RUNNING and CONNECTED.
+        python_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        process = subprocess.Popen(
+            [sys.executable, "-c", SIGTERM_CHILD],
+            cwd=python_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        assert process.stdout is not None and process.stderr is not None
+        try:
+            # Log messages also go to stdout so read until run has started
+            for line in process.stdout:
+                if line.strip() == "running":
+                    break
+            else:
+                self.fail(f"Microservice never ran: {process.stderr.read()}")
+            process.send_signal(signal.SIGTERM)
+            stdout, stderr = process.communicate(timeout=30)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.communicate()
+        self.assertIn("shutdown ran", stdout, stderr)

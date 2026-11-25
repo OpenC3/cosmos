@@ -100,6 +100,71 @@ module OpenC3
         expect(Accessor.convert_to_type(0, item)).to eql 0
       end
 
+      # Python's accessor.py matches these cases, keep the two in sync
+      it "preserves large INT and UINT values" do
+        item = OpenStruct.new
+        { INT: [-(2**63), -((2**53) + 1), (2**53) + 1, (2**63) - 1],
+          UINT: [(2**53) + 1, (2**63) - 1, (2**64) - 1] }.each do |data_type, values|
+          item.data_type = data_type
+          values.each do |value|
+            item.array_size = nil
+            zero_padded = value.negative? ? "-000#{-value}" : "000#{value}"
+            [value, value.to_s, "  #{value}\n", zero_padded, BigDecimal(value)].each do |input|
+              expect(Accessor.convert_to_type(input, item)).to eql value
+            end
+            item.array_size = 64
+            expect(Accessor.convert_to_type([value.to_s], item)).to eql [value]
+            expect(Accessor.convert_to_type("[#{value}]", item)).to eql [value]
+          end
+        end
+      end
+
+      it "truncates non-integer INT and UINT numbers" do
+        item = OpenStruct.new
+        item.data_type = :INT
+        item.array_size = nil
+        expect(Accessor.convert_to_type(3.7, item)).to eql 3
+        expect(Accessor.convert_to_type(-3.7, item)).to eql(-3)
+        expect(Accessor.convert_to_type(BigDecimal("3.7"), item)).to eql 3
+        expect(Accessor.convert_to_type(BigDecimal("18446744073709551615.9"), item)).to eql((2**64) - 1)
+        expect(Accessor.convert_to_type(Rational(7, 2), item)).to eql 3
+        expect { Accessor.convert_to_type(Float::NAN, item) }.to raise_error(FloatDomainError)
+        expect { Accessor.convert_to_type(Float::INFINITY, item) }.to raise_error(FloatDomainError)
+      end
+
+      it "parses INT and UINT strings as integer literals" do
+        item = OpenStruct.new
+        cases = { "0" => 0, "-0" => 0, "+10" => 10, " -10\n" => -10, "1_000" => 1000,
+                  "0x10" => 16, "-0X1f" => -31, "0x1_F" => 31, "0b101" => 5, "0B1_0" => 2,
+                  "0o17" => 15, "010" => 10, "-010" => -10, "0_10" => 10, "08" => 8,
+                  "0089" => 89, "-007" => -7, "\n0042\t" => 42, "0x010" => 16, "00" => 0,
+                  "0d10" => 10, "0D09" => 9 }
+        %i(INT UINT).each do |data_type|
+          item.data_type = data_type
+          cases.each do |input, expected|
+            item.array_size = nil
+            expect(Accessor.convert_to_type(input, item)).to eql expected
+            item.array_size = 64
+            expect(Accessor.convert_to_type([input], item)).to eql [expected]
+          end
+        end
+      end
+
+      it "rejects INT and UINT strings that are not integer literals" do
+        item = OpenStruct.new
+        cases = ["3.7", "-3.7", "1.0", "1e3", "0o8", "00x10", "0b2", "0xg", "0x", "0x_10", "0__10",
+                 "1__000", "_1", "1_", "- 10", "--10", "1 0", "", "   ", "invalid", " 10"]
+        %i(INT UINT).each do |data_type|
+          item.data_type = data_type
+          cases.each do |input|
+            item.array_size = nil
+            expect { Accessor.convert_to_type(input, item) }.to raise_error(ArgumentError)
+            item.array_size = 64
+            expect { Accessor.convert_to_type([input], item) }.to raise_error(ArgumentError)
+          end
+        end
+      end
+
       it "leaves FLOAT values unchanged" do
         item = OpenStruct.new
         item.data_type = :FLOAT

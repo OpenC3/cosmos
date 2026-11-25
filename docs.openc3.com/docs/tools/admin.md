@@ -167,3 +167,7 @@ The Roles tab allows users to create custom roles for role-based access control 
 The Scopes tab allows users to create scopes which define data boundaries between separate environments. This enables a single COSMOS deployment to manage multiple environments with isolated data (e.g., separate constellations). Scopes can be added using the top dialog, and scope configurations can be managed here. Users can toggle between their scopes from the top-right scopes dropdown. [Command Authority](../configuration/command.md#command-authority-enterprise) and [Critical Commanding](../configuration/command.md#critical-commanding-enterprise) can also be configured per scope from this tab.
 
 ![Scopes](/img/admin/scopes.png)
+
+#### Disabling a Scope
+
+Scopes that are only needed occasionally can be disabled to free the resources their microservices use. Turn off the **Enabled** switch and click **Update Scope**. COSMOS stops every microservice in the scope, including interfaces, routers, decom, logging, and plugin microservices. The scope's plugins, configuration, and logged data are kept, and the scope stays disabled across restarts until it is enabled again. Enabling the scope starts its microservices again, except ones that were individually stopped from the [Microservices](#microservices) tab. Microservices in a disabled scope can't be started from the Microservices tab. The DEFAULT scope can't be disabled because it runs microservices used by every scope.
