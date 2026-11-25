@@ -14,6 +14,7 @@ import contextlib
 import json
 import os
 import shutil
+import signal
 import sys
 import tempfile
 import threading
@@ -64,8 +65,26 @@ class Microservice:
             if microservice:
                 MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
 
+    @staticmethod
+    def exit_on_sigterm() -> None:
+        """Make SIGTERM exit normally so the atexit shutdown handlers run.
+
+        Kubernetes stops a microservice's pod with SIGTERM. Python's default
+        SIGTERM action ends the process without running atexit handlers, so
+        shutdown never ran and the microservice and interface status stayed
+        RUNNING and CONNECTED. Ruby runs at_exit on SIGTERM so it doesn't
+        need this. Only replaces the default handler, and only from the main
+        thread (the only one that can set signal handlers).
+        """
+        if threading.current_thread() is not threading.main_thread():
+            return
+        if signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL:
+            return
+        signal.signal(signal.SIGTERM, lambda signum, _frame: sys.exit(128 + signum))
+
     @classmethod
     def class_run(cls, name=None):
+        cls.exit_on_sigterm()
         microservice = None
         if name is None:
             name = os.environ.get("OPENC3_MICROSERVICE_NAME")
