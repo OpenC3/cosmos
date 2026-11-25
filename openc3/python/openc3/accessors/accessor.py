@@ -10,8 +10,31 @@
 # if purchased from OpenC3, Inc.
 
 from ast import literal_eval
+from typing import Any
 
 from openc3.config.config_parser import ConfigParser
+
+
+def _convert_to_int(value: Any) -> int:
+    """Convert integers and decimal integer strings without losing precision.
+
+    Args:
+        value: The numeric value to convert.
+
+    Returns:
+        The integer value, truncating fractional inputs toward zero.
+
+    Raises:
+        TypeError: The value does not support numeric conversion.
+        ValueError: The value is not numeric or is NaN.
+        OverflowError: The value converts to an infinite float.
+    """
+    if isinstance(value, (int, str)):
+        try:
+            return int(value)
+        except ValueError:
+            pass
+    return int(float(value))
 
 
 class Accessor:
@@ -85,7 +108,22 @@ class Accessor:
         return values
 
     @classmethod
-    def convert_to_type(cls, value, item):
+    def convert_to_type(cls, value: Any, item: Any) -> Any:
+        """Convert a value to the data type declared by an item.
+
+        Args:
+            value: The scalar or array value to convert, or None.
+            item: An item providing data_type and array_size attributes.
+
+        Returns:
+            The converted value, preserving None and exact integer inputs.
+
+        Raises:
+            TypeError: The data type or value does not support conversion.
+            ValueError: A value cannot be parsed or converted to the requested type.
+            SyntaxError: A string is not a valid Python literal.
+            OverflowError: A numeric value cannot be converted without overflow.
+        """
         if value is None:
             return None
         match item.data_type:
@@ -134,9 +172,9 @@ class Accessor:
                 if item.array_size is not None:
                     if isinstance(value, str):
                         value = literal_eval(value)
-                    value = [int(float(x)) for x in value]
+                    value = [_convert_to_int(x) for x in value]
                 else:
-                    value = int(float(value))
+                    value = _convert_to_int(value)
             case "FLOAT":
                 if item.array_size is not None:
                     if isinstance(value, str):

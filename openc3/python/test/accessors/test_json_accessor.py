@@ -31,8 +31,60 @@ class TestJsonAccessor(unittest.TestCase):
         self.hash_data = bytearray('{"test":"one"}', encoding="utf-8")
         self.array_data = bytearray("[4, 3, 2, 1]", encoding="utf-8")
         self.Json = namedtuple("Json", ("name", "key", "data_type", "array_size"))
+        self.large_integers = {
+            "INT": [-(2**63), -(2**63) + 1, -(2**53 + 1), 2**53 + 1, 2**63 - 1],
+            "UINT": [2**53 + 1, 2**63 - 1, 2**64 - 1],
+        }
 
-    def test_should_return_None_for_an_item_that_does_not_exist(self):
+    def test_should_read_64_bit_integers(self):
+        for data_type, values in self.large_integers.items():
+            scalar = self.Json("item", "$.n", data_type, None)
+            array = self.Json("item", "$.n", data_type, 64 * len(values))
+            for value in values:
+                for input_value in (value, str(value)):
+                    with self.subTest(data_type=data_type, value=input_value):
+                        data = bytearray(json.dumps({"n": input_value}), "utf-8")
+                        self.assertEqual(JsonAccessor.class_read_item(scalar, data), value)
+            for input_values in (values, [str(value) for value in values]):
+                with self.subTest(data_type=data_type, values=input_values):
+                    data = bytearray(json.dumps({"n": input_values}), "utf-8")
+                    self.assertEqual(JsonAccessor.class_read_item(array, data), values)
+
+    def test_should_write_64_bit_integers(self):
+        for data_type, values in self.large_integers.items():
+            scalar = self.Json("item", "$.n", data_type, None)
+            array = self.Json("item", "$.n", data_type, 64 * len(values))
+            for value in values:
+                for input_value in (value, str(value)):
+                    with self.subTest(data_type=data_type, value=input_value):
+                        data = bytearray(b'{"n":0}')
+                        JsonAccessor.class_write_item(scalar, input_value, data)
+                        self.assertEqual(json.loads(data)["n"], value)
+                        self.assertEqual(JsonAccessor.class_read_item(scalar, data), value)
+            for input_values in (values, [str(value) for value in values]):
+                with self.subTest(data_type=data_type, values=input_values):
+                    data = bytearray(b'{"n":[]}')
+                    JsonAccessor.class_write_item(array, input_values, data)
+                    self.assertEqual(json.loads(data)["n"], values)
+                    self.assertEqual(JsonAccessor.class_read_item(array, data), values)
+
+    def test_should_preserve_64_bit_integers_in_packets(self):
+        for data_type, values in self.large_integers.items():
+            for value in values:
+                with self.subTest(data_type=data_type, value=value):
+                    packet = Packet("tgt", "pkt")
+                    item = PacketItem("n", 0, 64, data_type, "BIG_ENDIAN")
+                    item.key = "$.n"
+                    packet.define(item)
+                    packet.accessor = JsonAccessor()
+                    packet.template = json.dumps({"n": value}).encode()
+                    packet.restore_defaults()
+                    self.assertEqual(packet.read("n"), value)
+                    packet.write("n", value)
+                    self.assertEqual(json.loads(packet.buffer)["n"], value)
+                    self.assertEqual(packet.read("n"), value)
+
+    def test_should_return_none_for_an_item_that_does_not_exist(self):
         item = self.Json("item", "$.packet.nope", "INT", None)
         self.assertIsNone(JsonAccessor.class_read_item(item, self.hash_data))
 

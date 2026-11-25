@@ -111,6 +111,57 @@ class TestAccessor(unittest.TestCase):
         self.assertEqual(Accessor.convert_to_type("[1, 2, 3]", item), [1, 2, 3])
         self.assertEqual(Accessor.convert_to_type([1, 2, 3], item), [1, 2, 3])
 
+    def test_preserves_large_integer_values(self):
+        item = Mock(array_size=None)
+        cases = {
+            "INT": [-(2**63), -(2**63) + 1, -(2**53 + 1), 2**53 + 1, 2**63 - 1],
+            "UINT": [2**53 + 1, 2**63 - 1, 2**64 - 1],
+        }
+        for data_type, values in cases.items():
+            item.data_type = data_type
+            for value in values:
+                padded = "-000" + str(-value) if value < 0 else "000" + str(value)
+                for input_value in (value, str(value), padded):
+                    with self.subTest(data_type=data_type, value=input_value):
+                        self.assertEqual(Accessor.convert_to_type(input_value, item), value)
+
+    def test_preserves_large_integer_array_values(self):
+        item = Mock(array_size=192)
+        cases = {"INT": [-(2**63) + 1, -(2**53 + 1), 2**63 - 1], "UINT": [2**53 + 1, 2**63 - 1, 2**64 - 1]}
+        for data_type, values in cases.items():
+            item.data_type = data_type
+            strings = [str(value) for value in values]
+            for input_values in (values, strings, str(values), str(strings)):
+                with self.subTest(data_type=data_type, values=input_values):
+                    self.assertEqual(Accessor.convert_to_type(input_values, item), values)
+
+    def test_preserves_fractional_integer_conversion(self):
+        cases = [(3.7, 3), (-3.7, -3), ("3.7", 3), ("-3.7", -3), ("1e3", 1000), ("010", 10), (True, 1), (False, 0)]
+        item = Mock()
+        for data_type in ("INT", "UINT"):
+            item.data_type = data_type
+            for value, expected in cases:
+                with self.subTest(data_type=data_type, value=value):
+                    item.array_size = None
+                    result = Accessor.convert_to_type(value, item)
+                    self.assertEqual(result, expected)
+                    self.assertIs(type(result), int)
+                    item.array_size = 64
+                    self.assertEqual(Accessor.convert_to_type([value], item), [expected])
+
+    def test_rejects_non_decimal_integer_strings(self):
+        item = Mock()
+        for data_type in ("INT", "UINT"):
+            item.data_type = data_type
+            for value in ("0x10", "0b10", "invalid"):
+                with self.subTest(data_type=data_type, value=value):
+                    item.array_size = None
+                    with self.assertRaises(ValueError):
+                        Accessor.convert_to_type(value, item)
+                    item.array_size = 64
+                    with self.assertRaises(ValueError):
+                        Accessor.convert_to_type([value], item)
+
     def test_converts_float_array_values(self):
         item = Mock()
         item.data_type = "FLOAT"
