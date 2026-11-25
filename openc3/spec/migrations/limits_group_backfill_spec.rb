@@ -143,6 +143,36 @@ module OpenC3
       expect(items).not_to include("TEMPS")
     end
 
+    it "removes a stored group no target defines whose name can't be a LIMITS_GROUP item" do
+      # INST__GHOST would otherwise become INST's group GHOST, which INST doesn't define
+      Store.hset("DEFAULT__limits_groups", "INST__GHOST", JSON.generate([%w(INST HEALTH_STATUS TEMP2)]))
+      Store.hset("DEFAULT__limits_groups", "BAD.NAME", JSON.generate([%w(INST HEALTH_STATUS TEMP3)]))
+      Store.hset("DEFAULT__limits_groups", "ORPHAN", JSON.generate([%w(INST HEALTH_STATUS TEMP4)]))
+      warnings = []
+      allow(Logger).to receive(:warn) { |message| warnings << message }
+      LimitsGroupBackfill.run
+      expect(warnings.sort).to eql [
+        "Removed LIMITS_GROUP BAD.NAME in scope DEFAULT: no target defines it and the name cannot contain '.' since the time-series database replaces it with an underscore.",
+        "Removed LIMITS_GROUP INST__GHOST in scope DEFAULT: no target defines it and the name cannot contain a double underscore ('__').",
+      ]
+      # A valid name stays a group stored before groups were owned by a target
+      expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(ORPHAN SYSTEM__POWER SYSTEM__TEMPS)
+      expect(Store.hexists("DEFAULT__openc3tlm__INST", "LIMITS_GROUP")).to be false
+    end
+
+    it "warns about a group the target defines which isn't stored" do
+      # e.g. INST2 also defined HEATERS and uninstalling it deleted the shared key
+      model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
+      model.limits_groups = %w(HEATERS)
+      model.update
+      warnings = []
+      allow(Logger).to receive(:warn) { |message| warnings << message }
+      LimitsGroupBackfill.run
+      expect(warnings).to eql ["Removed LIMITS_GROUP HEATERS of target INST in scope DEFAULT: its definition isn't stored. Reinstall the target to use it."]
+      expect(TargetModel.get_model(name: 'INST', scope: 'DEFAULT').limits_groups).to eql []
+      expect(Store.hexists("DEFAULT__openc3tlm__INST", "LIMITS_GROUP")).to be false
+    end
+
     it "adds the LIMITS_GROUP packet to the target's TSDB microservice" do
       MicroserviceModel.new(name: "DEFAULT__TSDB__SYSTEM", topics: ["DEFAULT__DECOM__{SYSTEM}__HEALTH"], scope: "DEFAULT").create
       allow(Topic).to receive(:write_topic).and_call_original

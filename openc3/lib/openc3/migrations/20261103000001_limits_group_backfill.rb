@@ -106,10 +106,25 @@ module OpenC3
       # Before groups were owned by a target they were stored by name alone
       owners = Hash.new { |hash, group| hash[group] = [] }
       models.each do |target_name, model|
-        (model.limits_groups || []).each { |group| owners[group] << target_name if groups[group] }
+        (model.limits_groups || []).each do |group|
+          if groups[group]
+            owners[group] << target_name
+          else
+            # e.g. another target defined it too and uninstalling that one deleted it
+            Logger.warn("Removed LIMITS_GROUP #{group} of target #{target_name} in scope #{scope}: its definition isn't stored. Reinstall the target to use it.")
+          end
+        end
       end
       rekeyed = {}
       legacy = Set.new
+      # A stored group no target defines would be read as TARGET__GROUP if its name
+      # contains '__' so remove it if it can't be a group. Others stay ownerless.
+      groups.each_key do |group|
+        next if owners.key?(group) or !(error = PacketConfig.limits_group_name_error(group))
+
+        Logger.warn("Removed LIMITS_GROUP #{group} in scope #{scope}: no target defines it and the name #{error}.")
+        legacy << group
+      end
       owners.each do |group, target_names|
         legacy << group
         target_names.each do |target_name|
