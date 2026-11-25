@@ -156,7 +156,9 @@ class TestMultiMicroservice(unittest.TestCase):
         # Its own setup would build an empty System, and the first setup decides
         # which targets System has, so only run sets it up (for its children)
         with patch("openc3.microservices.microservice.System") as system:
-            MultiMicroservice(NAME)
+            mm = MultiMicroservice(NAME)
+        # Stop its status thread so it doesn't write into later tests' stores
+        self.addCleanup(mm.shutdown)
         system.setup_targets.assert_not_called()
 
     def test_waits_for_a_shutdown_if_it_has_no_children(self):
