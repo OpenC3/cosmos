@@ -1355,11 +1355,12 @@ module OpenC3
       filename = 'decom_microservice.rb'
       work_dir = '/openc3/lib/openc3/microservices'
       language_cmd = target.language
+      microservice_parent = parent
       if target.language == 'python'
         filename = 'decom_microservice.py'
         work_dir.sub!('openc3/lib', 'openc3/python')
         # Python can't run in a Ruby MULTI so runs standalone or in the group's Python MULTI
-        parent = @python_parent
+        microservice_parent = @python_parent
         # Use venv Python to ensure editable packages are found
         language_cmd = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       end
@@ -1374,7 +1375,7 @@ module OpenC3
         topics: topics,
         target_names: [@name],
         plugin: @plugin,
-        parent: parent,
+        parent: microservice_parent,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
         db_shard: @db_shard,
@@ -1382,7 +1383,7 @@ module OpenC3
       )
       microservice.create
       microservice.deploy(gem_path, variables)
-      @children << microservice_name if parent
+      @children << microservice_name if microservice_parent
       Logger.info "Configured microservice #{microservice_name}"
     end
 

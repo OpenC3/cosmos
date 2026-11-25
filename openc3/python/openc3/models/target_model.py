@@ -527,10 +527,8 @@ class TargetModel(Model):
         are put back for the next sync."""
         try:
             for target_name, packet_data in sync_data.items():
-                for packet_name in list(packet_data):
-                    TargetModel.increment_telemetry_count(
-                        target_name, packet_name, packet_data[packet_name], scope=scope
-                    )
+                for packet_name, count in packet_data.copy().items():
+                    TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
                     del packet_data[packet_name]
         except Exception:
             with cls.sync_packet_count_lock:

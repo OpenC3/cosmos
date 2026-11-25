@@ -46,7 +46,8 @@ export function microserviceRows(microservices, collapsed = new Set()) {
     // parent of its own (which COSMOS doesn't create) stays at the top level,
     // which also keeps a parent cycle from hiding both microservices.
     if (hasParent(ms) && !hasParent(byName[ms.parent])) {
-      ;(children[ms.parent] ||= []).push(ms)
+      children[ms.parent] ??= []
+      children[ms.parent].push(ms)
     } else {
       topLevel.push(ms)
     }
