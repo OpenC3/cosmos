@@ -121,7 +121,7 @@ class TestCborAccessor(unittest.TestCase):
         self.assertEqual(CborAccessor.class_read_item(item, self.data1), "1.234")
 
         item = self.Cbor("item", "$.packet.item3", "INT", None)
-        with self.assertRaisesRegex(ValueError, "could not convert string to float"):
+        with self.assertRaisesRegex(ValueError, "invalid value for Integer"):
             CborAccessor.class_read_item(item, self.data1)
         item = self.Cbor("item", "$.packet.item3", "STRING", None)
         self.assertEqual(CborAccessor.class_read_item(item, self.data1), "a string")
