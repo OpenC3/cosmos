@@ -171,9 +171,19 @@ test('prompts before closing dirty plugin editor on ESC', async ({
   // The plugin dialog should still be open
   await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
 
+  // Wait for the cancelled confirmation to finish closing first. While it fades
+  // out its text is still visible, and an ESC pressed then is dropped, so the
+  // check below would pass on the dying dialog and the click would land on a
+  // button whose promise was already rejected.
+  await expect(page.getByText('You have unsaved changes')).toBeHidden()
+
   // Press ESC again to re-trigger the confirmation
   await page.keyboard.press('Escape')
-  await expect(page.getByText('You have unsaved changes')).toBeVisible()
+  await expect(
+    page.locator('.v-overlay--active', {
+      hasText: 'You have unsaved changes',
+    }),
+  ).toBeVisible()
 
   // This time confirm closing without saving
   await page
@@ -239,33 +249,73 @@ test.describe(() => {
     ).toHaveCount(previousCompleteCount + 1, { timeout: 30000 })
   }
 
+  /** Counts the Complete entries already listed for a process. Finished
+   * processes stay listed for a while, so ones from an earlier run (or the
+   * first attempt of a retried test) are still there. Call before starting the
+   * process and pass the result to waitForPluginProcess so only a new Complete
+   * entry counts.
+   */
+  async function countCompleted(page: Page, process: string, gem: string) {
+    return await page
+      .locator('[data-test=process-list] .v-list-item')
+      .filter({
+        hasText: new RegExp(`Processing ${process}: ${gem}(__.*)? - Complete`),
+      })
+      .count()
+  }
+
+  /** Opens the actions menu of the installed plugin whose row contains `name`.
+   * While any process is listed the page reloads the plugin list every 5
+   * seconds, and a plugin renamed by an install gets a new row, which closes
+   * an open menu. After an install, pass the new gem name so the menu opens
+   * only once the row has been replaced.
+   */
+  async function openPluginActions(page: Page, name: string) {
+    const row = page
+      .locator('[data-test=plugin-list-item]')
+      .filter({ hasText: name })
+    await expect(row).toHaveCount(1)
+    await row.locator('[data-test=plugin-actions]').click()
+  }
+
   test.afterEach('delete the installed plugin', async ({ page }) => {
-    await page
+    // The test can fail before the upgrade, leaving the original gem installed
+    const row = page
       .locator('[data-test=plugin-list-item]')
       .filter({ hasText: plugin })
-      .locator('[data-test=plugin-actions]')
-      .click()
+    const installedGem = (await row.textContent())?.includes(pluginGem1)
+      ? pluginGem1
+      : pluginGem
+    // An unmodified plugin is removed as soon as the delete is confirmed, so
+    // count before then
+    const completeCount = await countCompleted(
+      page,
+      'plugin_uninstall',
+      installedGem,
+    )
+    await openPluginActions(page, plugin)
     await page.locator('[data-test=delete-plugin]').click()
     await expect(page.locator('.v-dialog')).toContainText('Confirm')
     await page.locator('[data-test=confirm-dialog-delete]').click()
-    await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
-    // Check the delete box
-    await page.locator('text=DELETE MODIFIED').click()
-    // Completed processes stay listed for a while so a retried test can still
-    // see the previous cleanup's uninstall; only count a new one
-    const completeCount = await page
-      .locator('[data-test=process-list] .v-list-item')
-      .filter({
-        hasText: new RegExp(
-          `Processing plugin_uninstall: ${pluginGem1}(__.*)? - Complete`,
-        ),
-      })
-      .count()
-    await page.locator('data-test=modified-plugin-submit').click()
+    // Only a plugin with modified files asks about them; an unmodified one
+    // (the test failed before modifying it) is removed right away
+    const modifiedDialog = page.locator('.v-dialog:has-text("Modified")')
+    await expect(
+      modifiedDialog.or(
+        page
+          .locator('[data-test=plugin-alert]')
+          .filter({ hasText: 'Removing plugin' }),
+      ),
+    ).toBeVisible()
+    if (await modifiedDialog.isVisible()) {
+      // Check the delete box
+      await page.locator('text=DELETE MODIFIED').click()
+      await page.locator('data-test=modified-plugin-submit').click()
+    }
 
     await waitForPluginProcess(page, {
       alert: 'Removing plugin',
-      gem: pluginGem1,
+      gem: installedGem,
       process: 'plugin_uninstall',
       previousCompleteCount: completeCount,
     })
@@ -331,10 +381,12 @@ test.describe(() => {
     ])
     await installFileChooser.setFiles(`./${plugin}/${pluginGem}`)
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+    const installCount = await countCompleted(page, 'plugin_install', pluginGem)
     await page.locator('data-test=edit-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
       gem: pluginGem,
+      previousCompleteCount: installCount,
     })
 
     await expect(
@@ -433,11 +485,7 @@ test.describe(() => {
       // It is important to call waitForEvent before click to set up waiting.
       page.waitForEvent('filechooser'),
       // Opens the file chooser.
-      await page
-        .locator('[data-test=plugin-list-item]')
-        .filter({ hasText: plugin })
-        .locator('[data-test=plugin-actions]')
-        .click(),
+      await openPluginActions(page, pluginGem),
       await page.locator('[data-test=upgrade-plugin]').click(),
     ])
 
@@ -453,10 +501,16 @@ test.describe(() => {
     if (await deleteModified.isVisible()) {
       await deleteModified.click()
     }
+    const upgradeCount = await countCompleted(
+      page,
+      'plugin_install',
+      pluginGem1,
+    )
     await page.locator('data-test=modified-plugin-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
       gem: pluginGem1,
+      previousCompleteCount: upgradeCount,
     })
 
     // Check that there are no longer any links (modified targets)
@@ -470,12 +524,9 @@ test.describe(() => {
     // Section: EDIT THE PLUGIN
     // ==========================================
 
-    // Edit then cancel
-    await page
-      .locator('[data-test=plugin-list-item]')
-      .filter({ hasText: plugin })
-      .locator('[data-test=plugin-actions]')
-      .click()
+    // Edit then cancel. The upgrade renamed the plugin, so wait for the list
+    // to show the new name or its row is replaced under the open menu.
+    await openPluginActions(page, pluginGem1)
     await page.locator('[data-test=edit-plugin]').click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page.locator('data-test=edit-cancel').click()
@@ -483,11 +534,7 @@ test.describe(() => {
       page.locator('.v-dialog:has-text("Variables")'),
     ).not.toBeVisible()
     // Edit and change a target name (forces re-install)
-    await page
-      .locator('[data-test=plugin-list-item]')
-      .filter({ hasText: plugin })
-      .locator('[data-test=plugin-actions]')
-      .click()
+    await openPluginActions(page, pluginGem1)
     await page.locator('[data-test=edit-plugin]').click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page
@@ -495,12 +542,11 @@ test.describe(() => {
         '.v-dialog:has-text("Variables") .v-input:has-text("pw_test_target_name") >> input',
       )
       .fill('NEW_TGT')
-    const completeCount = await page
-      .locator('[data-test=process-list] .v-list-item')
-      .filter({
-        hasText: new RegExp(`Processing plugin_install: ${pluginGem1}(__.*)? - Complete`),
-      })
-      .count()
+    const completeCount = await countCompleted(
+      page,
+      'plugin_install',
+      pluginGem1,
+    )
     await page.locator('data-test=edit-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
@@ -510,10 +556,18 @@ test.describe(() => {
     // Ensure the target list is updated to show the new name
     // TODO: replace .nth(2) with a more robust selector, this is not robust to layout changes of plugin-list-item
     await expect(
-      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }).locator('div').nth(2),
+      page
+        .locator('[data-test=plugin-list-item]')
+        .filter({ hasText: plugin })
+        .locator('div')
+        .nth(2),
     ).not.toContainText('PW_TEST')
     await expect(
-      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }).locator('div').nth(2),
+      page
+        .locator('[data-test=plugin-list-item]')
+        .filter({ hasText: plugin })
+        .locator('div')
+        .nth(2),
     ).toContainText('NEW_TGT')
     // Show the process output
     await page

@@ -133,8 +133,7 @@ module OpenC3
       # Get configuration for any targets
       @target_names = @config["target_names"]
       @target_names ||= []
-      # NOTE: setup_targets doesn't do anything if @target_names is empty
-      System.setup_targets(@target_names, @temp_dir, scope: @scope, descriptions: load_descriptions?) unless is_plugin
+      setup_system() unless is_plugin
 
       # Use at_exit to shutdown cleanly no matter how we die
       at_exit do
@@ -236,6 +235,13 @@ module OpenC3
     # use them override this to return false to reduce memory.
     def load_descriptions?
       true
+    end
+
+    # Set up System for this microservice's targets (an empty System if it has
+    # none). System is one per process and the first setup decides which
+    # targets it has, so subclasses that set it up later override this.
+    def setup_system
+      System.setup_targets(@target_names, @temp_dir, scope: @scope, descriptions: load_descriptions?)
     end
 
     def shutdown(state = 'STOPPED')

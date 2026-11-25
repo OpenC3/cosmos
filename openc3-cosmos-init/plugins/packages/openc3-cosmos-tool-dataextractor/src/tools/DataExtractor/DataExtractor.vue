@@ -65,6 +65,27 @@
               <v-radio label="Telemetry" value="tlm" data-test="tlm-radio" />
             </v-radio-group>
           </v-col>
+          <v-col>
+            <!-- Selects which timestamp the start / end times apply to and the TIME column contains -->
+            <v-radio-group
+              v-model="timeType"
+              inline
+              hide-details
+              class="mt-0"
+              data-test="time-type"
+            >
+              <v-radio
+                label="Packet Time"
+                value="PACKET"
+                data-test="packet-time-radio"
+              />
+              <v-radio
+                label="Received Time"
+                value="RECEIVED"
+                data-test="received-time-radio"
+              />
+            </v-radio-group>
+          </v-col>
         </v-row>
         <v-row>
           <v-col>
@@ -357,6 +378,10 @@ export default {
         required: (value) => !!value || 'Required',
       },
       cmdOrTlm: 'tlm',
+      timeType: 'PACKET',
+      // timeType captured when an extraction starts so changing the selection
+      // mid-extraction can't relabel the timestamps already requested
+      activeTimeType: 'PACKET',
       items: [],
       search: '',
       headers: [
@@ -527,6 +552,7 @@ export default {
         allowWildcards: this.allowWildcards,
         columnMode: this.columnMode,
         cmdOrTlm: this.cmdOrTlm,
+        timeType: this.timeType,
         items: this.items,
         itemsPerPage: this.itemsPerPage,
       }
@@ -549,6 +575,9 @@ export default {
       this.saveDefaultConfig(this.currentConfig)
     },
     columnNode: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    timeType: function () {
       this.saveDefaultConfig(this.currentConfig)
     },
     cmdOrTlm: function () {
@@ -625,6 +654,7 @@ export default {
       this.endTime = this.formatTimeHMS(now, this.timeZone)
       this.endDate = this.formatDate(now, this.timeZone)
       this.cmdOrTlm = 'tlm'
+      this.timeType = 'PACKET'
       this.items = []
       this.itemsPerPage = 20
       this.applyConfig(this.currentConfig)
@@ -645,6 +675,8 @@ export default {
       this.menus[1].radioGroup =
         this.columnMode === 'normal' ? 'Normal Columns' : 'Full Column Names'
       this.cmdOrTlm = config.cmdOrTlm
+      // Configs saved before the time type existed used packet time
+      this.timeType = config.timeType || 'PACKET'
       this.items = config.items
       this.itemsPerPage = config.itemsPerPage
     },
@@ -780,6 +812,7 @@ export default {
       }
 
       this.progress = 0
+      this.activeTimeType = this.timeType
       this.processButtonText = 'Cancel'
       // We're using the ActionCable implementation of AnyCable via mapping of events:
       // https://github.com/anycable/anycable-client/blob/master/packages/core/create-cable/index.js#L218
@@ -848,6 +881,7 @@ export default {
             items: items,
             start_time: this.startDateTime,
             end_time: this.endDateTime,
+            time_type: this.activeTimeType,
           })
         })
         // An AuthRequiredError means we have no token and are being redirected
@@ -902,7 +936,10 @@ export default {
     buildHeaders: function (itemKeys) {
       // Normal column mode has the target and packet listed for each item
       if (this.columnHeaders.length === 0 && this.columnMode === 'normal') {
-        this.columnHeaders.push('TIME')
+        // __time holds the packet or received time depending on activeTimeType
+        this.columnHeaders.push(
+          this.activeTimeType === 'RECEIVED' ? 'RECEIVED_TIME' : 'TIME',
+        )
         this.columnHeaders.push('TARGET')
         this.columnHeaders.push('PACKET')
         // Only add USERNAME and APPROVER columns for command data
@@ -1133,8 +1170,10 @@ export default {
       } else if (this.fileCount === 0) {
         let start = new Date(this.startDateTime / 1000000).toISOString()
         let end = new Date(this.endDateTime / 1000000).toISOString()
+        let timeName =
+          this.activeTimeType === 'RECEIVED' ? 'received' : 'packet'
         this.$notify.caution({
-          body: `No data found for the items in the requested time range of ${start} to ${end}`,
+          body: `No data found for the items in the requested ${timeName} time range of ${start} to ${end}`,
         })
       }
 

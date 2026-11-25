@@ -195,13 +195,17 @@ When plugins are installed with Python dependencies, COSMOS creates an isolated 
 
 ### Automatic Venv Resolution
 
-Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed — COSMOS sets `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` on the spawned process so that `import` statements resolve against the plugin's installed packages.
+Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed. Every Python script runs with the COSMOS Python, `/openc3/python/.venv/bin/python`. COSMOS puts the plugin venv's `site-packages` at the front of `PYTHONPATH` on the spawned process, so that `import` statements resolve against the plugin's installed packages first. It also points `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` at the venv.
 
-### Temp Scripts and the Target Selector
+A saved script whose target's plugin has no venv runs against the system environment. `VIRTUAL_ENV` is the system venv, `PYTHONUSERBASE` is the shared `/gems/python_packages` folder, and `PYTHONPATH` is the value set in the COSMOS image, which lists the system venv and the shared folder.
 
-Temporary (unsaved) scripts are not associated with any target, so they cannot automatically resolve a plugin venv. By default they run under the system Python environment, which has access to the core `openc3` library but not plugin-specific packages. To run a temp script with a specific plugin's Python dependencies, use the **Target** dropdown in the Script Runner toolbar. This dropdown appears next to the Start button when working with Python scripts and only lists targets whose plugins have a Python virtual environment installed. Select the target whose plugin dependencies you want to use, and the script will run inside that plugin's venv.
+### Temp Scripts and the Python Venv Selector
 
-When you open a saved script, the target selector resets automatically because the venv is determined from the file path.
+Temporary (unsaved) scripts are not associated with any target, so they cannot automatically resolve a plugin venv. By default they run under the system Python environment, which has access to the core `openc3` library but not plugin-specific packages. To run a temp script with a specific plugin's Python dependencies, use the **Python Venv** dropdown in the Script Runner toolbar.
+
+The dropdown appears next to the Start button for a new script or a Python script in the `__TEMP__` folder, and only while the script is not running. It lists `system` plus the plugin venvs in the current scope that installed successfully. Each entry is a venv, not a target, and is named after its venv folder, `<SCOPE>__<plugin name>`. Select the plugin venv whose dependencies you want, and the script runs with that venv's packages.
+
+When you open a saved script, the selection is cleared because the venv is determined from the file path.
 
 For information on managing per-plugin Python packages, see the [Admin Packages documentation](/docs/tools/admin#packages).
 

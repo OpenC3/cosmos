@@ -309,8 +309,10 @@ class Commands:
 
             if range_checking:
                 if item.states:
-                    if item.states.get(str(value).upper()) is not None:
-                        range_check_value = item.states[str(value).upper()]
+                    # None never matches a state, like Ruby's nil.to_s ("") and unlike str(None) ("None")
+                    state_name = "" if value is None else str(value).upper()
+                    if item.states.get(state_name) is not None:
+                        range_check_value = item.states[state_name]
                     else:
                         if value not in item.states.values():
                             if command.raw:

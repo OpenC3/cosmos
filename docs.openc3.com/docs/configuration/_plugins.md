@@ -58,12 +58,15 @@ COSMOS uploads the plugin gem file to an internal gem server and extracts the ge
 
 ### Phase 2: Deploy
 
-Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<plugin>/.venv` and installs the dependencies into it. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
+Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` and installs the dependencies into it. The plugin name is the installed name, with characters other than `A-Z`, `a-z`, `0-9`, `_` and `-` replaced by `_`. For example, `openc3-cosmos-gse-1.0.0.gem__20250116214539` installed in the `DEFAULT` scope gets `/gems/plugin_venvs/DEFAULT__openc3-cosmos-gse-1_0_0_gem__20250116214539/.venv`. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
 
-COSMOS supports two formats for declaring Python dependencies:
+Declare a plugin's Python dependencies in `pyproject.toml`. COSMOS also reads `requirements.txt`, but that format is deprecated:
 
-- **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
-- **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
+- **`pyproject.toml`** — With a `uv.lock`, COSMOS runs `uv sync --frozen`, which installs exactly the locked versions. Without a `uv.lock`, or if `uv sync --frozen` fails, COSMOS runs `uv pip install` and resolves against the `pypi_url` index. If that fails, for example because the `pyproject.toml` is not a buildable package, COSMOS compiles its declared dependencies into a requirements file and installs from that.
+- **`requirements.txt`** (deprecated) — COSMOS still installs it with `uv pip install -r requirements.txt` so that existing plugins keep working. Do not use it for new plugins. It has no lock file, so each install can resolve different versions. If a plugin ships both files and no `uv.lock`, COSMOS installs from `requirements.txt`. To move a plugin to `pyproject.toml`:
+  1. Copy the `pyproject.toml` from a plugin generated with `openc3.sh cli generate plugin <NAME> --python`, and set its `name`.
+  2. Run `uv add -r requirements.txt`, then `uv lock`.
+  3. Delete `requirements.txt`, and check that the gemspec packages `pyproject.toml` and `uv.lock`.
 
 Both files are processed with [ERB](/docs/configuration/format#erb) using the plugin variables before installation, so variables can select which dependencies are installed. ERB code can read files shipped next to the dependency file with `File.dirname(__FILE__)`. For example, a `requirements.txt` that installs only the driver for the selected device:
 
@@ -74,7 +77,20 @@ Both files are processed with [ERB](/docs/configuration/format#erb) using the pl
 
 A `uv.lock` is used as-is, so a plugin whose `pyproject.toml` dependencies depend on variables should not ship a `uv.lock`.
 
-System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
+A plugin venv always uses the Python in the COSMOS image: currently Python 3.13 in the standard images and Python 3.12 in the UBI images. The images set `UV_PYTHON_DOWNLOADS=never`, so uv cannot download a different Python for a plugin. A plugin's `requires-python` must therefore accept the image's Python, or its install fails.
+
+System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading.
+
+COSMOS tries these installs in order and stops at the first one that succeeds:
+
+1. **Per-plugin venv.** COSMOS runs uv to install into the plugin's own venv, unless the [`OPENC3_USE_UV`](environment.md#common-variables) environment variable is `false` or `uv` is not on `PATH`.
+2. **Shared folder.** If step 1 failed or was skipped, COSMOS installs the dependencies into the shared `/gems/python_packages` folder, which is on the `PYTHONPATH` of scripts and plugin microservices. It logs a warning first when step 1 failed. If the shared install fails, COSMOS retries it once with `--no-index`.
+
+If both fail, COSMOS logs a warning and finishes installing the plugin, so its non-Python parts still work.
+
+:::note[Keep openc3 out of runtime dependencies]
+List `openc3` only in the plugin's dev dependency group, as the generated `pyproject.toml` does. If a plugin lists `openc3` as a runtime dependency, COSMOS removes it from the plugin venv when it installs the plugin, and logs a warning, and the plugin uses the `openc3` library shipped in the COSMOS image. A plugin venv comes first on `PYTHONPATH`, so its own copy would otherwise replace the system library for the plugin's scripts and microservices.
+:::
 
 Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
 
@@ -101,6 +117,33 @@ Target deployment also automatically creates several microservices for each targ
 - **TSDB** — Writes decommutated data to the time series database
 - **MULTI** — Parent microservice that manages child processes for orderly startup and shutdown
 
+DECOM, COMMANDLOG, PACKETLOG, and CLEANUP run as threads in the target's MULTI process. TSDB, and DECOM for a target with `LANGUAGE python`, run as their own Python processes.
+
+#### Sharing Processes Between Targets
+
+Each process uses roughly 80 to 100 MB of memory before it does any work, so a plugin with many targets can use a lot of memory. Targets that set [MICROSERVICE_GROUP](#microservice_group) to the same name keep their own microservices but run them in two processes shared by the whole group:
+
+| Microservice                     | Runs as threads                                                     |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `<SCOPE>__MULTIGROUP__<GROUP>`   | Every member's DECOM (Ruby targets), COMMANDLOG, PACKETLOG, CLEANUP |
+| `<SCOPE>__PYMULTIGROUP__<GROUP>` | Every member's TSDB, and DECOM for Python targets                   |
+
+```cosmos
+TARGET THERMAL THERMAL
+  MICROSERVICE_GROUP HOUSEKEEPING
+TARGET POWER POWER
+  MICROSERVICE_GROUP HOUSEKEEPING
+```
+
+Each target keeps its own microservices (for example `DEFAULT__DECOM__THERMAL`), settings, and status. The demo plugin puts its targets in the `DEMO` group (set its `microservice_group` variable to blank to give each target its own processes). Targets in different plugins can share a group. Some things to consider:
+
+- All targets in a group must use the same [SHARD](#shard-1) and [DB_SHARD](#db_shard-1).
+- The decoms in one process share its write queue, which flushes at one interval: the fastest [DECOM_UPDATE_INTERVAL](#decom_update_interval) of the group's Ruby targets (and separately of its Python targets). A target with a DECOM_UPDATE_INTERVAL of 0 doesn't use the queue and writes directly.
+- A group can only have Python targets from one plugin, because its Python process uses that plugin's Python packages.
+- MICROSERVICE_GROUP can't be combined with [TARGET_MICROSERVICE](#target_microservice).
+- Installing, upgrading, or removing any target in the group restarts the group's processes, which briefly pauses processing for every target in it.
+- The targets in a group share each process's CPU. Python threads in particular share one interpreter lock, so a group's Python process can fall behind sooner than separate processes would. Groups suit stable, low-rate targets. Give high-rate targets their own processes.
+
 ### Interface and Router Deployment
 
 Interfaces and routers each create a corresponding microservice that the operator starts as a running process. The microservice handles the physical connection (TCP, UDP, serial, etc.) and routes commands and telemetry to the appropriate Valkey pub/sub topics.
@@ -120,6 +163,35 @@ Custom microservice files are extracted from the gem's `microservices/<FOLDER>/`
 ### Uninstallation
 
 When a plugin is uninstalled, COSMOS destroys all its components in dependency order: microservices are stopped first (with a wait period for graceful shutdown), then interfaces, routers, tools, widgets, targets, and script engines are removed. All associated files are deleted from both the configuration and tools buckets, and Redis state is cleaned up.
+
+## Shared Resources
+
+<span class="badge badge--secondary since-right">Since _Coming Soon_</span>
+
+A shared resource is something, typically expensive hardware, that is defined in several scopes but must only be used by one scope at a time. Add the `SHARED_RESOURCE <Name>` keyword to the interfaces, routers, microservices, and targets that use it. Everything with the same shared resource name, in any scope, belongs to the same shared resource.
+
+```cosmos
+TARGET CHAMBER CHAMBER
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+INTERFACE CHAMBER_INT tcpip_client_interface.py chamber 8080 8080 10.0 None
+  MAP_TARGET CHAMBER
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+MICROSERVICE CHAMBER_CTRL chamber_ctrl
+  TARGET_NAME CHAMBER
+  CMD python chamber_ctrl.py
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+```
+
+The shared resource is active in one scope at a time:
+
+- The first scope to install the shared resource owns it and it becomes active there.
+- In every other scope the plugin installs normally, but the interface, router, and microservice processes are not started.
+- Commands to the resource's targets are rejected in scopes where it isn't active, as are `connect_interface`, `interface_cmd`, `send_raw`, and the router equivalents. The targets' own microservices (decom, logging, and cleanup) keep running in every scope, so telemetry screens, `build_cmd`, `inject_tlm`, and historical data still work.
+- Use [switch_shared_resource](../guides/scripting-api.md#switch_shared_resource) to move the resource to another scope. Its processes in the old scope are stopped, and only once they have exited are the processes in the new scope started, so the hardware is never used by two scopes at once. Switching requires admin permission in both scopes.
+- Use [release_shared_resource](../guides/scripting-api.md#release_shared_resource) to stop the resource in every scope.
+- Upgrading or reinstalling a plugin keeps the resource active in the same scope. Uninstalling the plugin from the active scope leaves the resource assigned to that scope until it is switched to another scope.
+
+`SHARED_RESOURCE` can't be used with `BRIDGE`.
 
 ## Plugin Directory Structure
 

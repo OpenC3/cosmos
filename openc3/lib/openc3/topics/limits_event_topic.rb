@@ -39,17 +39,41 @@ module OpenC3
       items
     end
 
+    # How long the set of active db_shards is cached. Every limits event is
+    # written to every active db_shard, and looking them up reads and parses every
+    # target, which is too slow to do per event when many items change state.
+    # Only LIMITS_CHANGE events use the cache, so a target added on a new db_shard
+    # gets them within this time. Decom microservices ignore LIMITS_CHANGE events,
+    # and the events that change their limits always look up the current db_shards.
+    ACTIVE_DB_SHARDS_CACHE_TIMEOUT = 10 # seconds
+    @active_db_shards_cache = {}
+
     # Collect all unique target db_shards from TargetModel
-    def self._active_db_shards(scope:)
+    # @param use_cache [Boolean] Whether to return the cached db_shards if they haven't timed out.
+    #   The db_shards are cached either way.
+    def self._active_db_shards(scope:, use_cache: true)
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      cached = @active_db_shards_cache[scope]
+      return cached[1] if use_cache and cached and now < cached[0]
+
       db_shards = Set.new([0])
       Store.hgetall("#{scope}__openc3_targets").each do |_name, json|
         parsed = JSON.parse(json, allow_nan: true, create_additions: true)
         db_shards << (parsed['db_shard'] || 0).to_i
       end
+      db_shards.freeze
+      @active_db_shards_cache[scope] = [now + ACTIVE_DB_SHARDS_CACHE_TIMEOUT, db_shards]
       db_shards
     end
 
-    def self.write(event, scope:)
+    def self.clear_active_db_shards_cache
+      @active_db_shards_cache = {}
+    end
+
+    # @param publish [Boolean] Whether to write the event to the limits events stream.
+    #   When false only the store is updated, which a decom microservice uses while
+    #   resyncing so the resync can't flood the stream it is recovering from.
+    def self.write(event, scope:, publish: true)
       case event[:type]
       when :LIMITS_CHANGE
         # The current_limits hash keeps only the current limits state of items
@@ -98,6 +122,7 @@ module OpenC3
         end
         limits_settings['enabled'] = event[:enabled]
         Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
+        clear_disabled_current_limits([field], scope: scope) unless ConfigParser.handle_true_false_nil(event[:enabled])
 
       when :LIMITS_GROUP_ENABLE_STATE
         # Groups can contain many thousands of items so read and write the settings in bulk
@@ -121,6 +146,7 @@ module OpenC3
             updates[field] = JSON.generate(limits_settings, allow_nan: true)
           end
           Store.hmset("#{scope}__current_limits_settings", *updates.flatten)
+          clear_disabled_current_limits(fields, scope: scope) unless ConfigParser.handle_true_false_nil(event[:enabled])
         end
 
       when :LIMITS_STATE_COLOR
@@ -133,7 +159,8 @@ module OpenC3
           limits_settings = {}
         end
         limits_settings['state_colors'] ||= {}
-        limits_settings['state_colors'][event[:state_name].to_s] = event[:color].to_s
+        # A cleared color is saved as nil (not "") so sync_system clears it
+        limits_settings['state_colors'][event[:state_name].to_s] = event[:color]&.to_s
         Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
 
       when :LIMITS_SET
@@ -148,9 +175,13 @@ module OpenC3
         raise "Invalid limits event type '#{event[:type]}'"
       end
 
-      # Write to all active db_shards so each decom microservice can read limits events inline
+      return unless publish
+
+      # Write to all active db_shards so each decom microservice can read limits events inline.
+      # Only LIMITS_CHANGE events are frequent enough to need the cache. The rest change
+      # decom limits so they must reach a decom on a db_shard that was just added.
       msg_hash = { event: JSON.generate(event, allow_nan: true) }
-      _active_db_shards(scope: scope).each do |db_shard|
+      _active_db_shards(scope: scope, use_cache: event[:type] == :LIMITS_CHANGE).each do |db_shard|
         Topic.write_topic("#{scope}__openc3_limits_events", msg_hash, '*', 1000, db_shard: db_shard)
       end
     end
@@ -268,15 +299,20 @@ module OpenC3
     end
 
     # Reload all limits state from the store, used to recover from missed limits events
-    def self.resync_system(scope:)
+    # @param telemetry [Hash] Packets by target to update, default all in System
+    def self.resync_system(scope:, telemetry: nil)
       System.limits_set = current_set(scope: scope)
-      sync_system(scope: scope)
+      sync_system(scope: scope, telemetry: telemetry)
     end
 
     # Update the local System based on overall state
-    def self.sync_system(scope:)
+    # @param telemetry [Hash] Packets by target to update, default all in System.
+    #   Decom microservices sharing a process pass just their own targets because
+    #   disabling limits calls the target's limits change callback every time.
+    def self.sync_system(scope:, telemetry: nil)
       all_limits_settings = Store.hgetall("#{scope}__current_limits_settings")
-      telemetry = System.telemetry.all
+      telemetry ||= System.telemetry.all
+      disabled_fields = []
       all_limits_settings.each do |item, limits_settings|
         target_name, packet_name, item_name = item.split('__')
         target = telemetry[target_name]
@@ -294,6 +330,8 @@ module OpenC3
               next unless Hash === settings
               if limits_set == 'state_colors'
                 settings.each do |state_name, color|
+                  # Earlier versions saved a cleared color as "" so treat it as cleared
+                  color = nil if color.to_s.empty?
                   System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
                 end
                 next
@@ -309,11 +347,29 @@ module OpenC3
                 System.limits.enable(target_name, packet_name, item_name)
               else
                 System.limits.disable(target_name, packet_name, item_name)
+                disabled_fields << item
               end
             end
           end
         end
       end
+      clear_disabled_current_limits(disabled_fields, scope: scope)
+    end
+
+    # Clear any limits state left in current_limits for disabled items in one pass.
+    # Disabling an item only publishes a LIMITS_CHANGE (which clears its state) when
+    # the decom microservice has a local state for it. After a decom restart the local
+    # state is nil until the next packet, while current_limits can still hold the state
+    # from before the restart. An item disabled while the decom wasn't running is the same.
+    def self.clear_disabled_current_limits(fields, scope:)
+      return if fields.empty?
+
+      states = Store.hmget("#{scope}__current_limits", *fields)
+      updates = []
+      fields.each_with_index do |field, index|
+        updates.push(field, '') if states[index] and !states[index].empty?
+      end
+      Store.hmset("#{scope}__current_limits", *updates) unless updates.empty?
     end
 
     # Process a single limits event hash and update the local System accordingly.
@@ -397,7 +453,10 @@ module OpenC3
         end
 
       when 'LIMITS_SET'
-        System.limits_set = event['set']
+        # Read the current set rather than the event's set. Decoms sharing a process
+        # share System.limits_set, so a decom still catching up on old events must
+        # not switch the others back to an obsolete set.
+        System.limits_set = current_set(scope: scope)
       end
     end
 

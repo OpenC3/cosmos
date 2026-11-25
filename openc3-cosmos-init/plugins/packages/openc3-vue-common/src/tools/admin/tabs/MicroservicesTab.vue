@@ -45,7 +45,7 @@
         <v-btn
           color="warning"
           prepend-icon="mdi-refresh"
-          :disabled="filteredServiceCount === 0"
+          :disabled="restartableMicroservices.length === 0"
           @click="bulkRestartServices"
         >
           Restart All
@@ -63,66 +63,151 @@
       </v-col>
     </v-row>
     <v-list class="list" data-test="microserviceList">
-      <div
-        v-for="microservice in filteredMicroservices"
-        :key="microservice.name"
-      >
-        <v-list-item>
-          <v-list-item-title>{{ microservice.name }}</v-list-item-title>
-          <v-list-item-subtitle v-if="microservice_status[microservice.name]">
+      <div v-for="row in rows" :key="row.key">
+        <v-list-item
+          v-if="row.type === 'group'"
+          data-test="microservice-group"
+          :style="indent(0)"
+        >
+          <template #prepend>
+            <div class="toggle-cell">
+              <v-btn
+                :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
+                :aria-label="
+                  row.collapsed
+                    ? `Expand microservice group ${row.name}`
+                    : `Collapse microservice group ${row.name}`
+                "
+                variant="text"
+                size="small"
+                @click="toggleCollapsed(row.key)"
+              />
+            </div>
+          </template>
+          <v-list-item-title>
+            Microservice Group: {{ row.name }}
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            Scope: {{ row.scope }}, {{ row.count }} microservices in the group's
+            shared processes
+          </v-list-item-subtitle>
+        </v-list-item>
+        <v-list-item v-else :style="indent(row.depth)">
+          <!-- Every row reserves the toggle column so titles line up -->
+          <template v-if="hasToggles" #prepend>
+            <div class="toggle-cell">
+              <v-btn
+                v-if="row.childCount > 0"
+                :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
+                :aria-label="
+                  row.collapsed
+                    ? `Expand ${row.microservice.name}`
+                    : `Collapse ${row.microservice.name}`
+                "
+                variant="text"
+                size="small"
+                @click="toggleCollapsed(row.key)"
+              />
+            </div>
+          </template>
+          <v-list-item-title>{{ row.microservice.name }}</v-list-item-title>
+          <v-list-item-subtitle
+            v-if="microservice_status[row.microservice.name]"
+          >
             Updated:
             {{
               formatNanoseconds(
-                microservice_status[microservice.name].updated_at,
+                microservice_status[row.microservice.name].updated_at,
                 timeZone,
               )
-            }}, Enabled: {{ isEnabled(microservice.name) ? 'True' : 'False' }},
-            Count:
-            {{ microservice_status[microservice.name].count }}
+            }}, Enabled:
+            {{ isEnabled(row.microservice.name) ? 'True' : 'False' }}, Count:
+            {{ microservice_status[row.microservice.name].count }}
           </v-list-item-subtitle>
           <template #append>
             <v-btn
-              v-show="microservice_status[microservice.name]?.error"
+              v-show="microservice_status[row.microservice.name]?.error"
               icon="mdi-alert"
               variant="text"
-              @click="showMicroserviceError(microservice.name)"
+              @click="showMicroserviceError(row.microservice.name)"
             />
+            <v-tooltip
+              v-if="row.microservice.shared_resource"
+              :text="sharedResourceTooltip(row.microservice)"
+              location="top"
+            >
+              <template #activator="{ props }">
+                <v-chip
+                  v-bind="props"
+                  :color="isDormant(row.microservice) ? 'grey' : 'primary'"
+                  size="small"
+                  label
+                  class="mr-2"
+                  prepend-icon="mdi-share-variant"
+                  data-test="shared-resource-chip"
+                >
+                  {{ row.microservice.shared_resource }}:
+                  {{ sharedResourceText(row.microservice) }}
+                </v-chip>
+              </template>
+            </v-tooltip>
             <v-chip
-              v-if="microservice_status[microservice.name]"
-              :color="getStateColor(microservice.name)"
+              v-if="microservice_status[row.microservice.name]"
+              :color="getStateColor(row.microservice.name)"
               size="small"
               label
             >
-              {{ getStateText(microservice.name) }}
+              {{ getStateText(row.microservice.name) }}
             </v-chip>
             <v-tooltip
-              :text="isEnabled(microservice.name) ? 'Restart' : 'Start'"
+              v-if="isDormant(row.microservice)"
+              :text="`Make ${row.microservice.shared_resource} active in this scope`"
+              location="top"
+            >
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  aria-label="Activate Shared Resource Here"
+                  icon="mdi-swap-horizontal"
+                  variant="text"
+                  :disabled="
+                    sharedResources[row.microservice.shared_resource]?.state ===
+                    'RELEASING'
+                  "
+                  data-test="activate-shared-resource"
+                  @click="activateSharedResource(row.microservice)"
+                />
+              </template>
+            </v-tooltip>
+            <v-tooltip
+              v-else
+              :text="isEnabled(row.microservice.name) ? 'Restart' : 'Start'"
               location="top"
             >
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   :aria-label="
-                    isEnabled(microservice.name)
+                    isEnabled(row.microservice.name)
                       ? 'Restart Microservice'
                       : 'Start Microservice'
                   "
                   :icon="
-                    isRestarting(microservice.name) ||
-                    isStarting(microservice.name)
+                    isRestarting(row.microservice.name) ||
+                    isStarting(row.microservice.name)
                       ? 'mdi-loading'
-                      : isEnabled(microservice.name)
+                      : isEnabled(row.microservice.name)
                         ? 'mdi-refresh'
                         : 'mdi-play'
                   "
                   :class="{
                     'rotating-icon':
-                      isRestarting(microservice.name) ||
-                      isStarting(microservice.name),
+                      isRestarting(row.microservice.name) ||
+                      isStarting(row.microservice.name),
                   }"
                   variant="text"
-                  :disabled="isOperationInProgress(microservice.name)"
-                  @click="restartMicroservice(microservice.name)"
+                  :disabled="isOperationInProgress(row.microservice.name)"
+                  @click="restartMicroservice(row.microservice.name)"
                 />
               </template>
             </v-tooltip>
@@ -132,12 +217,16 @@
                   v-bind="props"
                   aria-label="Stop Microservice"
                   :icon="
-                    isStopping(microservice.name) ? 'mdi-loading' : 'mdi-stop'
+                    isStopping(row.microservice.name)
+                      ? 'mdi-loading'
+                      : 'mdi-stop'
                   "
-                  :class="{ 'rotating-icon': isStopping(microservice.name) }"
+                  :class="{
+                    'rotating-icon': isStopping(row.microservice.name),
+                  }"
                   variant="text"
-                  :disabled="isOperationInProgress(microservice.name)"
-                  @click="stopMicroservice(microservice.name)"
+                  :disabled="isOperationInProgress(row.microservice.name)"
+                  @click="stopMicroservice(row.microservice.name)"
                 />
               </template>
             </v-tooltip>
@@ -148,7 +237,7 @@
                   aria-label="Show Microservice Details"
                   icon="mdi-eye"
                   variant="text"
-                  @click="showMicroservice(microservice.name)"
+                  @click="showMicroservice(row.microservice.name)"
                 />
               </template>
             </v-tooltip>
@@ -176,8 +265,13 @@
 
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  sharedResourceActive,
+  sharedResourceStatus,
+} from '@openc3/js-common/utils'
 import { OutputDialog, TextBoxDialog } from '@/components'
 import { TimeFilters } from '@/util'
+import { microserviceRows } from './microserviceGroups.js'
 
 export default {
   components: {
@@ -208,6 +302,10 @@ export default {
       //   }
       // }
       microserviceOperations: {},
+      // Keys of collapsed parent microservices and microservice groups
+      collapsed: [],
+      // Shared resource name => record from get_shared_resources
+      sharedResources: {},
     }
   },
   computed: {
@@ -227,6 +325,22 @@ export default {
     },
     filteredServiceCount() {
       return this.filteredMicroservices.length
+    },
+    // Microservices run by a parent (MULTI or MULTIGROUP) are shown under it,
+    // and the microservices of a microservice group under a header for it
+    rows() {
+      return microserviceRows(
+        this.filteredMicroservices,
+        new Set(this.collapsed),
+      )
+    },
+    // A flat list (no groups or parents) needs no toggle column
+    hasToggles() {
+      return this.rows.some((row) => row.type === 'group' || row.childCount > 0)
+    },
+    // Dormant shared resource members can't be started in this scope
+    restartableMicroservices() {
+      return this.filteredMicroservices.filter((m) => !this.isDormant(m))
     },
   },
   watch: {
@@ -257,6 +371,18 @@ export default {
     this.updater = null
   },
   methods: {
+    indent: function (depth) {
+      // Each level indents by one toggle column, so a child's toggle sits
+      // under its parent's title
+      return { paddingInlineStart: `${16 + depth * 40}px` }
+    },
+    toggleCollapsed: function (key) {
+      if (this.collapsed.includes(key)) {
+        this.collapsed = this.collapsed.filter((k) => k !== key)
+      } else {
+        this.collapsed = [...this.collapsed, key]
+      }
+    },
     isOperationInProgress: function (name) {
       return !!this.microserviceOperations[name]
     },
@@ -273,7 +399,66 @@ export default {
     isStopping: function (name) {
       return this.microserviceOperations[name]?.operation === 'stopping'
     },
+    // Member of a shared resource which isn't active in this scope
+    isDormant: function (microservice) {
+      if (!microservice.shared_resource) return false
+      return !sharedResourceActive(
+        this.sharedResources[microservice.shared_resource],
+        window.openc3Scope,
+      )
+    },
+    sharedResourceText: function (microservice) {
+      const resource = this.sharedResources[microservice.shared_resource]
+      if (!resource) return 'Unknown'
+      return sharedResourceStatus(resource)
+    },
+    sharedResourceTooltip: function (microservice) {
+      const name = microservice.shared_resource
+      if (this.isDormant(microservice)) {
+        return `Shared resource ${name} is not active in this scope so this microservice is not running`
+      }
+      return `Shared resource ${name} is active in this scope`
+    },
+    activateSharedResource: async function (microservice) {
+      const name = microservice.shared_resource
+      const resource = this.sharedResources[name]
+      let message = `Make shared resource ${name} active in scope ${window.openc3Scope}?`
+      if (resource?.owner) {
+        message += ` Its microservices in scope ${resource.owner} will be stopped first.`
+      }
+      try {
+        await this.$dialog.confirm(message, {
+          okText: 'Activate',
+          cancelText: 'Cancel',
+        })
+      } catch {
+        return // User cancelled
+      }
+      try {
+        await new OpenC3Api().switch_shared_resource(name)
+        this.alert = `Switching shared resource ${name} to scope ${window.openc3Scope}`
+        this.alertType = 'success'
+      } catch (error) {
+        this.alert = `Failed to switch shared resource ${name}: ${error.message || error}`
+        this.alertType = 'error'
+      }
+      this.showAlert = true
+      setTimeout(() => {
+        this.showAlert = false
+      }, 5000)
+      this.update()
+    },
     update: function () {
+      new OpenC3Api()
+        .get_shared_resources()
+        .then((resources) => {
+          const byName = {}
+          for (const resource of resources || []) {
+            byName[resource.name] = resource
+          }
+          this.sharedResources = byName
+        })
+        .catch(console.error)
       Api.get('/openc3-api/microservice_status/all')
         .then((response) => {
           this.microservice_status = response.data
@@ -373,7 +558,8 @@ export default {
       }
     },
     bulkRestartServices: async function () {
-      const microserviceNames = this.filteredMicroservices.map((m) => m.name)
+      const microserviceNames = this.restartableMicroservices.map((m) => m.name)
+      if (microserviceNames.length === 0) return
       const microserviceList = microserviceNames.join(', ')
       const confirmMessage = `Are you sure you want to restart ${microserviceNames.length} microservice(s)? ${microserviceList}`
 
@@ -504,6 +690,7 @@ export default {
     getStateColor(microserviceName) {
       const status = this.microservice_status[microserviceName]
       if (!status) return 'grey'
+      if (this.isDormantName(microserviceName)) return 'grey'
       if (status.error) return 'red'
       // If not enabled, show as stopped even if state is "running"
       if (!this.isEnabled(microserviceName) || status.state === 'STOPPED')
@@ -511,7 +698,16 @@ export default {
       if (status.state === 'RUNNING') return 'green'
       return 'grey'
     },
+    isDormantName(microserviceName) {
+      const microservice = this.allMicroservices.find(
+        (ms) => ms.name === microserviceName,
+      )
+      return microservice ? this.isDormant(microservice) : false
+    },
     getStateText(microserviceName) {
+      if (this.isDormantName(microserviceName)) {
+        return 'DORMANT'
+      }
       if (!this.isEnabled(microserviceName)) {
         return 'STOPPED'
       }
@@ -550,6 +746,12 @@ export default {
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
+}
+/* Matches the width of a small icon v-btn and the indent per depth */
+.toggle-cell {
+  width: 40px;
+  display: flex;
+  align-items: center;
 }
 .rotating-icon {
   animation: spin 1s linear infinite;

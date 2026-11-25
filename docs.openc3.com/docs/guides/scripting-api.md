@@ -5927,14 +5927,22 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
-List all the packages installed in COSMOS.
+List all the packages installed in COSMOS. Returns a hash (Ruby) or dict (Python) with two keys:
+
+- `ruby`: a list of the installed gem file names.
+- `python`: a hash or dict of package lists, keyed by where the packages are:
+  - `cached`: wheels in the UV download cache, including uploaded wheels. Omitted when the cache is empty.
+  - one key for each plugin venv, named after its folder under `/gems/plugin_venvs`, `<SCOPE>__<plugin name>` (see [how the folder is named](/docs/configuration/plugins#phase-2-deploy)).
+  - `shared`: packages in the shared `/gems/python_packages` folder. Omitted when it is empty.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 package_list() # => {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
-               #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
+               #    'python': {'cached': ['numpy-2.1.1', ..., 'requests-2.32.3'],
+               #               'DEFAULT__openc3-cosmos-demo-6_0_3_pre_beta0_20250116214358_gem__20250116214539': ['numpy-2.1.1'],
+               #               'shared': ['setuptools-65.5.0']}}
 ```
 
 </TabItem>
@@ -5943,7 +5951,9 @@ package_list() # => {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358
 
 ```ruby
 package_list() # => {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
-               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
+               #    "python"=>{"cached"=>["numpy-2.1.1", ..., "requests-2.32.3"],
+               #               "DEFAULT__openc3-cosmos-demo-6_0_3_pre_beta0_20250116214358_gem__20250116214539"=>["numpy-2.1.1"],
+               #               "shared"=>["setuptools-65.5.0"]}}
 ```
 
 </TabItem>
@@ -7741,6 +7751,225 @@ router_details("INST_ROUTER")
 
 ```ruby
 router_details("INST_ROUTER")
+```
+
+</TabItem>
+</Tabs>
+
+## Shared Resources
+
+These methods manage shared resources: interfaces, routers, microservices, and targets defined in several scopes with the same [SHARED_RESOURCE](../configuration/plugins.md#shared-resources) name, which may only be active in one scope at a time.
+
+A shared resource record is a hash with the following keys:
+
+| Key          | Description                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| name         | Name of the shared resource                                                                                             |
+| owner        | Scope the shared resource is active in, or nil / None if it isn't active in any scope                                  |
+| state        | ACTIVE, or RELEASING while the owner's microservices are being stopped before switching to another scope                |
+| to           | Scope the shared resource is switching to while RELEASING, or nil / None if it is being released                        |
+| waiting      | Microservices (name and operator shard) that must stop before a RELEASING switch completes                              |
+| members      | Hash of scope to the members (type and name) in that scope                                                              |
+| requested_at | When the RELEASING switch was requested                                                                                 |
+| updated_at   | When the record was last updated                                                                                        |
+
+### get_shared_resources
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns an array of the shared resources which have members in the current scope. Members in scopes you don't have system permission in are left out, but `owner` still shows which scope the resource is active in.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+get_shared_resources()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+get_shared_resources()
+```
+
+</TabItem>
+</Tabs>
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+resources = get_shared_resources()
+for resource in resources:
+    print(f"{resource['name']} is active in {resource['owner']}")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+resources = get_shared_resources()
+resources.each do |resource|
+  puts "#{resource['name']} is active in #{resource['owner']}"
+end
+```
+
+</TabItem>
+</Tabs>
+
+### get_shared_resource
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns the shared resource record or nil / None if it doesn't exist or has no members in the current scope. Members in scopes you don't have system permission in are left out.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+get_shared_resource("<Shared Resource Name>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+get_shared_resource("<Shared Resource Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter            | Description                 |
+| -------------------- | --------------------------- |
+| Shared Resource Name | Name of the shared resource |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+resource = get_shared_resource("THERMAL_VAC_CHAMBER")
+print(resource['owner'])  # 'DEFAULT'
+print(resource['state'])  # 'ACTIVE'
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+resource = get_shared_resource("THERMAL_VAC_CHAMBER")
+puts resource['owner'] # 'DEFAULT'
+puts resource['state'] # 'ACTIVE'
+```
+
+</TabItem>
+</Tabs>
+
+### switch_shared_resource
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Makes a shared resource active in a scope. The microservices of the resource's interfaces, routers, and microservices in the currently active scope are stopped first, then the ones in the new scope are started. Until the switch completes the resource is not active in either scope and the record's state is RELEASING. Requires admin permission in both the new scope and the currently active scope.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+switch_shared_resource("<Shared Resource Name>", "<To Scope (optional)>", force=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+switch_shared_resource("<Shared Resource Name>", "<To Scope (optional)>", force: false)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter            | Description                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shared Resource Name | Name of the shared resource                                                                                                                                                    |
+| To Scope             | Scope to make the resource active in. Defaults to the current scope.                                                                                                           |
+| force                | Complete the switch immediately without waiting for the currently active scope's microservices to stop. Only use this if the operator running them is down. Defaults to false. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+# Make the chamber active in the current scope
+switch_shared_resource("THERMAL_VAC_CHAMBER")
+# Wait for the switch to complete
+wait_expression("get_shared_resource('THERMAL_VAC_CHAMBER')['state'] == 'ACTIVE'", 60)
+# Make the chamber active in the TEST scope
+switch_shared_resource("THERMAL_VAC_CHAMBER", "TEST")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+# Make the chamber active in the current scope
+switch_shared_resource("THERMAL_VAC_CHAMBER")
+# Wait for the switch to complete
+wait_expression("get_shared_resource('THERMAL_VAC_CHAMBER')['state'] == 'ACTIVE'", 60)
+# Make the chamber active in the TEST scope
+switch_shared_resource("THERMAL_VAC_CHAMBER", "TEST")
+```
+
+</TabItem>
+</Tabs>
+
+### release_shared_resource
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Releases a shared resource so it is not active in any scope. Its microservices in the currently active scope are stopped. The resource stays inactive (even if a plugin is reinstalled) until it is switched to a scope with switch_shared_resource. Requires admin permission in the current scope and the currently active scope.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+release_shared_resource("<Shared Resource Name>", force=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+release_shared_resource("<Shared Resource Name>", force: false)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter            | Description                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Shared Resource Name | Name of the shared resource                                                                                    |
+| force                | Release immediately without waiting for the currently active scope's microservices to stop. Defaults to false. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+release_shared_resource("THERMAL_VAC_CHAMBER")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+release_shared_resource("THERMAL_VAC_CHAMBER")
 ```
 
 </TabItem>
@@ -10693,7 +10922,7 @@ Return all the current COSMOS settings along with their values.
 ```python
 settings = get_all_settings() # =>
 # { 'version': {'name': 'version', 'data': '5.11.4-beta0', 'updated_at': 1698074299509456507},
-#   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org/simple', 'updated_at': 1698026776574347007},
+#   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org', 'updated_at': 1698026776574347007},
 #   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
 #   'source_url': {'name': 'source_url', 'data': 'https://github.com/OpenC3/cosmos', 'updated_at': 1698026776573904132} }
 ```
@@ -10705,7 +10934,7 @@ settings = get_all_settings() # =>
 ```ruby
 settings = get_all_settings() # =>
 # { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
-#   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
+#   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org", "updated_at"=>1698026776574347007},
 #   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
 #   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
 ```

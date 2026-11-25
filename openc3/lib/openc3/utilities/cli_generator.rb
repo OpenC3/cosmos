@@ -450,6 +450,35 @@ module OpenC3
       nil
     end
 
+    # Give a plugin gaining its first python target a pyproject.toml, the same
+    # one `generate plugin --python` writes, plus the lib/ package that its ty
+    # extra-paths points at. requirements.txt is deprecated, so it is never
+    # created; a legacy one is left in place with a warning rather than
+    # converted, because its pins may not survive an automatic move.
+    def self.add_python_dependency_file
+      return if File.exist?('pyproject.toml')
+
+      if File.exist?('requirements.txt')
+        puts "Warning: requirements.txt is deprecated for plugin python dependencies. " \
+             "Move them into pyproject.toml: https://docs.openc3.com/docs/configuration/plugins#phase-2-deploy"
+        return
+      end
+      gemspec_filename = Dir['*.gemspec'][0]
+      return unless gemspec_filename
+
+      plugin_name = File.basename(gemspec_filename, '.gemspec')
+      package_name = plugin_name.gsub(/[^a-z0-9]+/, '_')
+      pyproject = ERB.new(File.read("#{TEMPLATES_DIR}/plugin/pyproject.toml"), trim_mode: "-").result(binding)
+      File.write('pyproject.toml', pyproject)
+      init_path = "lib/#{package_name}/__init__.py"
+      unless File.exist?(init_path)
+        FileUtils.mkdir_p(File.dirname(init_path))
+        FileUtils.cp("#{TEMPLATES_DIR}/plugin/lib/PACKAGE/__init__.py", init_path)
+      end
+      write_python_version
+      puts "Created pyproject.toml. Add the plugin's python dependencies to it, then run `uv lock`."
+    end
+
     def self.generate_target(args)
       validate_language_inheriting_args!('target', args,
         example: ['cli generate target EXAMPLE --ruby', 'Creates: targets/EXAMPLE/'],
@@ -475,13 +504,7 @@ module OpenC3
       end
 
       if @@language == 'py'
-        # If we're using Python create a requirements.txt and list it in the gemspec
-        # However, don't write over an existing file they may have already created
-        unless File.exist?("requirements.txt")
-          File.open("requirements.txt", 'w') do |file|
-            file.puts "# Python dependencies"
-          end
-        end
+        add_python_dependency_file
         gemspec_filename = Dir['*.gemspec'][0]
         gemspec = File.read(gemspec_filename)
         # Older COSMOS versions wrote a singular python_dep_file block that never

@@ -1315,8 +1315,9 @@ module OpenC3
         orig_keys << "openc3_microservices"
 
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:destroy).exactly(10).times
-        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(10).times
+        # MULTI, DECOM, COMMANDLOG, PACKETLOG, CLEANUP, and TSDB for each of the two targets
+        expect(umodel).to receive(:destroy).exactly(12).times
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(12).times
         inst_model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: "INST_PLUGIN")
         inst_model.create
         inst_model.deploy(@target_dir, {})
@@ -1481,6 +1482,8 @@ module OpenC3
         # Reset class-level sync state between tests
         TargetModel.class_variable_set(:@@sync_packet_count_data, {})
         TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+        TargetModel.class_variable_set(:@@sync_packet_count_target_names, Set.new)
+        TargetModel.class_variable_set(:@@sync_packet_count_in_progress, false)
         TargetModel.class_variable_set(:@@stale_packet_keys_warned, Set.new)
       end
 
@@ -1605,6 +1608,79 @@ module OpenC3
           TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
 
           expect(packet.received_count).to be > 0
+        end
+
+        it "keeps the counts it couldn't write when a Redis write fails" do
+          health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+          adcs = System.telemetry.packet("INST", "ADCS")
+          TargetModel.class_variable_set(:@@sync_packet_count_data, { "INST" => { "HEALTH_STATUS" => 2 } })
+          calls = 0
+          allow(TargetModel).to receive(:increment_telemetry_count).and_wrap_original do |original, *args, **kwargs|
+            calls += 1
+            raise "Redis unavailable" if calls == 2
+            original.call(*args, **kwargs)
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          expect { TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope: "DEFAULT") }.to raise_error("Redis unavailable")
+          # HEALTH_STATUS was written so it isn't replayed, ADCS is kept for the next sync
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 2
+          expect(TargetModel.class_variable_get(:@@sync_packet_count_data)).to eql({ "INST" => { "ADCS" => 1 } })
+
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope: "DEFAULT")
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 3
+          expect(TargetModel.get_telemetry_count("INST", "ADCS", scope: "DEFAULT")).to eql 1
+        end
+
+        it "includes counts queued by other threads when reading back the global counters" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+          packet = System.telemetry.packet("INST", "ADCS")
+          allow(TargetModel).to receive(:get_all_telemetry_counts).and_wrap_original do |original, target_name, **kwargs|
+            # Another decom in the process queues a packet after the flush
+            TargetModel.class_variable_get(:@@sync_packet_count_data)["INST"] = { "HEALTH_STATUS" => 2 } if target_name == "INST"
+            original.call(target_name, **kwargs)
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
+          expect(System.telemetry.packet("INST", "HEALTH_STATUS").received_count).to eql 12
+        end
+
+        it "reads back the counts of every target decom'd in the process, not just the syncing decom's" do
+          # Another decom in the process (e.g. a MICROSERVICE_GROUP) handles SYSTEM,
+          # which has 5000 packets from before a restart
+          Store.hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 5000)
+          TargetModel.class_variable_set(:@@sync_packet_count_time, Time.now)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("SYSTEM", "META"), ["SYSTEM"], scope: "DEFAULT")
+          expect(System.telemetry.packet("SYSTEM", "META").received_count).to eql 1
+          # The INST decom wins the next sync
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          expect(System.telemetry.packet("SYSTEM", "META").received_count).to eql 5001
+        end
+
+        it "doesn't start a sync while another one is reading back the counts" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+          health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+          nested = false
+          allow(TargetModel).to receive(:get_all_telemetry_counts).and_wrap_original do |original, target_name, **kwargs|
+            counts = original.call(target_name, **kwargs)
+            if target_name == "INST" and !nested
+              nested = true
+              # Another decom's packet arrives after this read, once the sync period
+              # has passed again, before this sync applies what it read
+              TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+              TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope: "DEFAULT")
+            end
+            counts
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          # 10 from Redis plus the one not written yet, not the 10 read before it
+          expect(health_status.received_count).to eql 11
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 11
+          expect(health_status.received_count).to eql 11
         end
       end
     end
@@ -1765,6 +1841,49 @@ module OpenC3
         expect(@db_shard1.hexists("DEFAULT__tlm__INST", "HEALTH_STATUS")).to be false
         # SYSTEM on db_shard 0 is untouched
         expect(@db_shard0.exists?("DEFAULT__openc3tlm__SYSTEM")).to be true
+      end
+    end
+
+    describe "shared resource" do
+      before(:each) do
+        allow(Logger).to receive(:info)
+      end
+
+      def parse(model, *lines)
+        parser = ConfigParser.new
+        tf = nil
+        tf = Tempfile.new
+        lines.each { |line| tf.puts line }
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+      ensure
+        tf&.unlink
+      end
+
+      it "parses SHARED_RESOURCE" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        parse(model, "SHARED_RESOURCE chamber")
+        expect(model.shared_resource).to eql "CHAMBER"
+        expect(model.as_json['shared_resource']).to eql "CHAMBER"
+        expect { parse(model, "SHARED_RESOURCE bad name") }.to raise_error(ConfigParser::Error)
+      end
+
+      it "joins the shared resource when created" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        model.create
+        record = SharedResourceModel.get("CHAMBER")
+        expect(record['members']['DEFAULT']).to eql [{ 'type' => 'TARGET', 'name' => 'TEST' }]
+        expect(SharedResourceModel).not_to receive(:add_member)
+        model.update
+      end
+
+      it "leaves the shared resource if the create fails" do
+        TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT").create
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
       end
     end
   end

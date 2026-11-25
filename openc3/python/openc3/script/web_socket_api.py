@@ -294,21 +294,18 @@ class WebSocketApi:
     def connect(self) -> bool:
         """Connect to the websocket, disconnecting any existing connection first.
 
+        The token is sent in the subscription identifier (see subscribe), never
+        in the URL.
+
         Returns:
             True once connected.
         """
         self.disconnect()
-        # Add the token directly in the URL since adding it to the header doesn't seem to work
-        # Note in the this case we remove the "Bearer " string which is part of the token
         final_url = self.url + f"?scope={self.scope}"
         self.stream = WebSocketClientStream(final_url, self.write_timeout, self.read_timeout, self.connect_timeout)
         self.stream.headers = {
             "Sec-WebSocket-Protocol": "actioncable-v1-json, actioncable-unsupported",
             "User-Agent": WebSocketApi.USER_AGENT,
-            # Adding the authorization token to the header is supposed to work
-            # We add it directly with "Bearer <token>"
-            # But for some reason it doesn't so we add it directly to the URL above
-            # "Authorization": self.authentication.token(include_bearer=False),
         }
         return self.stream.connect()
 
@@ -608,6 +605,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         start_time: datetime | int | None = None,
         end_time: datetime | int | None = None,
         scope: str | None = None,
+        time_type: str | None = None,
+        include_times: bool = False,
     ) -> None:
         """Request to add data to the stream.
 
@@ -630,12 +629,21 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             end_time: datetime or 64-bit nanoseconds from the unix epoch.
                 Streams forever when not given.
             scope: Scope name. Defaults to the scope this API was created with.
+            time_type: "PACKET" or "RECEIVED". Whether start_time and end_time
+                select data by packet time or received time, which is also
+                returned as __time. The server defaults to "PACKET".
+            include_times: True to also return __packet_time and
+                __received_time (nanoseconds) in each result.
         """
         times = {}
         if start_time is not None:
             times["start_time"] = _nsec(start_time)
         if end_time is not None:
             times["end_time"] = _nsec(end_time)
+        if time_type is not None:
+            times["time_type"] = time_type.upper()
+        if include_times:
+            times["include_times"] = True
         self._stream_action("add", items=items, packets=packets, scope=scope, extra=times)
 
     def remove(
@@ -643,6 +651,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         items: list[str | list[str]] | None = None,
         packets: list[str] | None = None,
         scope: str | None = None,
+        time_type: str | None = None,
     ) -> None:
         """Request to remove data from the stream.
 
@@ -652,8 +661,13 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             items: Item keys to remove.
             packets: Packet keys to remove.
             scope: Scope name. Defaults to the scope this API was created with.
+            time_type: "PACKET" or "RECEIVED" to remove only the subscriptions
+                added with that time_type. Removes both when not given.
         """
-        self._stream_action("remove", items=items, packets=packets, scope=scope)
+        extra = {}
+        if time_type is not None:
+            extra["time_type"] = time_type.upper()
+        self._stream_action("remove", items=items, packets=packets, scope=scope, extra=extra)
 
     def _stream_action(
         self,
@@ -690,6 +704,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         end_time: datetime | int | None = None,
         scope: str | None = None,
         timeout: float | None = None,
+        time_type: str | None = None,
+        include_times: bool = False,
     ) -> list[Any]:
         """Read all data until the end marker is received.
 
@@ -711,6 +727,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             timeout: Stop once this many seconds have passed. Elapsed time is
                 checked only after each non-empty data batch, so this is not a
                 hard deadline. None waits for the end marker.
+            time_type: "PACKET" or "RECEIVED", see `add`.
+            include_times: True to also return both times, see `add`.
 
         Returns:
             The data entries from every batch received.
@@ -729,6 +747,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 start_time=start_time,
                 end_time=end_time,
                 scope=scope,
+                time_type=time_type,
+                include_times=include_times,
             )
             while True:
                 batch = api.read()

@@ -15,7 +15,9 @@ require 'openc3/utilities/questdb_client'
 
 class TsdbController < ApplicationController
   def execute_raw
-    return unless authorization('admin')
+    # Raw access spans every scope, so require system-wide admin (ALLSCOPES__admin
+    # in Enterprise) rather than admin of the requested scope
+    return unless authorization('superadmin')
 
     sql = request.body.read
     if sql.blank?

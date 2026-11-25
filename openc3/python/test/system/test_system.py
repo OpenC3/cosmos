@@ -251,6 +251,28 @@ class TestSystem(unittest.TestCase):
         # Should return DEFAULT when no limits set is configured
         self.assertEqual(result, "DEFAULT")
 
+    def test_limits_set_is_cached_until_set_or_cleared(self):
+        Store.hset("DEFAULT__limits_sets", mapping={"DEFAULT": "true", "TVAC": "false"})
+        reads = []
+
+        class CountingStore:
+            @staticmethod
+            def hgetall(key):
+                reads.append(key)
+                return Store.hgetall(key)
+
+        with patch("openc3.system.system.Store", CountingStore):
+            self.assertEqual(System.limits_set(), "DEFAULT")
+            Store.hset("DEFAULT__limits_sets", mapping={"DEFAULT": "false", "TVAC": "true"})
+            self.assertEqual(System.limits_set(), "DEFAULT")  # Cached
+            self.assertEqual(len(reads), 1)
+            System.set_limits_set("TVAC")
+            self.assertEqual(System.limits_set(), "TVAC")
+            self.assertEqual(len(reads), 1)
+            System.clear_limits_set_cache()
+            self.assertEqual(System.limits_set(), "TVAC")  # Reloaded from Redis
+            self.assertEqual(len(reads), 2)
+
     @patch("openc3.system.system.Bucket")
     def test_setup_targets(self, mock_bucket_class):
         """Test the setup_targets class method"""
@@ -290,6 +312,32 @@ class TestSystem(unittest.TestCase):
 
             # Verify that instance was created
             self.assertIsNotNone(System.instance_obj)
+
+
+class TestSystemSetupTargets(unittest.TestCase):
+    def setUp(self):
+        System.instance_obj = None
+
+    def tearDown(self):
+        System.instance_obj = None
+
+    def test_builds_an_empty_system_without_targets(self):
+        # Microservices without targets, such as an interface without
+        # MAP_TARGET, still use System (e.g. to identify UNKNOWN packets)
+        self.check_empty_system([])
+
+    def test_builds_an_empty_system_for_none(self):
+        self.check_empty_system(None)
+
+    def check_empty_system(self, target_names):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch("openc3.system.system.Bucket") as bucket:
+            System.setup_targets(target_names, temp_dir, scope="DEFAULT")
+            self.assertIsNotNone(System.instance_obj)
+            self.assertEqual(System.targets, {})
+            self.assertIsNotNone(System.telemetry.packet("UNKNOWN", "UNKNOWN"))
+            bucket.get_client.return_value.get_object.assert_not_called()
 
 
 class TestSystemIntegration(unittest.TestCase):

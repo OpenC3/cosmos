@@ -15,33 +15,13 @@
 import type { Page } from '@playwright/test'
 import { Utilities } from '../../utilities'
 import { test, expect } from './../fixture'
+import { openFile } from './helpers'
 import { ADMIN_STORAGE_STATE } from './../../playwright.config'
 
 test.use({
   toolPath: '/tools/scriptrunner',
   toolName: 'Script Runner',
 })
-
-async function openFile(page: Page, utils: Utilities, filename: string) {
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('text=Open File').click()
-  await utils.sleep(500) // Allow background data to fetch
-  await expect(
-    page.locator('.v-dialog').getByText('INST2', { exact: true }),
-  ).toBeVisible()
-  await page.locator('[data-test=file-open-save-search] input').fill(filename)
-  await page.locator(`.v-dialog >> text=${filename}`).click()
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
-
-  // Check for potential "<User> is editing this script"
-  // This can happen if we had to do a retry on this test
-  const someone = page.getByText('is editing this script')
-  if (await someone.isVisible()) {
-    await page.locator('[data-test="unlock-button"]').click()
-    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
-  }
-}
 
 async function runScript(
   page: Page,
@@ -293,6 +273,9 @@ test.describe('metadata apis', () => {
   // authorized deterministically. The @admin tag stays for the case where this
   // session has expired and the fixture has to sign in again.
   test.use({ storageState: ADMIN_STORAGE_STATE })
+  // Both tests start by clearing DEFAULT__METADATA, which would wipe the other's
+  // entries if they ran at the same time. Nothing else uses script metadata.
+  test.describe.configure({ mode: 'default' })
 
   test(
     'test ruby metadata apis',
@@ -521,41 +504,27 @@ for (const { language, target } of [
   })
 }
 
-test('test ruby script apis', async ({ page, utils }) => {
-  await runScript(page, utils, 'scripting.rb', async function () {
-    await expect(page.locator('[data-test=state] input')).toHaveValue(
-      /paused \d+s/,
-      {
-        timeout: 20000,
-      },
-    )
-    await page.locator('[data-test=step-button]').click()
-    await utils.sleep(500)
-    await page.locator('[data-test=step-button]').click()
-    await utils.sleep(500)
-    await page.locator('[data-test=step-button]').click()
-    await utils.sleep(500)
-    await page.locator('[data-test=step-button]').click()
+for (const { language, filename } of [
+  { language: 'ruby', filename: 'scripting.rb' },
+  { language: 'python', filename: 'scripting.py' },
+]) {
+  test(`test ${language} script apis`, async ({ page, utils }) => {
+    await runScript(page, utils, filename, async function () {
+      await expect(page.locator('[data-test=state] input')).toHaveValue(
+        /paused \d+s/,
+        {
+          timeout: 20000,
+        },
+      )
+      for (let step = 0; step < 4; step++) {
+        if (step > 0) {
+          await utils.sleep(500)
+        }
+        await page.locator('[data-test=step-button]').click()
+      }
+    })
   })
-})
-
-test('test python script apis', async ({ page, utils }) => {
-  await runScript(page, utils, 'scripting.py', async function () {
-    await expect(page.locator('[data-test=state] input')).toHaveValue(
-      /paused \d+s/,
-      {
-        timeout: 20000,
-      },
-    )
-    await page.locator('[data-test=step-button]').click()
-    await utils.sleep(500)
-    await page.locator('[data-test=step-button]').click()
-    await utils.sleep(500)
-    await page.locator('[data-test=step-button]').click()
-    await utils.sleep(500)
-    await page.locator('[data-test=step-button]').click()
-  })
-})
+}
 
 test('test python numpy import', async ({ page, utils }) => {
   await openFile(page, utils, 'numpy.py')

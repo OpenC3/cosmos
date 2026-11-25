@@ -125,8 +125,11 @@ class StreamingThread
             objects.each do |object|
               object.offset = msg_id
             end
-            result_entry = handle_message(msg_hash, objects)
-            results << result_entry if result_entry
+            # Items share one result entry, which has a single __time
+            each_time_type_group(objects) do |time_type_objects|
+              result_entry = handle_message(msg_hash, time_type_objects)
+              results << result_entry if result_entry
+            end
           end
           break if @cancel_thread
 
@@ -196,11 +199,34 @@ class StreamingThread
     objects.each { |object| object.offset = msg_id } if objects
   end
 
+  # Returns the message time (nsec) used for the time_type: the packet time
+  # or the received time. Falls back to the packet time for messages without a received time.
+  def message_time(msg_hash, time_type)
+    if time_type == :RECEIVED and msg_hash['received_time']
+      msg_hash['received_time'].to_i
+    else
+      msg_hash['time'].to_i
+    end
+  end
+
+  # Yields the objects grouped by time_type, without allocating in the common
+  # case where they all share one
+  def each_time_type_group(objects)
+    first_time_type = objects[0].time_type
+    if objects.all? { |object| object.time_type == first_time_type }
+      yield objects
+    else
+      objects.group_by(&:time_type).each_value { |group| yield group }
+    end
+  end
+
   def handle_message(msg_hash, objects)
     first_object = objects[0]
     time = msg_hash['time'].to_i
+    received_time = msg_hash['received_time'] ? msg_hash['received_time'].to_i : nil
+    stream_time = message_time(msg_hash, first_object.time_type)
     if first_object.stream_mode == :RAW
-      return handle_raw_packet(msg_hash['buffer'], objects, time)
+      return handle_raw_packet(msg_hash['buffer'], objects, stream_time, packet_time: time, received_time: received_time)
     else # @stream_mode == :DECOM
       json_data = msg_hash["json_data"]
       extra = nil
@@ -208,17 +234,30 @@ class StreamingThread
         extra = JSON.parse(msg_hash["extra"], allow_nan: true, create_additions: true)
       end
       json_packet = OpenC3::JsonPacket.new(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
-        time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), json_data, extra: extra)
-      return handle_json_packet(json_packet, objects)
+        time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), json_data,
+        received_time_nsec_since_epoch: received_time, extra: extra)
+      return handle_json_packet(json_packet, objects, stream_time)
     end
   end
 
-  def handle_json_packet(json_packet, objects)
-    time = json_packet.packet_time
-    objects = objects_active?(objects, time.to_nsec_from_epoch)
+  # Adds __packet_time and __received_time to a result if the client asked for them.
+  # received_time is nil when the source has no received time.
+  def add_times(result, packet_time, received_time)
+    return unless @streaming_api.include_times
+
+    result['__packet_time'] = packet_time
+    result['__received_time'] = received_time if received_time
+  end
+
+  # time_nsec is the time for the objects' time_type and defaults to the packet time
+  def handle_json_packet(json_packet, objects, time_nsec = nil)
+    time_nsec ||= json_packet.packet_time.to_nsec_from_epoch
+    objects = objects_active?(objects, time_nsec)
     return nil if objects.length <= 0
     result = {}
-    result['__time'] = time.to_nsec_from_epoch
+    result['__time'] = time_nsec
+    received_time = json_packet.received_time
+    add_times(result, json_packet.packet_time.to_nsec_from_epoch, received_time ? received_time.to_nsec_from_epoch : nil)
     result['COSMOS_EXTRA'] = JSON.generate(json_packet.extra, allow_nan: true) if json_packet.extra
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")
@@ -236,15 +275,19 @@ class StreamingThread
     return result
   end
 
-  def handle_raw_packet(buffer, objects, time)
+  # time is the time for the objects' time_type. packet_time and received_time are
+  # only used when the client asked for both times.
+  def handle_raw_packet(buffer, objects, time, packet_time: time, received_time: nil)
     objects = objects_active?(objects, time)
     return nil if objects.length <= 0
-    return {
+    result = {
       "__type" => "PACKET",
       "__packet" => objects[0].key,
       "__time" => time,
       "buffer" => Base64.encode64(buffer),
     }
+    add_times(result, packet_time, received_time)
+    return result
   end
 
   def objects_active?(objects, time)
@@ -255,12 +298,21 @@ class StreamingThread
     objects.each do |object|
       if object.end_time and time > object.end_time
         completed_objects << object
+      elsif before_start_time?(object, time)
+        next
       else
         result << object
       end
     end
     finish(completed_objects) if completed_objects.length > 0
     return result
+  end
+
+  # Whether to skip a message stamped before the object's start_time. Realtime
+  # streaming delivers every message, so objects handed off from a LoggedStreamingThread
+  # keep getting live data even when the target's clock is behind their start_time.
+  def before_start_time?(_object, _time)
+    false
   end
 
   # Only use this method if nothing was received from Redis
@@ -272,7 +324,7 @@ class StreamingThread
   def finish(objects)
     OpenC3::Logger.debug "Finishing #{objects.length} objects from stream"
     objects.each do |object|
-      @collection.remove(object)
+      @collection.remove(object, exact: true)
     end
     @cancel_thread = true if @collection.empty?
   end
@@ -326,18 +378,19 @@ class StreamingThread
   end
 
   def handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)
-    objects = item_objects_by_topic[topic]
+    # dup because these arrays are shared with the collection and remove deletes from them
+    objects = item_objects_by_topic[topic]&.dup
     if objects
       objects.each do |object|
         @collection.add(object)
-        collection.remove(object)
+        collection.remove(object, exact: true)
       end
     end
-    objects = packet_objects_by_topic[topic]
+    objects = packet_objects_by_topic[topic]&.dup
     if objects
       objects.each do |object|
         @collection.add(object)
-        collection.remove(object)
+        collection.remove(object, exact: true)
       end
     end
   end

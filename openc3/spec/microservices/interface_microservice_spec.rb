@@ -378,6 +378,31 @@ module OpenC3
         expect(result).to eql "CriticalCmdError\nabc-123"
       end
 
+      # Command Sender treats any command as hazardous when range checks are
+      # ignored or parameter conversions are disabled, so a manual command sent
+      # that way must also get critical approval. ABORT isn't hazardous itself.
+      { 'range_check' => 'false', 'raw' => 'true' }.each do |key, value|
+        it "holds a manual command sent with #{key} #{value} for critical approval" do
+          critical_model = double("CriticalCmdModel", create: nil, name: 'abc-123')
+          model_class = double(new: critical_model)
+          stub_const("OpenC3::CriticalCmdModel", model_class)
+          expect(@interface).to_not receive(:write)
+          msg_hash = { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")',
+                       'hazardous_check' => 'false', 'manual' => 'true', key => value }
+          result = handle(msg_hash, critical_commanding: 'NORMAL')
+          expect(result).to eql "CriticalCmdError\nabc-123"
+          expect(model_class).to have_received(:new).with(hash_including(type: 'HAZARDOUS'))
+        end
+
+        it "doesn't hold a script command sent with #{key} #{value} for critical approval" do
+          stub_const("OpenC3::CriticalCmdModel", double("CriticalCmdModel"))
+          expect(@interface).to receive(:write)
+          msg_hash = { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")',
+                       'hazardous_check' => 'true', 'manual' => 'false', key => value }
+          expect(handle(msg_hash, critical_commanding: 'NORMAL')).to eql 'SUCCESS'
+        end
+      end
+
       it "doesn't count a command returned for hazardous confirmation" do
         expect(TargetModel).to_not receive(:increment_command_count)
         expect(@interface).to_not receive(:write)
