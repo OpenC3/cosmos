@@ -117,7 +117,7 @@ class PluginsController < ModelController
         plugin['default'] = OpenC3::DefaultPlugins.default?(plugin_name)
       end
 
-      render json: plugins
+      render json: text_json(plugins)
     else
       plugin = @model_class.get(name: params[:id], scope: params[:scope])
       if plugin && plugin['store_plugin_id']
@@ -127,7 +127,7 @@ class PluginsController < ModelController
         plugin.merge!(store_version) if store_version
       end
 
-      render json: plugin
+      render json: text_json(plugin)
     end
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: :internal_server_error
@@ -137,6 +137,10 @@ class PluginsController < ModelController
   # Add a new plugin
   def create(update = false)
     return unless authorization('admin')
+    if params[:gem] and !update
+      create_from_gem
+      return
+    end
     file = if params[:store_plugin_id]
       store_data = OpenC3::PluginStoreModel.get_by_id(params[:store_plugin_id])
       unless store_data.nil?
@@ -191,7 +195,7 @@ class PluginsController < ModelController
         else
           result = OpenC3::PluginModel.install_phase1(gem_file_path, store_plugin_id: params[:store_plugin_id], store_version_id: params[:store_version_id], scope: scope)
         end
-        render json: result
+        render json: text_json(result)
       rescue OpenC3::EmptyGemFileError => error
         render json: { status: 'error', message: error.message }, status: :bad_request
         logger.error(error.formatted)
@@ -206,6 +210,24 @@ class PluginsController < ModelController
       render json: { status: 'error', message: "No file received" }, status: :internal_server_error
     end
   end
+
+  # Parse the plugin.txt of a plugin gem already in COSMOS, e.g. to install a
+  # plugin again for another device found by hardware discovery
+  def create_from_gem
+    scope = sanitize_params([:scope])
+    return unless scope
+    gem = File.basename(params[:gem].to_s)
+    unless gem.end_with?('.gem') and OpenC3::GemModel.names.include?(gem)
+      render json: { status: 'error', message: "Plugin gem '#{gem}' is not in COSMOS" }, status: :not_found
+      return
+    end
+    # Given just the gem name, install_phase1 takes the gem from COSMOS
+    render json: text_json(OpenC3::PluginModel.install_phase1(gem, scope: scope[0]))
+  rescue Exception => error
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+    logger.error(error.formatted)
+  end
+  private :create_from_gem
 
   def update
     return unless authorization('admin')
@@ -232,6 +254,67 @@ class PluginsController < ModelController
       logger.error(error.formatted)
       render json: { status: 'error', message: error.message }, status: :internal_server_error
     end
+  end
+
+  # Renders the plugin.txt ERB with the plugin dialog's variables so the user
+  # can see what will be installed. ERB errors are returned as { error: }.
+  def preview
+    return unless authorization('admin')
+    begin
+      scope = sanitize_params([:scope])
+      return unless scope
+      scope = scope[0]
+      plugin_hash = JSON.parse(params[:plugin_hash])
+      render json: text_json(OpenC3::PluginModel.preview(plugin_hash, scope: scope))
+    rescue JSON::ParserError => error
+      render json: { status: 'error', message: error.message }, status: :bad_request
+    rescue Exception => error
+      logger.error(error.formatted)
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
+    end
+  end
+
+  # Validate the plugin as the plugin dialog would install it, with a dry run
+  # install in a separate process
+  def validate
+    return unless authorization('admin')
+    begin
+      scope = sanitize_params([:scope])
+      return unless scope
+      scope = scope[0]
+      plugin_hash = JSON.parse(params[:plugin_hash])
+      render json: OpenC3::PluginModel.validate(plugin_hash, scope: scope)
+    rescue JSON::ParserError => error
+      render json: { status: 'error', message: error.message }, status: :bad_request
+    rescue Exception => error
+      logger.error(error.formatted)
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
+    end
+  end
+
+  # Largest file a VARIABLE_FILE upload can be
+  MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+
+  # Store a file chosen for a VARIABLE_FILE in the plugin dialog. Returns the
+  # variable value that refers to it, which install copies into the plugin.
+  def upload_file
+    return unless authorization('admin')
+    scope = sanitize_params([:scope])
+    return unless scope
+    file = params[:file]
+    unless file.respond_to?(:tempfile)
+      render json: { status: 'error', message: 'No file received' }, status: :bad_request
+      return
+    end
+    if file.size > MAX_UPLOAD_BYTES
+      render json: { status: 'error', message: "File is larger than #{MAX_UPLOAD_BYTES / 1024 / 1024} MB" }, status: :payload_too_large
+      return
+    end
+    value = OpenC3::PluginModel.store_upload(file.tempfile.path, file.original_filename, scope: scope[0])
+    render json: text_json({ value: value })
+  rescue Exception => error
+    logger.error(error.formatted)
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
   end
 
   def install

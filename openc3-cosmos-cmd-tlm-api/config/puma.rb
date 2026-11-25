@@ -35,8 +35,3 @@ preload_app!
 
 # Allow puma to be restarted by `rails restart` command.
 plugin :tmp_restart
-
-before_worker_boot do
-  # Re-open appenders after forking the process
-  SemanticLogger.reopen
-end

@@ -105,4 +105,24 @@ class ApplicationController < ActionController::API
     end
     logger.error("#{e.message}\n#{filtered_backtrace.join("\n")}")
   end
+
+  # JSON for responses that carry user text, like plugin.txt descriptions or
+  # device names ("Manette 🎮"). The COSMOS String#as_json used by
+  # `render json:` sends strings with characters outside Latin-1 as raw byte
+  # objects. Strings read as binary (plugin.txt) are UTF-8 text, so they're
+  # sent as UTF-8 with any invalid bytes replaced.
+  def text_json(value)
+    JSON.generate(utf8_text(value))
+  end
+
+  def utf8_text(value)
+    case value
+    when String
+      return value if value.encoding == Encoding::UTF_8 and value.valid_encoding?
+      value.dup.force_encoding(Encoding::UTF_8).scrub
+    when Array then value.map { |item| utf8_text(item) }
+    when Hash then value.to_h { |key, item| [utf8_text(key), utf8_text(item)] }
+    else value
+    end
+  end
 end

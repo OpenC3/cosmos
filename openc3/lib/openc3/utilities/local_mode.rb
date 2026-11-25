@@ -47,6 +47,7 @@ module OpenC3
 
             if gems.length == 1 and plugin_instance
               # If one gem file and plugin_instance.json - Install instance
+              restore_local_uploads(full_folder_path, scope: scope_dir.upcase)
               load_plugin(gems[0], scope: scope_dir.upcase, plugin_hash_file: plugin_instance)
             elsif gems.length == 1
               # Else If just gem  - Install with default settings
@@ -191,6 +192,7 @@ module OpenC3
           File.open(File.join(File.dirname(plugin_file_path), 'plugin_instance.json'), 'wb') do |file|
             file.write(JSON.pretty_generate(plugin_hash, allow_nan: true))
           end
+          save_local_uploads(File.dirname(plugin_file_path), plugin_hash, scope: scope)
         else
           # From online install / update
           # Or init install of container plugin
@@ -219,7 +221,7 @@ module OpenC3
                     if json["name"] == old_plugin_name
                       # Found plugin to update
                       found = true
-                      update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+                      update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name, scope: scope)
                     end
                   else
                     # New install of same plugin - Leave it alone
@@ -229,7 +231,7 @@ module OpenC3
                   # This shouldn't happen without users using this wrong
                   # We will update
                   found = true
-                  update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+                  update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name, scope: scope)
                 end
               end
             end
@@ -245,13 +247,13 @@ module OpenC3
               count += 1
             end
             full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}"
-            update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+            update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name, scope: scope)
           end
         end
       end
     end
 
-    def self.update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+    def self.update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name, scope: nil)
       return if DefaultPlugins::NAMES.include?(gem_name)
       puts "Updating local plugin files: #{full_folder_path}"
       FileUtils.mkdir_p(full_folder_path)
@@ -271,8 +273,42 @@ module OpenC3
         File.open(File.join(full_folder_path, 'plugin_instance.json'), 'wb') do |file|
           file.write(JSON.pretty_generate(plugin_hash, allow_nan: true))
         end
+        save_local_uploads(full_folder_path, plugin_hash, scope: scope) if scope
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)
+      end
+    end
+
+    # Files uploaded for VARIABLE_FILE variables are kept in the bucket, so
+    # they're also saved in the local plugin folder (plugin_uploads/<id>/<file>)
+    # beside plugin_instance.json. Then a fresh clone, or a bucket that was
+    # wiped, can install the plugin again.
+    def self.save_local_uploads(full_folder_path, plugin_hash, scope:)
+      uploads_path = File.join(full_folder_path, PluginModel::UPLOADS_PATH)
+      FileUtils.rm_rf(uploads_path)
+      (plugin_hash['variables'] || {}).each do |name, variable|
+        next unless variable.is_a?(Hash) and variable['type'] == PluginModel::FILE_VARIABLE_TYPE
+        key = PluginModel.upload_key(variable['value'], scope: scope)
+        next unless key
+        path = File.join(uploads_path, variable['value'])
+        FileUtils.mkdir_p(File.dirname(path))
+        Bucket.getClient().get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: path)
+        puts "Could not save the file uploaded for VARIABLE_FILE #{name} locally" unless File.exist?(path)
+      end
+    end
+
+    # Put the uploads saved in a local plugin folder back in the bucket
+    # before the plugin is installed from its plugin_instance.json
+    def self.restore_local_uploads(full_folder_path, scope:)
+      uploads_path = File.join(full_folder_path, PluginModel::UPLOADS_PATH)
+      return unless File.directory?(uploads_path)
+      Dir.glob("#{uploads_path}/*/*").each do |path|
+        next unless File.file?(path)
+        key = PluginModel.upload_key(path.delete_prefix("#{uploads_path}/"), scope: scope)
+        next unless key
+        File.open(path, 'rb') do |file|
+          Bucket.getClient().put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: file)
+        end
       end
     end
 
@@ -291,6 +327,7 @@ module OpenC3
               puts "Removing local plugin files: #{full_folder_path}"
               File.delete(gems[0])
               File.delete(plugin_instance)
+              FileUtils.rm_rf(File.join(full_folder_path, PluginModel::UPLOADS_PATH))
               if Dir.empty?(File.dirname(gems[0]))
                 FileUtils.rm_rf(File.dirname(gems[0]))
               end
@@ -587,8 +624,14 @@ module OpenC3
       FileUtils.mkdir_p(local_folder_path)
       Dir.glob(local_folder_path + "/**/*").each do |filename|
         next if File.directory?(filename)
+
         mod_filename = filename[prefix_length..-1]
-        local_catalog[mod_filename] = File.size(filename)
+        begin
+          local_catalog[mod_filename] = File.size(filename)
+        rescue Errno::ENOENT
+          # Deleted by another request after the glob listed it, so it's no
+          # longer part of the catalog
+        end
       end
       return local_catalog
     end

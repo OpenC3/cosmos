@@ -48,6 +48,12 @@ class TargetModel(Model):
     packet_cache_lock = threading.Lock()
     sync_packet_count_data = {}
     sync_packet_count_time = None
+    # Decom microservices sharing a process (a MULTI or MULTIGROUP) share these counts
+    sync_packet_count_lock = threading.Lock()
+    # Targets decom'd in this process, whose counts each sync reads back
+    sync_packet_count_target_names: set[str] = set()
+    # Only one sync at a time so an older read back can't overwrite a newer one
+    sync_packet_count_in_progress = False
     sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
     stale_packet_keys_warned = set()  # Track stale keys already warned about
 
@@ -352,21 +358,33 @@ class TargetModel(Model):
         return counts
 
     @classmethod
-    def init_tlm_packet_counts(cls, tlm_target_names, scope):
+    def init_tlm_packet_counts(cls, tlm_target_names: list[str], scope: str) -> None:
+        """Load the global telemetry packet counts from Redis into System.
+
+        Called when an interface microservice starts. Sets each known packet's
+        received_count from its TELEMETRYCNTS field and passes the fields for
+        packets System doesn't know to prune_stale_telemetry_counts. Also starts
+        a new epoch for the stale key warnings, so each start warns again.
+
+        Args:
+            tlm_target_names: Names of the targets the interface receives
+                telemetry for. The UNKNOWN target is always loaded too.
+            scope: Scope the targets are installed in.
+        """
         cls.sync_packet_count_time = time.time()
         cls.stale_packet_keys_warned = set()
 
         # Get all the packet counts with the global counters
         for target_name in tlm_target_names:
+            unknown_packet_names = []
             for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
                 try:
                     update_packet = System.telemetry.packet(target_name, packet_name.decode())
                     update_packet.received_count = int(count)
                 except RuntimeError:
-                    key = f"{target_name} {packet_name.decode()}"
-                    if key not in cls.stale_packet_keys_warned:
-                        cls.stale_packet_keys_warned.add(key)
-                        Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+                    unknown_packet_names.append(packet_name.decode())
+            if unknown_packet_names:
+                cls.prune_stale_telemetry_counts(target_name, unknown_packet_names, scope)
         for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
             try:
                 update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
@@ -376,6 +394,45 @@ class TargetModel(Model):
                 if key not in cls.stale_packet_keys_warned:
                     cls.stale_packet_keys_warned.add(key)
                     Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+
+    @classmethod
+    def prune_stale_telemetry_counts(cls, target_name: str, unknown_packet_names: list[str], scope: str) -> None:
+        """Delete the telemetry counts of packets the target no longer defines.
+
+        A microservice still running the old packet definitions during a plugin
+        upgrade can write counts for removed packets after the upgrade cleared
+        the counts. A packet that is still in the target's Redis packet
+        definitions but that this System didn't load (e.g. a dynamic packet)
+        keeps its count and is warned about once per epoch instead. If the
+        target isn't installed, every count is kept and warned about.
+
+        Args:
+            target_name: Target whose TELEMETRYCNTS hash holds the fields.
+            unknown_packet_names: Packet names that have a count field but
+                aren't in System.
+            scope: Scope the target is installed in.
+        """
+        try:
+            defined_packet_names = cls.packet_names(target_name, type="TLM", scope=scope)
+        except RuntimeError:
+            # The target isn't installed so there's nothing to compare against
+            defined_packet_names = unknown_packet_names
+        stale_packet_names = [name for name in unknown_packet_names if name not in defined_packet_names]
+        if stale_packet_names:
+            cls._store_for_target(target_name, scope).hdel(
+                f"{scope}__TELEMETRYCNTS__{{{target_name}}}", *stale_packet_names
+            )
+            Logger.info(
+                f"Removed stale tlmcnt Redis keys for {target_name} packets that are no longer defined: "
+                + ", ".join(stale_packet_names)
+            )
+        for packet_name in unknown_packet_names:
+            if packet_name not in defined_packet_names:
+                continue
+            key = f"{target_name} {packet_name}"
+            if key not in cls.stale_packet_keys_warned:
+                cls.stale_packet_keys_warned.add(key)
+                Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
@@ -389,57 +446,97 @@ class TargetModel(Model):
             # Only sync every period (default 1 second) to avoid hammering Redis
             # This is a trade off between speed and accuracy
             # The packet count is eventually consistent
-            if cls.sync_packet_count_data.get(packet.target_name) is None:
-                cls.sync_packet_count_data[packet.target_name] = {}
-            if cls.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
-                cls.sync_packet_count_data[packet.target_name][packet.packet_name] = 0
-            cls.sync_packet_count_data[packet.target_name][packet.packet_name] += 1
+            sync_data = None
+            sync_target_names: list[str] = []
+            with cls.sync_packet_count_lock:
+                cls.sync_packet_count_target_names.update(tlm_target_names)
+                if cls.sync_packet_count_data.get(packet.target_name) is None:
+                    cls.sync_packet_count_data[packet.target_name] = {}
+                if cls.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
+                    cls.sync_packet_count_data[packet.target_name][packet.packet_name] = 0
+                cls.sync_packet_count_data[packet.target_name][packet.packet_name] += 1
 
-            # Ensures counters change between syncs
-            update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
-            update_packet.received_count += 1
-            packet.received_count = update_packet.received_count
+                # Ensures counters change between syncs
+                update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
+                update_packet.received_count += 1
+                packet.received_count = update_packet.received_count
 
-            # Check if we need to sync the packet counts
-            if (
-                cls.sync_packet_count_time is None
-                or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
-            ):
-                cls.sync_packet_count_time = time.time()
+                # Check if we need to sync the packet counts
+                if not cls.sync_packet_count_in_progress and (
+                    cls.sync_packet_count_time is None
+                    or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
+                ):
+                    cls.sync_packet_count_in_progress = True
+                    cls.sync_packet_count_time = time.time()
+                    sync_data = cls.sync_packet_count_data
+                    cls.sync_packet_count_data = {}
+                    # Every target in the process, since the other decoms skip the sync
+                    # while this one runs it (and the timer it reset)
+                    sync_target_names = list(dict.fromkeys([*sorted(cls.sync_packet_count_target_names), "UNKNOWN"]))
 
-                # Increment global counters for packets received
-                for (
-                    target_name,
-                    packet_data,
-                ) in cls.sync_packet_count_data.items():
-                    for packet_name, count in packet_data.items():
-                        TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
-                cls.sync_packet_count_data = {}
+            if sync_data is not None:
+                cls._sync_and_read_back_packet_counts(sync_data, sync_target_names, scope)
 
-                # Get all the packet counts with the global counters
-                for target_name in tlm_target_names:
-                    for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
+    @classmethod
+    def _sync_and_read_back_packet_counts(
+        cls, sync_data: dict[str, dict[str, int]], target_names: list[str], scope: str
+    ) -> None:
+        """Write a batch to Redis and set every packet's received_count from the global counters.
+
+        Only one thread runs this at a time (see sync_packet_count_in_progress).
+
+        Args:
+            sync_data: Counts to add, by target and packet, detached from sync_packet_count_data.
+            target_names: Targets whose counts to read back.
+            scope: Scope of the targets.
+
+        Raises:
+            Exception: A Redis write failed. The unwritten counts are kept for the next sync.
+        """
+        try:
+            cls._write_packet_counts(sync_data, scope)
+
+            # Get all the packet counts with the global counters
+            counts = {}
+            for target_name in target_names:
+                counts[target_name] = TargetModel.get_all_telemetry_counts(target_name, scope=scope)
+            with cls.sync_packet_count_lock:
+                for target_name, packet_counts in counts.items():
+                    for packet_name, count in packet_counts.items():
+                        if isinstance(packet_name, bytes):
+                            packet_name = packet_name.decode()
                         try:
-                            update_packet = System.telemetry.packet(
-                                target_name, packet_name.decode() if isinstance(packet_name, bytes) else packet_name
-                            )
-                            update_packet.received_count = int(count)
+                            update_packet = System.telemetry.packet(target_name, packet_name)
+                            # Add the increments threads in this process queued since the flush
+                            # (e.g. UNKNOWN is shared) so the count doesn't go backwards
+                            pending = cls.sync_packet_count_data.get(target_name, {}).get(packet_name, 0)
+                            update_packet.received_count = int(count) + pending
                         except RuntimeError:
-                            key = f"{target_name} {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
+                            key = f"{target_name} {packet_name}"
                             if key not in cls.stale_packet_keys_warned:
                                 cls.stale_packet_keys_warned.add(key)
                                 Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
-                for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
-                    try:
-                        update_packet = System.telemetry.packet(
-                            "UNKNOWN", packet_name.decode() if isinstance(packet_name, bytes) else packet_name
-                        )
-                        update_packet.received_count = int(count)
-                    except RuntimeError:
-                        key = f"UNKNOWN {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
-                        if key not in cls.stale_packet_keys_warned:
-                            cls.stale_packet_keys_warned.add(key)
-                            Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+        finally:
+            with cls.sync_packet_count_lock:
+                cls.sync_packet_count_in_progress = False
+
+    @classmethod
+    def _write_packet_counts(cls, sync_data, scope):
+        """Write a batch detached from sync_packet_count_data to Redis. Entries are
+        removed as they're written so if a write fails only the unwritten counts
+        are put back for the next sync."""
+        try:
+            for target_name, packet_data in sync_data.items():
+                for packet_name, count in packet_data.copy().items():
+                    TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
+                    del packet_data[packet_name]
+        except Exception:
+            with cls.sync_packet_count_lock:
+                for target_name, packet_data in sync_data.items():
+                    pending = cls.sync_packet_count_data.setdefault(target_name, {})
+                    for packet_name, count in packet_data.items():
+                        pending[packet_name] = pending.get(packet_name, 0) + count
+            raise
 
     @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
@@ -526,6 +623,7 @@ class TargetModel(Model):
         cmd_decom_retain_time=None,
         tlm_decom_retain_time=None,
         decom_flush_period=5.0,
+        decom_update_interval=None,
         cleanup_poll_time=3600,
         needs_dependencies=False,
         target_microservices=None,
@@ -533,6 +631,9 @@ class TargetModel(Model):
         shard=0,
         db_shard=0,
         stored_limits_mode="PROCESS",
+        microservice_group=None,
+        language=None,
+        shared_resource: str | None = None,
         scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
@@ -551,6 +652,9 @@ class TargetModel(Model):
         self.db_shard = int(db_shard) if db_shard is not None else 0
         mode = str(stored_limits_mode).upper() if stored_limits_mode else "PROCESS"
         self.stored_limits_mode = mode if mode in ("PROCESS", "LOG", "DISABLE") else "PROCESS"
+        self.microservice_group = microservice_group
+        self.language = language
+        self.shared_resource = shared_resource
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,

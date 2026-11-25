@@ -65,6 +65,15 @@ COSMOS supports two formats for declaring Python dependencies:
 - **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
 - **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
 
+Both files are processed with [ERB](/docs/configuration/format#erb) using the plugin variables before installation, so variables can select which dependencies are installed. ERB code can read files shipped next to the dependency file with `File.dirname(__FILE__)`. For example, a `requirements.txt` that installs only the driver for the selected device:
+
+```
+<%- require 'json' -%>
+<%= JSON.parse(File.read(File.join(File.dirname(__FILE__), 'drivers.json')))[device_type].join("\n") %>
+```
+
+A `uv.lock` is used as-is, so a plugin whose `pyproject.toml` dependencies depend on variables should not ship a `uv.lock`.
+
 System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
 
 Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
@@ -92,6 +101,33 @@ Target deployment also automatically creates several microservices for each targ
 - **TSDB** — Writes decommutated data to the time series database
 - **MULTI** — Parent microservice that manages child processes for orderly startup and shutdown
 
+DECOM, COMMANDLOG, PACKETLOG, and CLEANUP run as threads in the target's MULTI process. TSDB, and DECOM for a target with `LANGUAGE python`, run as their own Python processes.
+
+#### Sharing Processes Between Targets
+
+Each process uses roughly 80 to 100 MB of memory before it does any work, so a plugin with many targets can use a lot of memory. Targets that set [MICROSERVICE_GROUP](#microservice_group) to the same name keep their own microservices but run them in two processes shared by the whole group:
+
+| Microservice                     | Runs as threads                                                     |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `<SCOPE>__MULTIGROUP__<GROUP>`   | Every member's DECOM (Ruby targets), COMMANDLOG, PACKETLOG, CLEANUP |
+| `<SCOPE>__PYMULTIGROUP__<GROUP>` | Every member's TSDB, and DECOM for Python targets                   |
+
+```cosmos
+TARGET THERMAL THERMAL
+  MICROSERVICE_GROUP HOUSEKEEPING
+TARGET POWER POWER
+  MICROSERVICE_GROUP HOUSEKEEPING
+```
+
+Each target keeps its own microservices (for example `DEFAULT__DECOM__THERMAL`), settings, and status. The demo plugin puts its targets in the `DEMO` group (set its `microservice_group` variable to blank to give each target its own processes). Targets in different plugins can share a group. Some things to consider:
+
+- All targets in a group must use the same [SHARD](#shard-1) and [DB_SHARD](#db_shard-1).
+- The decoms in one process share its write queue, which flushes at one interval: the fastest [DECOM_UPDATE_INTERVAL](#decom_update_interval) of the group's Ruby targets (and separately of its Python targets). A target with a DECOM_UPDATE_INTERVAL of 0 doesn't use the queue and writes directly.
+- A group can only have Python targets from one plugin, because its Python process uses that plugin's Python packages.
+- MICROSERVICE_GROUP can't be combined with [TARGET_MICROSERVICE](#target_microservice).
+- Installing, upgrading, or removing any target in the group restarts the group's processes, which briefly pauses processing for every target in it.
+- The targets in a group share each process's CPU. Python threads in particular share one interpreter lock, so a group's Python process can fall behind sooner than separate processes would. Groups suit stable, low-rate targets. Give high-rate targets their own processes.
+
 ### Interface and Router Deployment
 
 Interfaces and routers each create a corresponding microservice that the operator starts as a running process. The microservice handles the physical connection (TCP, UDP, serial, etc.) and routes commands and telemetry to the appropriate Valkey pub/sub topics.
@@ -111,6 +147,35 @@ Custom microservice files are extracted from the gem's `microservices/<FOLDER>/`
 ### Uninstallation
 
 When a plugin is uninstalled, COSMOS destroys all its components in dependency order: microservices are stopped first (with a wait period for graceful shutdown), then interfaces, routers, tools, widgets, targets, and script engines are removed. All associated files are deleted from both the configuration and tools buckets, and Redis state is cleaned up.
+
+## Shared Resources
+
+<span class="badge badge--secondary since-right">Since _Coming Soon_</span>
+
+A shared resource is something, typically expensive hardware, that is defined in several scopes but must only be used by one scope at a time. Add the `SHARED_RESOURCE <Name>` keyword to the interfaces, routers, microservices, and targets that use it. Everything with the same shared resource name, in any scope, belongs to the same shared resource.
+
+```cosmos
+TARGET CHAMBER CHAMBER
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+INTERFACE CHAMBER_INT tcpip_client_interface.py chamber 8080 8080 10.0 None
+  MAP_TARGET CHAMBER
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+MICROSERVICE CHAMBER_CTRL chamber_ctrl
+  TARGET_NAME CHAMBER
+  CMD python chamber_ctrl.py
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+```
+
+The shared resource is active in one scope at a time:
+
+- The first scope to install the shared resource owns it and it becomes active there.
+- In every other scope the plugin installs normally, but the interface, router, and microservice processes are not started.
+- Commands to the resource's targets are rejected in scopes where it isn't active, as are `connect_interface`, `interface_cmd`, `send_raw`, and the router equivalents. The targets' own microservices (decom, logging, and cleanup) keep running in every scope, so telemetry screens, `build_cmd`, `inject_tlm`, and historical data still work.
+- Use [switch_shared_resource](../guides/scripting-api.md#switch_shared_resource) to move the resource to another scope. Its processes in the old scope are stopped, and only once they have exited are the processes in the new scope started, so the hardware is never used by two scopes at once. Switching requires admin permission in both scopes.
+- Use [release_shared_resource](../guides/scripting-api.md#release_shared_resource) to stop the resource in every scope.
+- Upgrading or reinstalling a plugin keeps the resource active in the same scope. Uninstalling the plugin from the active scope leaves the resource assigned to that scope until it is switched to another scope.
+
+`SHARED_RESOURCE` can't be used with `BRIDGE`.
 
 ## Plugin Directory Structure
 

@@ -119,11 +119,20 @@ export const test = base.extend<{
     // disabling: contexts start from storageState.json, which can already carry
     // a notoast from a previous test, and a spec that opts out (notifications)
     // needs it actually removed.
+    //
+    // Also suppress the TimeCheck "Clock out of sync" dialog. A busy CI runner
+    // can measure the 3s discrepancy, and the dialog's scrim then swallows every
+    // click. global.setup.ts ticks "Don't show this again", but saveAuthState
+    // drops that key from the storage state files, so set it here on every page.
     await context.addInitScript((disable: boolean) => {
       // Runs in every frame, including sandboxed iframes (e.g. the screen
       // ButtonWidget command sandbox) whose opaque origin has no localStorage
       // access - guard so we don't throw a SecurityError there.
       try {
+        window.localStorage.setItem(
+          'suppresswarning__clock_out_of_sync_with_server',
+          'true',
+        )
         if (disable) {
           window.localStorage.setItem('notoast', 'true')
         } else {
@@ -158,12 +167,7 @@ export const test = base.extend<{
         // Keeping the file fresh is what stops that. Safe because every spec
         // that logs out mid-test runs in the single-worker *.s.spec.ts batch, so
         // these fixed paths are never written by two workers at once.
-        await page.locator('input[name="username"]').fill(username)
-        await page.locator('input[name="password"]').fill(password)
-        await Promise.all([
-          page.waitForURL(`${baseURL}${toolPath}`),
-          page.locator('button:has-text("Sign In")').click(),
-        ])
+        await utils.signIn(username, password)
         await saveAuthState(
           page.context(),
           username === 'admin' ? ADMIN_STORAGE_STATE : STORAGE_STATE,

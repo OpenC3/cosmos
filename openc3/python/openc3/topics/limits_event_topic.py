@@ -11,6 +11,7 @@
 
 import json
 import re
+import time
 
 from openc3.system.system import System
 from openc3.topics.topic import Topic
@@ -38,17 +39,43 @@ class LimitsEventTopic(Topic):
             items.setdefault(target_name, {}).setdefault(packet_name, []).append(item_name)
         return items
 
+    # How long the set of active db_shards is cached. Every limits event is
+    # written to every active db_shard, and looking them up reads and parses every
+    # target, which is too slow to do per event when many items change state.
+    # Only LIMITS_CHANGE events use the cache, so a target added on a new db_shard
+    # gets them within this time. Decom microservices ignore LIMITS_CHANGE events,
+    # and the events that change their limits always look up the current db_shards.
+    ACTIVE_DB_SHARDS_CACHE_TIMEOUT = 10  # seconds
+    _active_db_shards_cache = {}
+
     @classmethod
-    def _active_db_shards(cls, scope):
-        """Collect all unique target db_shards from TargetModel"""
+    def _active_db_shards(cls, scope, use_cache=True):
+        """Collect all unique target db_shards from TargetModel
+
+        use_cache: Whether to return the cached db_shards if they haven't timed out.
+        The db_shards are cached either way."""
+        now = time.monotonic()
+        cached = cls._active_db_shards_cache.get(scope)
+        if use_cache and cached and now < cached[0]:
+            return cached[1]
+
         db_shards = {0}
         for _name, json_data in Store.hgetall(f"{scope}__openc3_targets").items():
             parsed = json.loads(json_data)
             db_shards.add(int(parsed.get("db_shard", 0) or 0))
+        db_shards = frozenset(db_shards)
+        cls._active_db_shards_cache[scope] = (now + cls.ACTIVE_DB_SHARDS_CACHE_TIMEOUT, db_shards)
         return db_shards
 
     @classmethod
-    def write(cls, event, scope):
+    def clear_active_db_shards_cache(cls):
+        cls._active_db_shards_cache = {}
+
+    # publish: Whether to write the event to the limits events stream. When False
+    #   only the store is updated, which a decom microservice uses while resyncing
+    #   so the resync can't flood the stream it is recovering from.
+    @classmethod
+    def write(cls, event, scope, publish=True):
         match event["type"]:
             case "LIMITS_CHANGE":
                 # The current_limits hash keeps only the current limits state of items
@@ -104,6 +131,8 @@ class LimitsEventTopic(Topic):
                     field,
                     json.dumps(limits_settings),
                 )
+                if not event.get("enabled", False):
+                    cls.clear_disabled_current_limits([field], scope)
 
             case "LIMITS_GROUP_ENABLE_STATE":
                 # Groups can contain many thousands of items so read and write the settings in bulk
@@ -120,6 +149,8 @@ class LimitsEventTopic(Topic):
                         limits_settings["enabled"] = event["enabled"]
                         updates[field] = json.dumps(limits_settings)
                     Store.hset(f"{scope}__current_limits_settings", mapping=updates)
+                    if not event.get("enabled", False):
+                        cls.clear_disabled_current_limits(fields, scope)
 
             case "LIMITS_STATE_COLOR":
                 # Persist the state color so it survives a decom microservice restart (applied by sync_system)
@@ -150,9 +181,14 @@ class LimitsEventTopic(Topic):
             case _:
                 raise RuntimeError(f"Invalid limits event type '{event['type']}'")
 
-        # Write to all active db_shards so each decom microservice can read limits events inline
+        if not publish:
+            return
+
+        # Write to all active db_shards so each decom microservice can read limits events inline.
+        # Only LIMITS_CHANGE events are frequent enough to need the cache. The rest change
+        # decom limits so they must reach a decom on a db_shard that was just added.
         msg_hash = {"event": json.dumps(event, cls=JsonEncoder)}
-        for db_shard in cls._active_db_shards(scope):
+        for db_shard in cls._active_db_shards(scope, use_cache=event["type"] == "LIMITS_CHANGE"):
             Topic.write_topic(f"{scope}__openc3_limits_events", msg_hash, "*", 1000, db_shard=db_shard)
 
     # Remove the JSON encoding to return hashes directly
@@ -282,18 +318,24 @@ class LimitsEventTopic(Topic):
         return [int(x) for x in oldest_id.split("-")] > [int(x) for x in previous_id.split("-")]
 
     # Reload all limits state from the store, used to recover from missed limits events.
-    # System.limits_set() always queries Redis so only the item settings need syncing.
+    # telemetry is the packets by target to update, default all in System
     @classmethod
-    def resync_system(cls, scope):
-        cls.sync_system(scope)
+    def resync_system(cls, scope, telemetry=None):
+        System.set_limits_set(cls.current_set(scope), scope)
+        cls.sync_system(scope, telemetry=telemetry)
 
     # Update the local System based on overall state
+    # telemetry is the packets by target to update, default all in System.
+    # Decom microservices sharing a process pass just their own targets because
+    # disabling limits calls the target's limits change callback every time.
     @classmethod
-    def sync_system(cls, scope):
+    def sync_system(cls, scope, telemetry=None):
         all_limits_settings = Store.hgetall(f"{scope}__current_limits_settings")
         # decode the binary string keys to strings
         all_limits_settings = {k.decode(): v for (k, v) in all_limits_settings.items()}
-        telemetry = System.telemetry.all()
+        if telemetry is None:
+            telemetry = System.telemetry.all()
+        disabled_fields = []
         for item, limits_settings in all_limits_settings.items():
             target_name, packet_name, item_name = item.split("__")
             target = telemetry.get(target_name, None)
@@ -312,7 +354,10 @@ class LimitsEventTopic(Topic):
                             continue
                         if limits_set == "state_colors":
                             for state_name, color in settings.items():
-                                System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
+                                # Earlier versions of the Ruby API saved a cleared color as "" so treat it as cleared
+                                System.limits.set_state_color(
+                                    target_name, packet_name, item_name, state_name, color or None
+                                )
                             continue
                         if change_type:
                             Logger.warn(
@@ -338,6 +383,22 @@ class LimitsEventTopic(Topic):
                             System.limits.enable(target_name, packet_name, item_name)
                         else:
                             System.limits.disable(target_name, packet_name, item_name)
+                            disabled_fields.append(item)
+        cls.clear_disabled_current_limits(disabled_fields, scope)
+
+    # Clear any limits state left in current_limits for disabled items in one pass.
+    # Disabling an item only publishes a LIMITS_CHANGE (which clears its state) when
+    # the decom microservice has a local state for it. After a decom restart the local
+    # state is nil until the next packet, while current_limits can still hold the state
+    # from before the restart. An item disabled while the decom wasn't running is the same.
+    @classmethod
+    def clear_disabled_current_limits(cls, fields, scope):
+        if not fields:
+            return
+        states = Store.hmget(f"{scope}__current_limits", fields)
+        updates = {field: "" for field, state in zip(fields, states, strict=True) if state}
+        if updates:
+            Store.hset(f"{scope}__current_limits", mapping=updates)
 
     # Process a single limits event dict and update the local System accordingly.
     # Called inline by DecomMicroservice when reading from the limits events topic.
@@ -426,7 +487,7 @@ class LimitsEventTopic(Topic):
                         )
 
             case "LIMITS_SET":
-                pass  # Ignore, System.limits_set() always queries Redis
+                System.set_limits_set(event["set"], scope)
 
     # Update the local system based on limits events (standalone read loop).
     # Still available for non-decom consumers that need to sync limits.

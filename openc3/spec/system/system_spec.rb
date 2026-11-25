@@ -70,6 +70,19 @@ module OpenC3
         expect(System.instance.targets.keys).to eql ['INST']
       end
 
+      it "builds an empty System without targets" do
+        # Microservices without targets, such as an interface without
+        # MAP_TARGET, still use System (e.g. to identify UNKNOWN packets)
+        [[], nil].each do |target_names|
+          System.class_eval('@@instance = nil')
+          expect(Bucket).not_to receive(:getClient)
+          System.setup_targets(target_names, Dir.mktmpdir, scope: 'DEFAULT')
+          expect(System.targets).to eql({})
+          expect(System.telemetry.packet('UNKNOWN', 'UNKNOWN')).to be_a Packet
+          expect(System.commands.packet('UNKNOWN', 'UNKNOWN')).to be_a Packet
+        end
+      end
+
       it "drops descriptions when descriptions is false" do
         System.class_eval('@@instance = nil')
         dir = Dir.mktmpdir

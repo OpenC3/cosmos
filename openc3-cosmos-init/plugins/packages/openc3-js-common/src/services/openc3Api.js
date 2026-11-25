@@ -155,18 +155,17 @@ export default class OpenC3Api {
     return null
   }
 
-  ensure_offline_access() {
-    this.offline_access_needed().then((needed) => {
-      if (needed) {
-        if (localStorage.openc3OfflineToken) {
-          this.set_offline_access(localStorage.openc3OfflineToken).then(() => {
-            delete localStorage.openc3OfflineToken
-          })
-        } else {
-          OpenC3Auth.getOfflineAccess()
-        }
-      }
-    })
+  async ensure_offline_access() {
+    const needed = await this.offline_access_needed()
+    if (!needed) {
+      return
+    }
+    if (localStorage.openc3OfflineToken) {
+      await this.set_offline_access(localStorage.openc3OfflineToken)
+      delete localStorage.openc3OfflineToken
+    } else {
+      OpenC3Auth.getOfflineAccess()
+    }
   }
 
   // #region CmdTlmServer APIs
@@ -322,6 +321,25 @@ export default class OpenC3Api {
 
   router_details(router_name) {
     return this.exec('router_details', [router_name])
+  }
+
+  // Shared resources: returns the shared resources with members in the current scope
+  get_shared_resources() {
+    return this.exec('get_shared_resources', [])
+  }
+
+  get_shared_resource(name) {
+    return this.exec('get_shared_resource', [name])
+  }
+
+  // to_scope defaults to the current scope
+  switch_shared_resource(name, to_scope = null, force = false) {
+    const params = to_scope ? [name, to_scope] : [name]
+    return this.exec('switch_shared_resource', params, { force: force })
+  }
+
+  release_shared_resource(name, force = false) {
+    return this.exec('release_shared_resource', [name], { force: force })
   }
 
   get_target_interfaces() {

@@ -116,3 +116,26 @@ class TestStoreReadTopics(unittest.TestCase):
     def test_honors_explicit_count(self):
         ids = [msg_id for _, msg_id, _, _ in EphemeralStore.read_topics(["TEST__TOPIC"], ["0-0"], None, 4)]
         self.assertEqual(len(ids), 4)
+
+
+class TestStoreEnsurePoolSize(unittest.TestCase):
+    def test_grows_the_pool_but_never_shrinks_it(self):
+        store = Store(10)
+        store.ensure_pool_size(250)
+        self.assertEqual(store.redis_pool.pool_size, 250)
+        store.ensure_pool_size(20)
+        self.assertEqual(store.redis_pool.pool_size, 250)
+
+    def test_opens_more_connections_once_grown(self):
+        built = []
+
+        def ctor():
+            built.append(object())
+            return built[-1]
+
+        store = Store(1)
+        store.redis_pool.ctor = ctor
+        store.ensure_pool_size(3)
+        with store.redis_pool.get(), store.redis_pool.get(), store.redis_pool.get():
+            # Three at once would block forever with the original pool size of 1
+            self.assertEqual(len(built), 3)

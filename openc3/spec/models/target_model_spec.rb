@@ -890,6 +890,7 @@ module OpenC3
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
         tf.puts "STORED_LIMITS_MODE DISABLE"
+        tf.puts "DECOM_UPDATE_INTERVAL 0.25"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
@@ -903,6 +904,7 @@ module OpenC3
         expect(json['tlm_decom_retain_time']).to eql '60d'
         expect(json['shard']).to eql 9
         expect(json['stored_limits_mode']).to eql 'DISABLE'
+        expect(json['decom_update_interval']).to eql 0.25
         tf.unlink
       end
 
@@ -919,6 +921,22 @@ module OpenC3
           end
         end.to raise_error(ConfigParser::Error, /CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y/)
         tf.unlink
+      end
+
+      it "rejects a DECOM_UPDATE_INTERVAL that is not a finite number" do
+        ['abc', '1e9999'].each do |value|
+          model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+          parser = ConfigParser.new
+          tf = Tempfile.new
+          tf.puts "DECOM_UPDATE_INTERVAL #{value}"
+          tf.close
+          expect do
+            parser.parse_file(tf.path) do |keyword, params|
+              model.handle_config(parser, keyword, params)
+            end
+          end.to raise_error(ConfigParser::Error, /DECOM_UPDATE_INTERVAL must be a .*number of seconds/)
+          tf.unlink
+        end
       end
 
       it "rejects TLM_DECOM_RETAIN_TIME with invalid format" do
@@ -1023,6 +1041,22 @@ module OpenC3
         @scope = "DEFAULT"
         @target = "INST"
         @target_dir = File.join(SPEC_DIR, "install", "config")
+      end
+
+      it "passes DECOM_UPDATE_INTERVAL to the decom microservice as UPDATE_INTERVAL" do
+        decom_kwargs = []
+        umodel = double(MicroserviceModel, create: nil, deploy: nil)
+        allow(MicroserviceModel).to receive(:new) do |**kwargs|
+          decom_kwargs << kwargs if kwargs[:name].include?("__DECOM__")
+          umodel
+        end
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        model.deploy_decom_microservice(double(language: 'ruby'), @target_dir, {}, [])
+        expect(decom_kwargs[-1][:options]).to eql []
+
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN', decom_update_interval: 0.5)
+        model.deploy_decom_microservice(double(language: 'ruby'), @target_dir, {}, [])
+        expect(decom_kwargs[-1][:options]).to eql [["UPDATE_INTERVAL", 0.5]]
       end
 
       it "raises if the target can't be found" do
@@ -1234,6 +1268,23 @@ module OpenC3
       end
     end
 
+    describe "check_command_default_sizes" do
+      def build_system(packet)
+        packet_config = double("PacketConfig", telemetry: {}, commands: { "INST" => { "PKT" => packet } })
+        double("System", packet_config: packet_config)
+      end
+
+      it "raises if a command STRING default doesn't fit" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        item = packet.append_item("ITEM", 32, :STRING)
+        item.default = "TOO LONG"
+        expect { model.check_command_default_sizes(build_system(packet)) }.to raise_error(ArgumentError, /INST PKT ITEM: default value of 8 bytes/)
+        item.default = "FITS"
+        expect { model.check_command_default_sizes(build_system(packet)) }.to_not raise_error
+      end
+    end
+
     describe "destroy" do
       before(:each) do
         @target_dir = File.join(SPEC_DIR, "install", "config")
@@ -1264,8 +1315,9 @@ module OpenC3
         orig_keys << "openc3_microservices"
 
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:destroy).exactly(10).times
-        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(10).times
+        # MULTI, DECOM, COMMANDLOG, PACKETLOG, CLEANUP, and TSDB for each of the two targets
+        expect(umodel).to receive(:destroy).exactly(12).times
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(12).times
         inst_model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: "INST_PLUGIN")
         inst_model.create
         inst_model.deploy(@target_dir, {})
@@ -1430,6 +1482,8 @@ module OpenC3
         # Reset class-level sync state between tests
         TargetModel.class_variable_set(:@@sync_packet_count_data, {})
         TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+        TargetModel.class_variable_set(:@@sync_packet_count_target_names, Set.new)
+        TargetModel.class_variable_set(:@@sync_packet_count_in_progress, false)
         TargetModel.class_variable_set(:@@stale_packet_keys_warned, Set.new)
       end
 
@@ -1445,19 +1499,47 @@ module OpenC3
           expect { TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT") }.not_to raise_error
         end
 
-        it "logs a warning for the stale key" do
+        # GitHub issue #2868: a microservice still running the old packet
+        # definitions during an upgrade can recreate counts for removed packets
+        it "removes the count of a packet the target no longer defines" do
           Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
           Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
 
-          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET/)
+          expect(Logger).to receive(:info).with("Removed stale tlmcnt Redis keys for INST packets that are no longer defined: OLD_PACKET")
+          expect(Logger).not_to receive(:warn)
           TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+
+          expect(Store.hgetall("DEFAULT__TELEMETRYCNTS__{INST}")).to eql({ "HEALTH_STATUS" => "10" })
         end
 
-        it "warns only once per stale key per init (epoch reset)" do
+        it "keeps the count of a packet that is defined but not loaded and warns" do
+          # DYNAMIC_PACKET is in the target's packet definitions (e.g. added with
+          # dynamic_update) but this System didn't load it
+          Store.hset("DEFAULT__openc3tlm__INST", "DYNAMIC_PACKET", "{}")
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET", 5)
+
+          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST DYNAMIC_PACKET/)
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+
+          expect(Store.hget("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET")).to eql("5")
+        end
+
+        it "keeps the counts and warns when the target isn't installed" do
+          Store.hdel("DEFAULT__openc3_targets", "INST")
           Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
 
+          expect(Logger).to receive(:warn).with(/Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET/)
+          TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
+
+          expect(Store.hget("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET")).to eql("5")
+        end
+
+        it "warns only once per unloaded packet per init (epoch reset)" do
+          Store.hset("DEFAULT__openc3tlm__INST", "DYNAMIC_PACKET", "{}")
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET", 5)
+
           warn_count = 0
-          allow(Logger).to receive(:warn) { |msg| warn_count += 1 if msg.include?("OLD_PACKET") }
+          allow(Logger).to receive(:warn) { |msg| warn_count += 1 if msg.include?("DYNAMIC_PACKET") }
 
           # First init — warns once
           TargetModel.init_tlm_packet_counts(["INST"], scope: "DEFAULT")
@@ -1526,6 +1608,79 @@ module OpenC3
           TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
 
           expect(packet.received_count).to be > 0
+        end
+
+        it "keeps the counts it couldn't write when a Redis write fails" do
+          health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+          adcs = System.telemetry.packet("INST", "ADCS")
+          TargetModel.class_variable_set(:@@sync_packet_count_data, { "INST" => { "HEALTH_STATUS" => 2 } })
+          calls = 0
+          allow(TargetModel).to receive(:increment_telemetry_count).and_wrap_original do |original, *args, **kwargs|
+            calls += 1
+            raise "Redis unavailable" if calls == 2
+            original.call(*args, **kwargs)
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          expect { TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope: "DEFAULT") }.to raise_error("Redis unavailable")
+          # HEALTH_STATUS was written so it isn't replayed, ADCS is kept for the next sync
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 2
+          expect(TargetModel.class_variable_get(:@@sync_packet_count_data)).to eql({ "INST" => { "ADCS" => 1 } })
+
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope: "DEFAULT")
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 3
+          expect(TargetModel.get_telemetry_count("INST", "ADCS", scope: "DEFAULT")).to eql 1
+        end
+
+        it "includes counts queued by other threads when reading back the global counters" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+          packet = System.telemetry.packet("INST", "ADCS")
+          allow(TargetModel).to receive(:get_all_telemetry_counts).and_wrap_original do |original, target_name, **kwargs|
+            # Another decom in the process queues a packet after the flush
+            TargetModel.class_variable_get(:@@sync_packet_count_data)["INST"] = { "HEALTH_STATUS" => 2 } if target_name == "INST"
+            original.call(target_name, **kwargs)
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
+          expect(System.telemetry.packet("INST", "HEALTH_STATUS").received_count).to eql 12
+        end
+
+        it "reads back the counts of every target decom'd in the process, not just the syncing decom's" do
+          # Another decom in the process (e.g. a MICROSERVICE_GROUP) handles SYSTEM,
+          # which has 5000 packets from before a restart
+          Store.hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 5000)
+          TargetModel.class_variable_set(:@@sync_packet_count_time, Time.now)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("SYSTEM", "META"), ["SYSTEM"], scope: "DEFAULT")
+          expect(System.telemetry.packet("SYSTEM", "META").received_count).to eql 1
+          # The INST decom wins the next sync
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          expect(System.telemetry.packet("SYSTEM", "META").received_count).to eql 5001
+        end
+
+        it "doesn't start a sync while another one is reading back the counts" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+          health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+          nested = false
+          allow(TargetModel).to receive(:get_all_telemetry_counts).and_wrap_original do |original, target_name, **kwargs|
+            counts = original.call(target_name, **kwargs)
+            if target_name == "INST" and !nested
+              nested = true
+              # Another decom's packet arrives after this read, once the sync period
+              # has passed again, before this sync applies what it read
+              TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+              TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope: "DEFAULT")
+            end
+            counts
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          # 10 from Redis plus the one not written yet, not the 10 read before it
+          expect(health_status.received_count).to eql 11
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 11
+          expect(health_status.received_count).to eql 11
         end
       end
     end
@@ -1686,6 +1841,49 @@ module OpenC3
         expect(@db_shard1.hexists("DEFAULT__tlm__INST", "HEALTH_STATUS")).to be false
         # SYSTEM on db_shard 0 is untouched
         expect(@db_shard0.exists?("DEFAULT__openc3tlm__SYSTEM")).to be true
+      end
+    end
+
+    describe "shared resource" do
+      before(:each) do
+        allow(Logger).to receive(:info)
+      end
+
+      def parse(model, *lines)
+        parser = ConfigParser.new
+        tf = nil
+        tf = Tempfile.new
+        lines.each { |line| tf.puts line }
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+      ensure
+        tf&.unlink
+      end
+
+      it "parses SHARED_RESOURCE" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        parse(model, "SHARED_RESOURCE chamber")
+        expect(model.shared_resource).to eql "CHAMBER"
+        expect(model.as_json['shared_resource']).to eql "CHAMBER"
+        expect { parse(model, "SHARED_RESOURCE bad name") }.to raise_error(ConfigParser::Error)
+      end
+
+      it "joins the shared resource when created" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        model.create
+        record = SharedResourceModel.get("CHAMBER")
+        expect(record['members']['DEFAULT']).to eql [{ 'type' => 'TARGET', 'name' => 'TEST' }]
+        expect(SharedResourceModel).not_to receive(:add_member)
+        model.update
+      end
+
+      it "leaves the shared resource if the create fails" do
+        TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT").create
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
       end
     end
   end

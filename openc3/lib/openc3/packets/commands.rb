@@ -205,11 +205,14 @@ module OpenC3
       command.stored = false
       command.extra = nil
       command.given_values = params
+      # Check required parameters before writing defaults. A required
+      # parameter's default is never used, so it shouldn't be able to
+      # cause an error that hides the missing parameter.
+      check_required_params(command, params.keys.map { |name| name.to_s.upcase }) if check_required_params
       command.restore_defaults(command.buffer(false), params.keys)
       command.raw = raw
 
-      given_item_names = set_parameters(command, params, range_checking)
-      check_required_params(command, given_item_names) if check_required_params
+      set_parameters(command, params, range_checking)
 
       return command
     end
@@ -294,8 +297,6 @@ module OpenC3
     protected
 
     def set_parameters(command, params, range_checking)
-      given_item_names = []
-
       # Identify length fields that are auto-managed by variable_bit_size arrays
       # These should not be written directly - the array write will auto-update them
       auto_length_fields = Set.new
@@ -309,10 +310,7 @@ module OpenC3
         item_upcase = item_name.to_s.upcase
 
         # Skip auto-managed length fields - they will be set when the array is written
-        if auto_length_fields.include?(item_upcase)
-          given_item_names << item_upcase
-          next
-        end
+        next if auto_length_fields.include?(item_upcase)
 
         item = command.get_item(item_upcase)
         range_check_value = value
@@ -346,15 +344,17 @@ module OpenC3
         end
 
         # Update parameter in command - use write_item directly to avoid redundant get_item call
-        if command.raw
-          command.write_item(item, value, :RAW)
-        else
-          command.write_item(item, value, :CONVERTED)
+        begin
+          if command.raw
+            command.write_item(item, value, :RAW)
+          else
+            command.write_item(item, value, :CONVERTED)
+          end
+        rescue ArgumentError => e
+          # Name the parameter since the accessor error doesn't
+          raise ArgumentError, "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}': #{e.message}", e.backtrace
         end
-
-        given_item_names << item_upcase
       end
-      given_item_names
     end
 
     def check_required_params(command, given_item_names)
@@ -363,7 +363,7 @@ module OpenC3
       item_defs = command.items
       item_defs.each do |item_name, item_def|
         if item_def.required and not given_item_names.include? item_name
-          raise "Required command parameter '#{command.target_name} #{command.packet_name} #{item_name}' not given"
+          raise ArgumentError, "Required command parameter '#{command.target_name} #{command.packet_name} #{item_name}' not given"
         end
       end
     end

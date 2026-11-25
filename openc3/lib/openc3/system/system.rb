@@ -80,12 +80,13 @@ module OpenC3
     # target_version can also be the actual hash used in the target_archives folder
     # @param descriptions [Boolean] Whether to keep packet and item descriptions
     def self.setup_targets(target_names, base_dir, target_version: 'current', scope:, descriptions: true)
-      # Nothing to do if there are no targets
-      return if target_names.nil? or target_names.length == 0
+      # With no targets this builds an empty System, which microservices without
+      # targets (such as an interface without MAP_TARGET) still use, e.g. for UNKNOWN
+      target_names ||= []
       if @@instance.nil?
         targets_path = "#{base_dir}/_targets"
         FileUtils.mkdir_p(targets_path)
-        bucket = Bucket.getClient()
+        bucket = Bucket.getClient() unless target_names.empty?
         target_names.each do |target_name|
           # Remove any prior extraction so re-running setup_targets (e.g. after
           # reset_instance! during reingest) starts from a clean slate. Without

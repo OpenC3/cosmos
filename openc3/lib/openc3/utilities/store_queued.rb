@@ -41,10 +41,14 @@ module OpenC3
     end
 
     # Set the update interval on every db_shard instance, including ones created later
-    def self.set_update_interval_all_shards(interval)
+    # @param fastest [Boolean] Only change the interval if it is faster than one set
+    #   before, so microservices sharing a process all flush at least as often as they asked
+    def self.set_update_interval_all_shards(interval, fastest: false)
       return unless interval > 0.0
 
       @@instance_mutex.synchronize do
+        return if fastest and @update_interval and @update_interval <= interval
+
         @update_interval = interval
         (@instances || []).compact.each { |the_instance| the_instance.set_update_interval(interval) }
       end

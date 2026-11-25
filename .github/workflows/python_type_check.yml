@@ -27,6 +27,7 @@ on:
       - "openc3/python/pyproject.toml"
       - "openc3/python/uv.lock"
       - "openc3/python/tools/**"
+      - ".claude/**/*.py"
       - ".github/workflows/python_type_check.yml"
 
 concurrency:
@@ -80,7 +81,7 @@ jobs:
         run: |
           .venv/bin/ty --version | awk '{print $2}' > ty-version.txt
           .venv/bin/ty check --exit-zero --output-format=gitlab \
-            openc3 tools ../../openc3-cosmos-script-runner-api/scripts > ty.json
+            openc3 tools ../../.claude ../../openc3-cosmos-script-runner-api/scripts > ty.json
 
       # ty cannot emit SARIF, so convert its GitLab JSON. This also rewrites
       # paths to be repo-root relative, which is what GitHub matches against.

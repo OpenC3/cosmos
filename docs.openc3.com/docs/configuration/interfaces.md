@@ -131,7 +131,7 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 
 #### UPDATE_INTERVAL
 
-Number of seconds to wait before writing packets to Redis. Interfaces queue the raw packet stream writes they make to Redis and flush them in a single pipelined batch every 0.1 seconds by default. Decommutated telemetry and the Current Value Table (CVT) are written separately by the decom microservice and are not affected by this option. Raising this value reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives faster updates but increases processor utilization. Setting it to 0 disables raw packet stream queuing and writes every packet to Redis immediately, which is the slowest option for high rate data. This option was previously known as `OPTIMIZE_THROUGHPUT`.
+Number of seconds to wait before writing packets to Redis. Interfaces queue the raw packet stream writes they make to Redis and flush them in a single pipelined batch every 0.1 seconds by default. Decommutated telemetry and the Current Value Table (CVT) are written separately by the decom microservice, which queues its writes the same way. Use the [DECOM_UPDATE_INTERVAL](plugins#decom_update_interval) target modifier to configure it. Raising this value reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives faster updates but increases processor utilization. Setting it to 0 disables raw packet stream queuing and writes every packet to Redis immediately, which is the slowest option for high rate data. This option was previously known as `OPTIMIZE_THROUGHPUT`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -289,6 +289,8 @@ openc3-operator:
 | Read Timeout       | Number of seconds to wait before aborting the read. Pass nil / None to block on read. | Yes      |
 | Protocol Type      | See Protocols.                                                                        | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                           | No       |
+
+Each client connected to the write port has its own queue and thread, so a client which reads slowly (or not at all) doesn't delay the other clients or new connections. A client is disconnected if its socket can't accept any data within the Write Timeout, or if it spends more than the Write Timeout blocked on socket writes while data waits in its queue. Only time spent writing to the socket counts, so protocols that wait for a response (like CMD_RESPONSE) don't cause a disconnect. A Write Timeout of nil / None uses 10 seconds.
 
 #### LISTEN_ADDRESS
 

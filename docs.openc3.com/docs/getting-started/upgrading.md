@@ -16,6 +16,10 @@ COSMOS is released as Docker containers. Since we're using Docker containers and
 Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade first to 5.13.0, then to 6.0.0, and then to the latest 7.x release. See [Upgrade Migration Process](/docs/getting-started/upgrading#upgrade-migration-process) for more information.
 :::
 
+:::warning[Script control messages are now signed]
+Script Runner control messages (stop, pause, debug, etc.) are now signed with a per-script key, and the wire format changed with no backward-compatibility shim. COSMOS Core users who stop and start COSMOS (`./openc3.sh stop` then `run`, or `docker compose down` then `up`) are unaffected. Helm users do a rolling upgrade, so make sure **no scripts are running during `helm upgrade`**. A script that is still running across the upgrade will not respond to stop, pause, or other control commands from the new version.
+:::
+
 This example assumes an existing COSMOS project at `cosmos-project`. This should first be performed on a non-production machine that has the same set of plugins as your production system.
 
 1. Stop the current COSMOS application
@@ -382,6 +386,12 @@ COSMOS 7.0 renamed the Python `Secrets.getClient()` class method to `Secrets.get
 Update Python code to call `Secrets.get_client()`. Ruby code is unaffected: `Secrets.getClient` and `Bucket.getClient` still work, and starting with 7.5 Ruby also accepts `Secrets.get_client` and `Bucket.get_client` so the same names work in both languages.
 
 If you've updated your plugin but still see errors about `getClient`, an older copy of your plugin code is probably still being loaded. Check the Admin Console Plugins tab for a previous version of the plugin that is still installed, and check the `shared` Python packages in the Admin Console Packages tab for an old copy of your plugin's Python package that COSMOS 6 installed.
+
+#### WebSocket token in the URL is deprecated
+
+Clients older than COSMOS 7.2.0 authenticate their WebSocket connection (`/openc3-api/cable` and `/script-api/cable`) with an `authorization` query parameter. Since 7.2.0 the token is sent in each channel subscription instead, so it doesn't end up in proxy logs. The query parameter still works, but the API logs a deprecation warning each time a client uses it, and COSMOS 8 will remove it. Until those clients are upgraded, their token appears in the URL that the Traefik access log records.
+
+If you see this warning, upgrade the `openc3` Ruby gem or Python package your scripts use to 7.2.0 or later, and rebuild any custom tool plugin against `@openc3/js-common` 7.2.0 or later.
 
 ### Troubleshooting
 

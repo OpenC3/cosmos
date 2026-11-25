@@ -61,11 +61,15 @@ class StoreQueued(metaclass=StoreMeta):
             return cls.my_instances[db_shard]
 
     # Set the update interval on every db_shard instance, including ones created later
+    # fastest only changes the interval if it is faster than one set before, so
+    # microservices sharing a process all flush at least as often as they asked
     @classmethod
-    def set_update_interval_all_shards(cls, interval):
+    def set_update_interval_all_shards(cls, interval, fastest=False):
         if interval <= 0.0:
             return
         with cls.instance_mutex:
+            if fastest and cls.all_shards_update_interval is not None and cls.all_shards_update_interval <= interval:
+                return
             cls.all_shards_update_interval = interval
             for inst in cls.my_instances.values():
                 inst.set_update_interval(interval)

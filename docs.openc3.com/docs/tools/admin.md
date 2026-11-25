@@ -41,6 +41,8 @@ The Routers tab shows all the routers installed. Clicking the eyeball shows the 
 
 The Microservices tab shows all the microservices installed, their update time, state, and count. Clicking the eyeball shows the raw JSON that makes up the microservice configuration.
 
+Microservices that run as threads in another microservice's process, such as a target's decom and logging microservices in its MULTI microservice, are listed under that microservice. The shared processes of a [MICROSERVICE_GROUP](/docs/configuration/plugins#microservice_group) are listed under a header for the group. Click the arrow next to a microservice or group to collapse or expand what's under it.
+
 ![Microservices](/img/admin/microservices.png)
 
 ### Packages
@@ -90,6 +92,8 @@ You can also add links to existing tools in the navigation bar by using the Add 
 The Redis tab allows you to interact directly with the underlying Redis database, making it easy to modify or delete data. THIS IS DANGEROUS, and should only be performed by COSMOS developers.
 
 Commands run as the `openc3` Redis user which does not have full admin permissions and thus some commands are not allowed. For example, use `SCAN` instead of `KEYS`.
+
+In COSMOS Enterprise, the Redis tab and the TSDB query tab need the `superadmin` permission (the `ALLSCOPES__admin` role), since they can read and change data for every scope. The admin role of a single scope can't use them.
 
 ![Redis](/img/admin/redis.png)
 

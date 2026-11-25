@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1953
 
 import json
+import time
 import unittest
 import unittest.mock
 from unittest.mock import patch
@@ -60,6 +61,11 @@ class TestTargetModel(unittest.TestCase):
         self.assertIn("TEST", all_targs.keys())
         self.assertIn("SPEC", all_targs.keys())
 
+    def test_accepts_decom_update_interval_from_the_ruby_json(self):
+        # Ruby writes decom_update_interval into the target JSON that from_json passes as kwargs
+        TargetModel(folder_name="TEST", name="TEST", decom_update_interval=0.5, scope="DEFAULT")
+        TargetModel(folder_name="TEST", name="TEST", decom_update_interval=None, scope="DEFAULT")
+
     def test_stored_limits_mode_defaults_to_process(self):
         model = TargetModel(folder_name="TEST", name="TEST", scope="DEFAULT")
         self.assertEqual(model.stored_limits_mode, "PROCESS")
@@ -100,6 +106,22 @@ class TestTargetModel(unittest.TestCase):
         Store.hset("DEFAULT__openc3_targets", "TEST", json.dumps(json_data))
         retrieved = TargetModel.get_model(name="TEST", scope="DEFAULT")
         self.assertEqual(retrieved.stored_limits_mode, "DISABLE")
+
+    def test_microservice_group_and_language_round_trip_through_redis(self):
+        # Ruby stores these keys, so from_json must accept them
+        json_data = {
+            "name": "TEST",
+            "folder_name": "TEST",
+            "updated_at": None,
+            "plugin": None,
+            "microservice_group": "HK",
+            "language": "python",
+        }
+        Store.hset("DEFAULT__openc3_targets", "TEST", json.dumps(json_data))
+        retrieved = TargetModel.get_model(name="TEST", scope="DEFAULT")
+        self.assertEqual(retrieved.microservice_group, "HK")
+        self.assertEqual(retrieved.language, "python")
+        self.assertIsNone(TargetModel(folder_name="TEST", name="TEST", scope="DEFAULT").microservice_group)
 
 
 class TestTargetModelPackets(unittest.TestCase):
@@ -605,12 +627,15 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
         TargetModel.sync_packet_count_data = {}
         TargetModel.sync_packet_count_time = None
         TargetModel.sync_packet_count_delay_seconds = 1.0
+        TargetModel.sync_packet_count_target_names = set()
+        TargetModel.sync_packet_count_in_progress = False
         TargetModel.stale_packet_keys_warned = set()
 
     def test_init_tlm_packet_counts_skips_stale_redis_key(self):
         # Simulate a stale Redis key left over from a removed packet definition.
         # INST currently defines HEALTH_STATUS, ADCS, PARAMS, IMAGE, MECH, HIDDEN —
         # OLD_PACKET was removed when the plugin was upgraded but its Redis key remains.
+        # No TargetModel is created, so INST isn't installed and the key is kept.
         Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
         Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
 
@@ -629,6 +654,40 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
 
         # The known packet's count must still be updated correctly
         self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 10)
+
+    # GitHub issue #2868: a microservice still running the old packet
+    # definitions during an upgrade can recreate counts for removed packets
+    def test_init_tlm_packet_counts_removes_count_of_undefined_packet(self):
+        """Deletes the count of a packet the installed target no longer defines."""
+        TargetModel(folder_name="INST", name="INST", scope="DEFAULT").create()
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+
+        for stdout in capture_io():
+            TargetModel.init_tlm_packet_counts(["INST"], scope="DEFAULT")
+            self.assertIn(
+                "Removed stale tlmcnt Redis keys for INST packets that are no longer defined: OLD_PACKET",
+                stdout.getvalue(),
+            )
+            self.assertNotIn("Stale tlmcnt Redis key detected", stdout.getvalue())
+
+        self.assertEqual(Store.hgetall("DEFAULT__TELEMETRYCNTS__{INST}"), {b"HEALTH_STATUS": b"10"})
+        self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 10)
+
+    def test_init_tlm_packet_counts_keeps_count_of_defined_unloaded_packet(self):
+        """Keeps and warns about the count of a defined packet System didn't load."""
+        TargetModel(folder_name="INST", name="INST", scope="DEFAULT").create()
+        # DYNAMIC_PACKET is in the target's packet definitions (e.g. added with
+        # dynamic_update) but this System didn't load it
+        Store.hset("DEFAULT__openc3tlm__INST", "DYNAMIC_PACKET", "{}")
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET", 5)
+
+        for stdout in capture_io():
+            TargetModel.init_tlm_packet_counts(["INST"], scope="DEFAULT")
+            self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST DYNAMIC_PACKET", stdout.getvalue())
+            self.assertNotIn("Removed stale tlmcnt Redis keys", stdout.getvalue())
+
+        self.assertEqual(Store.hget("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET"), b"5")
 
     def test_sync_tlm_packet_counts_skips_stale_redis_key(self):
         # Simulate a stale Redis key left over from a removed packet definition.
@@ -655,3 +714,91 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
 
         # Known packet counts must still be updated correctly
         self.assertGreater(packet.received_count, 0)
+
+    def test_sync_tlm_packet_counts_keeps_unwritten_counts_when_a_redis_write_fails(self):
+        health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+        adcs = System.telemetry.packet("INST", "ADCS")
+        original = TargetModel.increment_telemetry_count
+        calls = []
+
+        def fail_second(*args, **kwargs):
+            calls.append(args)
+            if len(calls) == 2:
+                raise RuntimeError("Redis unavailable")
+            return original(*args, **kwargs)
+
+        with patch.object(TargetModel, "sync_packet_count_data", {"INST": {"HEALTH_STATUS": 2}}):
+            with (
+                patch.object(TargetModel, "sync_packet_count_time", None),
+                patch.object(TargetModel, "increment_telemetry_count", side_effect=fail_second),
+                self.assertRaisesRegex(RuntimeError, "Redis unavailable"),
+            ):
+                TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
+            # HEALTH_STATUS was written so it isn't replayed, ADCS is kept for the next sync
+            self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 2)
+            self.assertEqual(TargetModel.sync_packet_count_data, {"INST": {"ADCS": 1}})
+
+            with patch.object(TargetModel, "sync_packet_count_time", None):
+                TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope="DEFAULT")
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 3)
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "ADCS", scope="DEFAULT"), 1)
+
+    def test_sync_tlm_packet_counts_includes_counts_queued_by_other_threads_in_the_readback(self):
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+        packet = System.telemetry.packet("INST", "ADCS")
+        original = TargetModel.get_all_telemetry_counts
+
+        def queue_during_readback(target_name, scope):
+            if target_name == "INST":
+                # Another decom in the process queues a packet after the flush
+                TargetModel.sync_packet_count_data["INST"] = {"HEALTH_STATUS": 2}
+            return original(target_name, scope=scope)
+
+        with (
+            patch.object(TargetModel, "sync_packet_count_time", None),
+            patch.object(TargetModel, "get_all_telemetry_counts", side_effect=queue_during_readback),
+        ):
+            TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope="DEFAULT")
+        self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 12)
+
+    def test_sync_tlm_packet_counts_reads_back_every_target_decomd_in_the_process(self):
+        # Another decom in the process (e.g. a MICROSERVICE_GROUP) handles SYSTEM,
+        # which has 5000 packets from before a restart
+        Store.hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 5000)
+        meta = System.telemetry.packet("SYSTEM", "META")
+        with patch.object(TargetModel, "sync_packet_count_time", time.time()):
+            TargetModel.sync_tlm_packet_counts(meta, ["SYSTEM"], scope="DEFAULT")
+        self.assertEqual(meta.received_count, 1)
+        # The INST decom wins the next sync
+        with patch.object(TargetModel, "sync_packet_count_time", None):
+            TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope="DEFAULT")
+        self.assertEqual(meta.received_count, 5001)
+
+    def test_sync_tlm_packet_counts_doesnt_start_a_sync_while_another_reads_back(self):
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+        health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+        adcs = System.telemetry.packet("INST", "ADCS")
+        original = TargetModel.get_all_telemetry_counts
+        nested = []
+
+        def sync_during_readback(target_name, scope):
+            counts = original(target_name, scope=scope)
+            if target_name == "INST" and not nested:
+                nested.append(True)
+                # Another decom's packet arrives after this read, once the sync period
+                # has passed again, before this sync applies what it read
+                TargetModel.sync_packet_count_time = None
+                TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope=scope)
+            return counts
+
+        with (
+            patch.object(TargetModel, "sync_packet_count_time", None),
+            patch.object(TargetModel, "get_all_telemetry_counts", side_effect=sync_during_readback),
+        ):
+            TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
+        # 10 from Redis plus the one not written yet, not the 10 read before it
+        self.assertEqual(health_status.received_count, 11)
+        with patch.object(TargetModel, "sync_packet_count_time", None):
+            TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 11)
+        self.assertEqual(health_status.received_count, 11)

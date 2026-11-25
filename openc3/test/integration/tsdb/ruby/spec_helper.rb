@@ -35,7 +35,7 @@ require 'openc3'
 require 'openc3/models/cvt_model'
 require 'openc3/utilities/questdb_client'
 
-# Path to the Python helper script and openc3/python for poetry
+# Path to the Python helper script and openc3/python for uv
 QUESTDB_WRITER_PATH = File.expand_path('../helpers/questdb_writer.py', __dir__)
 OPENC3_PYTHON_ROOT = File.expand_path('../../../../python', __dir__)
 
@@ -69,7 +69,7 @@ module QuestDBTestHelpers
   end
 
   # Run the Python helper script with given arguments
-  # Uses 'poetry run' to ensure the correct Python environment with dependencies
+  # Uses 'uv run' to ensure the correct Python environment with dependencies
   def run_python_helper(command, **options)
     args = [command]
     options.each do |key, value|
@@ -78,7 +78,7 @@ module QuestDBTestHelpers
       args << (value.is_a?(String) ? value : JSON.generate(value))
     end
 
-    cmd = ['poetry', 'run', 'python', QUESTDB_WRITER_PATH] + args
+    cmd = ['uv', 'run', 'python', QUESTDB_WRITER_PATH] + args
     stdout, stderr, status = Open3.capture3(*cmd, chdir: OPENC3_PYTHON_ROOT)
 
     unless status.success?
