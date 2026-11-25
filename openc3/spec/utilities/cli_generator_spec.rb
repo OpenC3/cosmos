@@ -365,10 +365,45 @@ module OpenC3
         expect(lines[start + 1]).to start_with("    ['pyproject.toml']")
       end
 
-      it "falls back to requirements.txt in the gemspec of a python target without pyproject.toml" do
+      it "falls back to requirements.txt in the gemspec of a legacy plugin without pyproject.toml" do
+        File.write('requirements.txt', "numpy\n")
         run_gen(['target', 'EXAMPLE', '--python'])
         spec = Gem::Specification.load(File.expand_path('openc3-cosmos-test-plugin.gemspec'))
         expect(spec.files).to include('requirements.txt')
+      end
+
+      # requirements.txt is deprecated, so a python target added to a plugin
+      # with no python dependency file gets the same pyproject.toml (and the
+      # lib/ package its ty extra-paths needs) as `generate plugin --python`
+      it "creates pyproject.toml, not requirements.txt, for a python target in a ruby plugin" do
+        run_gen(['target', 'EXAMPLE', '--python'])
+        expect(File.exist?('requirements.txt')).to be false
+        pyproject = File.read('pyproject.toml')
+        expect(pyproject).to include('name = "openc3-cosmos-test-plugin"')
+        expect(pyproject).to include('package = false')
+        expect(pyproject).to_not include('<%')
+        expect(File.exist?('lib/openc3_cosmos_test_plugin/__init__.py')).to be true
+        spec = Gem::Specification.load(File.expand_path('openc3-cosmos-test-plugin.gemspec'))
+        expect(spec.files).to include('pyproject.toml')
+        expect(spec.files).to_not include('requirements.txt')
+      end
+
+      it "leaves the pyproject.toml of a python plugin alone" do
+        Dir.chdir(@temp_dir)
+        FileUtils.rm_rf('openc3-cosmos-test-plugin')
+        run_gen(['plugin', 'test-plugin', '--python'])
+        File.write('pyproject.toml', "[project]\nname = \"mine\"\n")
+        run_gen(['target', 'EXAMPLE'])
+        expect(File.read('pyproject.toml')).to eql("[project]\nname = \"mine\"\n")
+        expect(File.exist?('requirements.txt')).to be false
+      end
+
+      it "keeps an existing requirements.txt and warns that it is deprecated" do
+        File.write('requirements.txt', "numpy\n")
+        expect { run_gen(['target', 'EXAMPLE', '--python']) }
+          .to output(/requirements\.txt is deprecated/).to_stdout
+        expect(File.read('requirements.txt')).to eql("numpy\n")
+        expect(File.exist?('pyproject.toml')).to be false
       end
 
       it "rewrites the gemspec only once for several python targets" do
@@ -379,7 +414,7 @@ module OpenC3
         expect(gemspec.scan('python_dep_files = if').length).to eql(1)
         expect(gemspec.scan(/^ *s\.files = Dir\.glob/).length).to eql(1)
         spec = Gem::Specification.load(gemspec_file)
-        expect(spec.files).to include('requirements.txt')
+        expect(spec.files).to include('pyproject.toml')
       end
 
       it "upgrades a legacy python_dep_file gemspec to ship uv.lock" do

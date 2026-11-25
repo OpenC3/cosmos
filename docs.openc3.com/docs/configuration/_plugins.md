@@ -58,12 +58,15 @@ COSMOS uploads the plugin gem file to an internal gem server and extracts the ge
 
 ### Phase 2: Deploy
 
-Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<plugin>/.venv` and installs the dependencies into it. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
+Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` and installs the dependencies into it. The plugin name is the installed name, with characters other than `A-Z`, `a-z`, `0-9`, `_` and `-` replaced by `_`. For example, `openc3-cosmos-gse-1.0.0.gem__20250116214539` installed in the `DEFAULT` scope gets `/gems/plugin_venvs/DEFAULT__openc3-cosmos-gse-1_0_0_gem__20250116214539/.venv`. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
 
-COSMOS supports two formats for declaring Python dependencies:
+Declare a plugin's Python dependencies in `pyproject.toml`. COSMOS also reads `requirements.txt`, but that format is deprecated:
 
-- **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
-- **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
+- **`pyproject.toml`** — With a `uv.lock`, COSMOS runs `uv sync --frozen`, which installs exactly the locked versions. Without a `uv.lock`, or if `uv sync --frozen` fails, COSMOS runs `uv pip install` and resolves against the `pypi_url` index. If that fails, for example because the `pyproject.toml` is not a buildable package, COSMOS compiles its declared dependencies into a requirements file and installs from that.
+- **`requirements.txt`** (deprecated) — COSMOS still installs it with `uv pip install -r requirements.txt` so that existing plugins keep working. Do not use it for new plugins. It has no lock file, so each install can resolve different versions. If a plugin ships both files and no `uv.lock`, COSMOS installs from `requirements.txt`. To move a plugin to `pyproject.toml`:
+  1. Copy the `pyproject.toml` from a plugin generated with `openc3.sh cli generate plugin <NAME> --python`, and set its `name`.
+  2. Run `uv add -r requirements.txt`, then `uv lock`.
+  3. Delete `requirements.txt`, and check that the gemspec packages `pyproject.toml` and `uv.lock`.
 
 Both files are processed with [ERB](/docs/configuration/format#erb) using the plugin variables before installation, so variables can select which dependencies are installed. ERB code can read files shipped next to the dependency file with `File.dirname(__FILE__)`. For example, a `requirements.txt` that installs only the driver for the selected device:
 
@@ -74,7 +77,20 @@ Both files are processed with [ERB](/docs/configuration/format#erb) using the pl
 
 A `uv.lock` is used as-is, so a plugin whose `pyproject.toml` dependencies depend on variables should not ship a `uv.lock`.
 
-System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
+A plugin venv always uses the Python in the COSMOS image: currently Python 3.13 in the standard images and Python 3.12 in the UBI images. The images set `UV_PYTHON_DOWNLOADS=never`, so uv cannot download a different Python for a plugin. A plugin's `requires-python` must therefore accept the image's Python, or its install fails.
+
+System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading.
+
+COSMOS tries these installs in order and stops at the first one that succeeds:
+
+1. **Per-plugin venv.** COSMOS runs uv to install into the plugin's own venv, unless the [`OPENC3_USE_UV`](environment.md#common-variables) environment variable is `false` or `uv` is not on `PATH`.
+2. **Shared folder.** If step 1 failed or was skipped, COSMOS installs the dependencies into the shared `/gems/python_packages` folder, which is on the `PYTHONPATH` of scripts and plugin microservices. It logs a warning first when step 1 failed. If the shared install fails, COSMOS retries it once with `--no-index`.
+
+If both fail, COSMOS logs a warning and finishes installing the plugin, so its non-Python parts still work.
+
+:::note[Keep openc3 out of runtime dependencies]
+List `openc3` only in the plugin's dev dependency group, as the generated `pyproject.toml` does. If a plugin lists `openc3` as a runtime dependency, COSMOS removes it from the plugin venv when it installs the plugin, and logs a warning, and the plugin uses the `openc3` library shipped in the COSMOS image. A plugin venv comes first on `PYTHONPATH`, so its own copy would otherwise replace the system library for the plugin's scripts and microservices.
+:::
 
 Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
 

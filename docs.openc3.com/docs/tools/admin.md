@@ -17,7 +17,13 @@ The Plugins tab is where you install new plugins into the COSMOS system. Plugins
 
 The plugin gem name is listed along with all the targets it contains. You can Download, Edit, Upgrade, or Delete (uninstall) the plugin using the buttons to the right. If a plugin's target has been modified, the target name turns into a link which when clicked will download the changed files. New plugins are installed by clicking the top field.
 
-Plugins that were installed before the UV per-plugin virtual environment feature was added (pre-7.3) can be migrated using the **Migrate to UV** button in the plugin menu. Clicking this button creates an isolated UV virtual environment for the plugin and reinstalls its Python dependencies, giving it the same dependency isolation as newly installed plugins. If the plugin is already migrated, this is a safe no-op. This performs the same operation as the [`cli migratetouv`](/docs/getting-started/cli#migrate-to-uv) command.
+The **Migrate to UV** button appears in the plugin menu for any plugin that needs dependencies but has no successful per-plugin UV install. For example:
+
+- The plugin was installed before the UV per-plugin virtual environment feature was added (pre-7.3).
+- The plugin's uv install failed, so COSMOS fell back to the shared Python environment.
+- The plugin was installed with the `OPENC3_USE_UV` environment variable set to `false`.
+
+Clicking this button creates an isolated UV virtual environment for the plugin and reinstalls its Python dependencies, giving it the same dependency isolation as newly installed plugins. For a failed install, this retries it, for example after you fix the `pypi_url` setting. If the plugin is already migrated, this is a safe no-op. This performs the same operation as the [`cli migratetouv`](/docs/getting-started/cli#migrate-to-uv) command.
 
 ### Targets
 
@@ -51,9 +57,14 @@ The Packages tab shows all the Ruby gems and Python packages installed in the sy
 
 The Python packages section is organized into the following subsections:
 
-- **Cached** — Python wheels available in the UV download cache. This includes system packages (seeded from the COSMOS Docker image at first startup) plus any packages downloaded during plugin installs. This section shows what's available for installation without network access, which is useful for planning plugin installs in airgapped environments. You can upload additional `.whl` files here to make them available to future plugin installs.
-- **Plugin venvs** — Lists each installed plugin's isolated virtual environment and the packages installed in it. Each plugin gets its own venv at `/gems/plugin_venvs/<plugin>/.venv`, so different plugins can use different versions of the same package without conflicts.
-- **Shared** (legacy) — Packages from the pre-UV shared install path. This section only appears when packages are present from plugins that were installed before the UV per-plugin virtual environment feature was added. Use the **Migrate to UV** button on the Plugins tab to migrate these plugins to isolated virtual environments.
+- **Cached** — Python wheels available in the UV download cache. This includes system packages (copied from the COSMOS Docker image every time the init container starts, which adds only wheels the cache does not already have) plus any packages downloaded during plugin installs. This section shows what's available for installation without network access, which is useful for planning plugin installs in airgapped environments. Uploaded `.whl` files are listed here too, but plugin installs do not use them: an upload installs right away into the plugin venv you select in the upload dialog, or into the shared folder when the dialog does not appear. To install a plugin's dependencies without network access, set `pypi_url` to a reachable PyPI mirror.
+- **Plugin venvs** — Lists each installed plugin's isolated virtual environment and the packages installed in it. Each plugin gets its own venv at `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` (see [how the folder is named](/docs/configuration/plugins#phase-2-deploy)), so different plugins can use different versions of the same package without conflicts.
+- **Shared** — Packages in the shared `/gems/python_packages` folder, which is on the `PYTHONPATH` of scripts and plugin microservices. This section appears only when that folder has packages. They come from:
+  - plugins installed before the UV per-plugin virtual environment feature was added;
+  - plugins whose uv install failed and fell back to the shared folder (see [plugin Python dependencies](/docs/configuration/plugins#phase-2-deploy));
+  - wheels installed with [`cli pkginstall`](/docs/getting-started/cli#pkginstall-and-pkguninstall) or the `package_install` script method, which always install here.
+
+  Use the **Migrate to UV** button on the Plugins tab to move a plugin's dependencies into its own virtual environment.
 
 ![Packages](/img/admin/packages.png)
 
@@ -76,6 +87,13 @@ Expanding the plugin venv further shows the full list of installed packages with
 When multiple plugins install different versions of the same package, the Cached section lists all versions. This is expected — each plugin's venv is isolated, so different plugins can use different versions without conflicts:
 
 ![Multiple versions in cache](/img/admin/packages_cache_versions.png)
+
+#### Python Venv Lifecycle
+
+- A plugin's venv folder, `/gems/plugin_venvs/<SCOPE>__<plugin name>`, holds the `.venv`. For a plugin that ships a `uv.lock`, it also holds a copy of the plugin's `pyproject.toml` and `uv.lock`.
+- COSMOS writes a `.uv_managed` marker file into that folder when the uv install succeeds. Script Runner's [Python Venv selector](/docs/tools/script-runner#temp-scripts-and-the-python-venv-selector) lists only venvs that have the marker, and the **Migrate to UV** button appears for plugins that lack it.
+- Uninstalling a plugin deletes its whole venv folder, including any packages you added to it on this tab.
+- Nothing removes wheels from the UV cache (`/gems/uv`). The **Cached** section keeps listing a wheel after the plugin that downloaded it is uninstalled.
 
 ### Tools
 
@@ -133,6 +151,10 @@ The available themes are:
 | Dark Emerald | Neutral grey with emerald green accent |
 
 The selected theme is a system-wide setting that applies to all users. After saving, each user must refresh their browser to see the updated theme.
+
+#### PyPI URL
+
+The **Pypi URL** setting (`pypi_url`) is the package index COSMOS uses to install plugin Python dependencies. Enter the base URL of the index, without `/simple`, such as `https://pypi.org` or `https://mirror.example.com/pypi`. COSMOS adds `/simple` itself, so `https://pypi.org/simple` would become `https://pypi.org/simple/simple`. When the setting does not exist yet, COSMOS seeds it from the `PYPI_URL` environment variable, or `https://pypi.org` when that is not set. A value that is not an `http` or `https` URL is ignored, and COSMOS logs an error and uses `https://pypi.org/simple` instead.
 
 ### Roles (Enterprise)
 
