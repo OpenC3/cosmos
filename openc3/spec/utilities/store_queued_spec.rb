@@ -93,6 +93,20 @@ module OpenC3
       expect(StoreQueued.instance(0.5, db_shard: 2).update_interval).to eql 0.5
     end
 
+    it "only lowers the interval when fastest" do
+      existing = StoreQueued.instance(db_shard: 0)
+      StoreQueued.set_update_interval_all_shards(0.5, fastest: true)
+      expect(existing.update_interval).to eql 0.5
+      StoreQueued.set_update_interval_all_shards(1.0, fastest: true)
+      expect(existing.update_interval).to eql 0.5
+      StoreQueued.set_update_interval_all_shards(0.25, fastest: true)
+      expect(existing.update_interval).to eql 0.25
+      expect(StoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+      # Without fastest the interval can be raised
+      StoreQueued.set_update_interval_all_shards(1.0)
+      expect(existing.update_interval).to eql 1.0
+    end
+
     it "ignores intervals of 0 or less" do
       StoreQueued.set_update_interval_all_shards(0.25)
       StoreQueued.set_update_interval_all_shards(0)

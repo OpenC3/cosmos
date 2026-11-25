@@ -12,6 +12,7 @@
 # All Rights Reserved
 */
 
+import type { Page, Request } from '@playwright/test'
 import { test, expect } from './fixture'
 
 test.use({
@@ -236,6 +237,267 @@ test('stops polling the previous packet after switching', async ({
   const count = adcsCount
   await utils.sleep(2000) // Allow a leaked ADCS interval time to fire
   expect(adcsCount).toBe(count) // no change, so the old interval was cleared
+})
+
+const API = '**/openc3-api/api'
+
+const isApiCall = (request: Request, method: string) =>
+  request.url().includes('/openc3-api/api') &&
+  !!request.postData()?.includes(`"${method}"`)
+
+const isPacketPoll = (request: Request) => isApiCall(request, 'get_tlm_packet')
+
+// Returns a function that reports how many requests for the API method the
+// page has sent so far
+function countRequests(page: Page, method: string) {
+  let count = 0
+  page.on('request', (request) => {
+    if (isApiCall(request, method)) {
+      count++
+    }
+  })
+  return () => count
+}
+
+// Routes the API requests for the given methods to a target that doesn't exist,
+// so the real server answers as it does once a plugin is uninstalled or its
+// target is renamed: get_tlm_packet raises "does not exist", get_target
+// returns null and get_all_tlm_item_names returns []. This avoids installing
+// and removing a plugin in the test.
+async function rerouteToMissingTarget(page: Page, methods: string[]) {
+  await page.route(API, async (route) => {
+    const body = route.request().postDataJSON()
+    if (methods.includes(body?.method) && body.params?.[0] === 'INST') {
+      body.params[0] = 'REMOVED_TARGET'
+      return await route.continue({ postData: JSON.stringify(body) })
+    }
+    return await route.fallback()
+  })
+}
+
+const unavailableAlert = (page: Page) =>
+  page.locator('[data-test=packet-unavailable]')
+
+// While a packet is unavailable the checks for it back off, so allow time for
+// a few of them before the tool notices it is back
+const RECOVERY_TIMEOUT = 20000
+
+test('stops polling a removed target and resumes when it returns', async ({
+  page,
+  utils,
+}) => {
+  const polls = countRequests(page, 'get_tlm_packet')
+  const targetChecks = countRequests(page, 'get_target')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await expect(page.locator('id=openc3-tool')).toContainText(
+    'Health and status',
+  )
+  await page.waitForRequest(isPacketPoll)
+  await expect(unavailableAlert(page)).not.toBeVisible()
+
+  await rerouteToMissingTarget(page, ['get_tlm_packet', 'get_target'])
+  await expect(unavailableAlert(page)).toContainText(
+    'Target INST no longer exists',
+  )
+  const pollCount = polls()
+  const checkCount = targetChecks()
+  await utils.sleep(7000) // Allow several polling intervals to fire
+  expect(polls()).toBe(pollCount) // get_tlm_packet is no longer requested
+  // The checks for the target back off (1, 2, then 4 seconds apart) rather
+  // than running on each 1 second polling interval
+  expect(targetChecks() - checkCount).toBeLessThanOrEqual(4)
+
+  // The target comes back, e.g. the plugin upgrade finished
+  await page.unroute(API)
+  await expect(unavailableAlert(page)).not.toBeVisible({
+    timeout: RECOVERY_TIMEOUT,
+  })
+  await page.waitForRequest(isPacketPoll)
+  await matchItem(page, 'TEMP1', /\d+/)
+})
+
+test('stops polling a removed packet and resumes when it returns', async ({
+  page,
+  utils,
+}) => {
+  const polls = countRequests(page, 'get_tlm_packet')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await page.waitForRequest(isPacketPoll)
+
+  // The target still exists but no longer has the packet, e.g. a plugin
+  // upgrade dropped or renamed it
+  await page.route(API, async (route) => {
+    const body = route.request().postDataJSON()
+    if (body?.method === 'get_tlm_packet') {
+      body.params[1] = 'REMOVED_PACKET'
+      return await route.continue({ postData: JSON.stringify(body) })
+    }
+    if (body?.method === 'get_all_tlm_names') {
+      const response = await route.fetch()
+      const json = await response.json()
+      json.result = json.result.filter(
+        (name: string) => name !== 'HEALTH_STATUS',
+      )
+      return await route.fulfill({ response, json })
+    }
+    return await route.fallback()
+  })
+  await expect(unavailableAlert(page)).toContainText(
+    'Packet INST HEALTH_STATUS no longer exists',
+  )
+  const count = polls()
+  await utils.sleep(3000) // Allow a few polling intervals to fire
+  expect(polls()).toBe(count) // get_tlm_packet is no longer requested
+
+  await page.unroute(API)
+  await expect(unavailableAlert(page)).not.toBeVisible({
+    timeout: RECOVERY_TIMEOUT,
+  })
+  await matchItem(page, 'TEMP1', /\d+/)
+})
+
+test('keeps polling when the packet fails but the target exists', async ({
+  page,
+  utils,
+}) => {
+  const polls = countRequests(page, 'get_tlm_packet')
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await page.waitForRequest(isPacketPoll)
+
+  // get_tlm_packet fails but INST and its HEALTH_STATUS packet still exist, as
+  // can happen while a plugin is upgraded, so polling has to continue
+  await rerouteToMissingTarget(page, ['get_tlm_packet'])
+  await page.waitForResponse(
+    async (response) =>
+      isPacketPoll(response.request()) &&
+      (await response.text()).includes('does not exist'),
+  )
+  const count = polls()
+  await utils.sleep(3000) // Allow a few polling intervals to fire
+  expect(polls()).toBeGreaterThan(count)
+  await expect(unavailableAlert(page)).not.toBeVisible()
+})
+
+test('keeps waiting when reloading a returned target fails', async ({
+  page,
+  utils,
+}) => {
+  // One route whose behavior changes by phase, so no request slips through
+  // unrouted between phases
+  let phase = 'live'
+  let targetChecks = 0
+  await page.route(API, async (route) => {
+    const body = route.request().postDataJSON()
+    const toMissingTarget = async () => {
+      body.params[0] = 'REMOVED_TARGET'
+      return await route.continue({ postData: JSON.stringify(body) })
+    }
+    if (body?.params?.[0] === 'INST') {
+      if (
+        phase === 'removed' &&
+        ['get_tlm_packet', 'get_target'].includes(body.method)
+      ) {
+        return await toMissingTarget()
+      }
+      if (phase === 'flapping' && body.method === 'get_target') {
+        // Odd calls check whether the target is back and find it, even calls
+        // are the reload that follows, which finds it gone again
+        targetChecks++
+        if (targetChecks % 2 === 0) {
+          return await toMissingTarget()
+        }
+      }
+      if (
+        phase === 'reload-fails' &&
+        body.method === 'get_packet_derived_items'
+      ) {
+        return await toMissingTarget()
+      }
+    }
+    return await route.fallback()
+  })
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await page.waitForRequest(isPacketPoll)
+  phase = 'removed'
+  await expect(unavailableAlert(page)).toContainText(
+    'Target INST no longer exists',
+  )
+
+  // The target disappears again during the reload, as can happen part way
+  // through a plugin upgrade. The tool must keep waiting rather than clear
+  // the selection.
+  phase = 'flapping'
+  await expect
+    .poll(() => targetChecks, { timeout: RECOVERY_TIMEOUT })
+    .toBeGreaterThanOrEqual(2)
+  await expect(unavailableAlert(page)).toBeVisible()
+  await expect(page).toHaveURL(/\/tools\/packetviewer\/INST\/HEALTH_STATUS/)
+
+  // The target exists but loading its packet fails, as when the target is
+  // installed before its packets
+  phase = 'reload-fails'
+  await page.waitForResponse(
+    (response) => isApiCall(response.request(), 'get_packet_derived_items'),
+    { timeout: RECOVERY_TIMEOUT },
+  )
+  await utils.sleep(500) // Allow the failed reload to finish
+  await expect(unavailableAlert(page)).toBeVisible()
+
+  phase = 'back'
+  await expect(unavailableAlert(page)).not.toBeVisible({
+    timeout: RECOVERY_TIMEOUT,
+  })
+  await matchItem(page, 'TEMP1', /\d+/)
+})
+
+test('waits for LATEST items when the target has none', async ({ page }) => {
+  // get_all_tlm_item_names returns [] instead of raising for a target with no
+  // packets, as happens while a plugin upgrade is still loading them. The
+  // empty list must not be kept as the item list.
+  await rerouteToMissingTarget(page, ['get_all_tlm_item_names'])
+  await page.goto('/tools/packetviewer/INST/LATEST/')
+  await expect(unavailableAlert(page)).toContainText(
+    'Target INST has no telemetry packets',
+  )
+
+  // The packets finish loading, so LATEST shows telemetry without reselecting
+  await page.unroute(API)
+  await expect(unavailableAlert(page)).not.toBeVisible({
+    timeout: RECOVERY_TIMEOUT,
+  })
+  // LATEST lists every INST item and the table only renders the rows in view,
+  // so filter down to TEMP1 before reading it
+  await page.locator('[data-test=search] input').fill('TEMP1')
+  await matchItem(page, 'TEMP1', /\d+/)
+})
+
+test('handles a failed load after browser navigation', async ({
+  page,
+  utils,
+}) => {
+  const pageErrors: Error[] = []
+  page.on('pageerror', (error) => pageErrors.push(error))
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await page.waitForRequest(isPacketPoll)
+  await utils.selectTargetPacketItem('INST', 'ADCS')
+  await expect(page).toHaveURL(/\/tools\/packetviewer\/INST\/ADCS/)
+
+  // Going back changes the route params, which the tool handles in a watcher
+  // by loading the packet. Make that load fail: its error must be handled
+  // rather than surface as an unhandled promise rejection.
+  await page.route(API, async (route) => {
+    if (isApiCall(route.request(), 'get_target')) {
+      return await route.abort()
+    }
+    return await route.fallback()
+  })
+  const targetRequest = page.waitForRequest((request) =>
+    isApiCall(request, 'get_target'),
+  )
+  await page.goBack()
+  await targetRequest
+  await utils.sleep(1000) // Allow an unhandled rejection to be reported
+  expect(pageErrors).toEqual([])
 })
 
 // Changing the polling rate is fraught with danger because it's all

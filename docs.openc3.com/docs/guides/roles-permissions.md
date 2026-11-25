@@ -160,7 +160,7 @@ The **Runner** role allows users to execute commands and scripts but cannot crea
 ### Administrative Permissions
 
 - **admin** - Manage scope-level resources (targets, plugins, interfaces, routers, etc.)
-- **superadmin** - System-wide administration across all scopes (requires `ALLSCOPES__admin`)
+- **superadmin** - System-wide administration across all scopes, including creating and deleting scopes and the raw Redis and TSDB queries in the Admin tool (requires `ALLSCOPES__admin`)
 
 ### Approval Permissions
 

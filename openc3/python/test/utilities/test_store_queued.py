@@ -86,6 +86,19 @@ class TestStoreQueuedUpdateIntervalAllShards(unittest.TestCase):
         # An explicit interval still wins for a new instance
         self.assertEqual(StoreQueued.instance(update_interval=0.5, db_shard=2).update_interval, 0.5)
 
+    def test_only_lowers_the_interval_when_fastest(self):
+        existing = StoreQueued.instance(db_shard=0)
+        StoreQueued.set_update_interval_all_shards(0.5, fastest=True)
+        self.assertEqual(existing.update_interval, 0.5)
+        StoreQueued.set_update_interval_all_shards(1.0, fastest=True)
+        self.assertEqual(existing.update_interval, 0.5)
+        StoreQueued.set_update_interval_all_shards(0.25, fastest=True)
+        self.assertEqual(existing.update_interval, 0.25)
+        self.assertEqual(StoreQueued.instance(db_shard=1).update_interval, 0.25)
+        # Without fastest the interval can be raised
+        StoreQueued.set_update_interval_all_shards(1.0)
+        self.assertEqual(existing.update_interval, 1.0)
+
     def test_ignores_intervals_of_zero_or_less(self):
         StoreQueued.set_update_interval_all_shards(0.25)
         StoreQueued.set_update_interval_all_shards(0)

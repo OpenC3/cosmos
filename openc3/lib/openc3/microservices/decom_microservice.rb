@@ -110,8 +110,24 @@ module OpenC3
       # can fire the callback synchronously for any persisted-disabled items.
       @limits_response_queue = Queue.new
       @limits_response_thread = nil
-      System.telemetry.limits_change_callback = method(:limits_change_callback)
-      LimitsEventTopic.sync_system(scope: @scope)
+      @resyncing_limits = false
+      # Only for this microservice's targets. Other decom microservices in the same
+      # process (a MULTI or MULTIGROUP) share System and handle their own targets.
+      callback = method(:limits_change_callback)
+      @target_names.each do |target_name|
+        System.telemetry.packets(target_name).each do |_packet_name, packet|
+          packet.limits_change_callback = callback
+        end
+      rescue RuntimeError
+        # Target has no telemetry
+      end
+      # Likewise only apply limits events to this microservice's targets. Disabling
+      # limits calls the target's limits change callback every time, so if every
+      # decom in the process applied every event, each disable would be reported
+      # (and its limits response run) once per decom. These are the live packet
+      # hashes so dynamically added packets are included.
+      @limits_telemetry = System.telemetry.all.select { |target_name, _packets| @target_names.include?(target_name) }
+      LimitsEventTopic.sync_system(scope: @scope, telemetry: @limits_telemetry)
       target_model = TargetModel.get_model(name: @target_names[0], scope: @scope)
       @stored_limits_mode = target_model ? (target_model.stored_limits_mode || 'PROCESS') : 'PROCESS'
       @error_count = 0
@@ -129,9 +145,10 @@ module OpenC3
       end
       @queued = update_interval > 0.0
       if @queued
-        # Apply to every db_shard since writes are routed to the shard of each target
-        EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
-        StoreQueued.set_update_interval_all_shards(update_interval)
+        # Apply to every db_shard since writes are routed to the shard of each target.
+        # Decoms in a microservice group share the process's queues, so the fastest wins.
+        EphemeralStoreQueued.set_update_interval_all_shards(update_interval, fastest: true)
+        StoreQueued.set_update_interval_all_shards(update_interval, fastest: true)
       end
     end
 
@@ -158,7 +175,7 @@ module OpenC3
                 end
                 @limits_event_offset = msg_id
                 event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
-                LimitsEventTopic.process_event(event, scope: @scope)
+                LimitsEventTopic.process_event(event, scope: @scope, telemetry: @limits_telemetry)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm_with_ack(msg_hash['inject_tlm'], msg_id)
@@ -198,7 +215,14 @@ module OpenC3
     def resync_if_limits_events_trimmed
       if LimitsEventTopic.events_trimmed?(@limits_event_offset, scope: @scope, db_shard: @db_shard)
         @logger.warn("#{@name}: Limits events were trimmed before they could be read, resyncing limits")
-        LimitsEventTopic.resync_system(scope: @scope)
+        # Don't publish the limits changes the resync makes. Otherwise a large
+        # resync can trim the stream again and cause another resync.
+        @resyncing_limits = true
+        begin
+          LimitsEventTopic.resync_system(scope: @scope, telemetry: @limits_telemetry)
+        ensure
+          @resyncing_limits = false
+        end
       end
     end
 
@@ -305,7 +329,7 @@ module OpenC3
                 time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
       suppress_stored = packet.stored && @stored_limits_mode != 'PROCESS'
       event[:suppress_stored] = true if suppress_stored
-      LimitsEventTopic.write(event, scope: @scope)
+      LimitsEventTopic.write(event, scope: @scope, publish: !@resyncing_limits)
 
       if item.limits.response && !suppress_stored
         copied_packet = packet.deep_copy

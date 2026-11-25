@@ -26,6 +26,7 @@ removes them from every section above "What's Changed". It also:
 import re
 import sys
 
+
 # A parenthesized group of only PR refs: "(#4015)", "(#4058, #4093)", "(#4106, #4109 and #4166)"
 REF_GROUP = re.compile(r"\s*\((?:#\d+)(?:\s*(?:,|and|&)\s*#\d+)*\)")
 # A ref group inside other parenthesized text: "(#4184): ..." handled above; "(see #4015)" kept
@@ -38,7 +39,11 @@ def strip_refs(text):
 
 
 def main():
-    core = open(sys.argv[1], encoding="utf-8").read() if len(sys.argv) > 1 else sys.stdin.read()
+    if len(sys.argv) > 1:
+        with open(sys.argv[1], encoding="utf-8") as file:
+            core = file.read()
+    else:
+        core = sys.stdin.read()
     match = WHATS_CHANGED.search(core)
     curated, generated = (core[: match.start()], core[match.start() :]) if match else (core, "")
 

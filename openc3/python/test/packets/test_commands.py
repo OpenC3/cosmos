@@ -426,6 +426,14 @@ class TestCommands(unittest.TestCase):
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
 
+    def test_build_cmd_does_not_match_a_none_value_to_a_state_named_none(self):
+        # Ruby's nil.to_s.upcase is "" which never matches a state, but str(None).upper() is "NONE"
+        self.cmd.packet("TGT1", "PKT2").get_item("ITEM2").states["NONE"] = 2
+        for raw in [True, False]:
+            items = {"ITEM2": None, "ITEM3": 0.0, "ITEM4": "WORLD"}
+            with self.assertRaisesRegex(ValueError, "Command parameter 'TGT1 PKT2 ITEM2' = None not one of"):
+                self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
+
     def test_build_cmd_ignores_about_out_of_range_item_values(self):
         for raw in [True, False]:
             cmd = self.cmd.build_cmd("tgt1", "pkt1", {"item2": 255}, False, raw)

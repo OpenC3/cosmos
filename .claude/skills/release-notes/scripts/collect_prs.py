@@ -32,6 +32,7 @@ import re
 import subprocess
 import sys
 
+
 BODY_EXCERPT_CHARS = 1500
 
 
@@ -43,7 +44,16 @@ def gh(*args, input_text=None):
 
 
 def generate_notes(repo, tag, previous, target):
-    args = ["api", f"repos/{repo}/releases/generate-notes", "-X", "POST", "-f", f"tag_name={tag}", "-f", f"previous_tag_name={previous}"]
+    args = [
+        "api",
+        f"repos/{repo}/releases/generate-notes",
+        "-X",
+        "POST",
+        "-f",
+        f"tag_name={tag}",
+        "-f",
+        f"previous_tag_name={previous}",
+    ]
     if target:
         args += ["-f", f"target_commitish={target}"]
     return json.loads(gh(*args))["body"]

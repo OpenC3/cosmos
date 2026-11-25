@@ -33,8 +33,15 @@ module ApplicationCable
       # subscribing channel to authenticate via its own params — that keeps
       # tokens out of WebSocket URLs (and therefore out of browser history /
       # proxy logs).
+      #
+      # The URL token path is deprecated and will be removed in COSMOS 8. It
+      # only remains for clients older than COSMOS 7.2.0. Their token appears in
+      # proxy access logs (including Traefik's) because it's part of the URL.
       if request.query_parameters[:authorization]
         authorization('script_view')
+        # Only reached once authorized (a rejection raises). Never include the
+        # token itself in this message.
+        OpenC3::Logger.warn("A client authenticated its WebSocket with a token in the URL (deprecated, removed in COSMOS 8). Upgrade the client to COSMOS 7.2.0 or later.", scope: request.query_parameters[:scope])
         self.url_authenticated = true
       else
         self.url_authenticated = false

@@ -710,6 +710,15 @@ class PacketWrite(unittest.TestCase):
         self.p.write_item(i, "FALSE", "CONVERTED", self.buffer)
         self.assertEqual(self.buffer, b"\x01\x00\x00\x00")
 
+    def test_does_not_write_a_none_value_as_a_state_named_none(self):
+        # Ruby's nil.to_s.upcase is "" which never matches a state, but str(None).upper() is "NONE"
+        self.p.append_item("item", 8, "UINT")
+        i = self.p.get_item("ITEM")
+        i.states = {"NONE": 1, "TRUE": 2}
+        with self.assertRaises(TypeError):
+            self.p.write_item(i, None, "CONVERTED", self.buffer)
+        self.assertEqual(self.buffer, b"\x00\x00\x00\x00")
+
     def test_writes_the_converted_value_with_states_no_buffer(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
@@ -1261,7 +1270,7 @@ class PacketLimits(unittest.TestCase):
         self.assertFalse(p.get_item("TEST1").limits.enabled)
         self.assertFalse(p.get_item("TEST2").limits.enabled)
 
-    def test_calls_the_limits_change_callback_for_all_non_stale_items(self):
+    def test_calls_the_limits_change_callback_for_items_with_a_limits_state(self):
         p = Packet("tgt", "pkt")
         p.append_item("test1", 8, "UINT")
         i = p.get_item("TEST1")
@@ -1293,6 +1302,18 @@ class PacketLimits(unittest.TestCase):
         mock.assert_has_calls(calls)
         self.assertFalse(p.get_item("TEST1").limits.enabled)
         self.assertFalse(p.get_item("TEST2").limits.enabled)
+
+    def test_does_not_call_the_limits_change_callback_for_items_without_a_limits_state(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT")
+        i = p.get_item("TEST1")
+        i.limits.values = {"DEFAULT": [1, 2, 4, 5]}
+        p.update_limits_items_cache(i)
+        mock = Mock()
+        p.limits_change_callback = mock
+        p.disable_limits("TEST1")  # Never checked so no state
+        self.assertFalse(i.limits.enabled)
+        self.assertEqual(mock.mock_calls, [])
 
     def test_returns_all_items_with_limits(self):
         p = Packet("tgt", "pkt")

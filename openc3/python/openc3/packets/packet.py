@@ -682,8 +682,9 @@ class Packet(Structure):
                 super().write_item(item, value, value_type, buffer)
             case "CONVERTED":
                 if item.states:
-                    # Convert from state to value if possible:
-                    state_value = item.states.get(str(value).upper())
+                    # Convert from state to value if possible. None never matches a state,
+                    # like Ruby's nil.to_s ("") and unlike str(None) ("None")
+                    state_value = item.states.get("" if value is None else str(value).upper())
                     if state_value is not None:
                         value = state_value
                 if item.write_conversion:
@@ -938,8 +939,11 @@ class Packet(Structure):
         # Forget the previous values so change limits restart cleanly when re-enabled
         item.limits.last_value = None
         item.limits.last_stored_value = None
-        if item.limits.state != "STALE":
-            old_limits_state = item.limits.state
+        old_limits_state = item.limits.state
+        # Only report an actual change. Disabling an item that is already disabled
+        # (None) must not fire the callback, because sync_system re-disables every
+        # persisted-disabled item and each callback publishes a limits event.
+        if old_limits_state is not None:
             item.limits.state = None
             if self.limits_change_callback is not None:
                 self.limits_change_callback(self, item, old_limits_state, None, False)
