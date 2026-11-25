@@ -50,6 +50,10 @@ class TargetModel(Model):
     sync_packet_count_time = None
     # Decom microservices sharing a process (a MULTI or MULTIGROUP) share these counts
     sync_packet_count_lock = threading.Lock()
+    # Targets decom'd in this process, whose counts each sync reads back
+    sync_packet_count_target_names: set[str] = set()
+    # Only one sync at a time so an older read back can't overwrite a newer one
+    sync_packet_count_in_progress = False
     sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
     stale_packet_keys_warned = set()  # Track stale keys already warned about
 
@@ -392,7 +396,9 @@ class TargetModel(Model):
             # This is a trade off between speed and accuracy
             # The packet count is eventually consistent
             sync_data = None
+            sync_target_names: list[str] = []
             with cls.sync_packet_count_lock:
+                cls.sync_packet_count_target_names.update(tlm_target_names)
                 if cls.sync_packet_count_data.get(packet.target_name) is None:
                     cls.sync_packet_count_data[packet.target_name] = {}
                 if cls.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
@@ -405,37 +411,63 @@ class TargetModel(Model):
                 packet.received_count = update_packet.received_count
 
                 # Check if we need to sync the packet counts
-                if (
+                if not cls.sync_packet_count_in_progress and (
                     cls.sync_packet_count_time is None
                     or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
                 ):
+                    cls.sync_packet_count_in_progress = True
                     cls.sync_packet_count_time = time.time()
                     sync_data = cls.sync_packet_count_data
                     cls.sync_packet_count_data = {}
+                    # Every target in the process, since the other decoms skip the sync
+                    # while this one runs it (and the timer it reset)
+                    sync_target_names = list(dict.fromkeys([*sorted(cls.sync_packet_count_target_names), "UNKNOWN"]))
 
             if sync_data is not None:
-                cls._write_packet_counts(sync_data, scope)
+                cls._sync_and_read_back_packet_counts(sync_data, sync_target_names, scope)
 
-                # Get all the packet counts with the global counters
-                counts = {}
-                for target_name in dict.fromkeys([*tlm_target_names, "UNKNOWN"]):
-                    counts[target_name] = TargetModel.get_all_telemetry_counts(target_name, scope=scope)
-                with cls.sync_packet_count_lock:
-                    for target_name, packet_counts in counts.items():
-                        for packet_name, count in packet_counts.items():
-                            if isinstance(packet_name, bytes):
-                                packet_name = packet_name.decode()
-                            try:
-                                update_packet = System.telemetry.packet(target_name, packet_name)
-                                # Add the increments other threads in this process queued since the
-                                # flush (e.g. UNKNOWN is shared) so the count doesn't go backwards
-                                pending = cls.sync_packet_count_data.get(target_name, {}).get(packet_name, 0)
-                                update_packet.received_count = int(count) + pending
-                            except RuntimeError:
-                                key = f"{target_name} {packet_name}"
-                                if key not in cls.stale_packet_keys_warned:
-                                    cls.stale_packet_keys_warned.add(key)
-                                    Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+    @classmethod
+    def _sync_and_read_back_packet_counts(
+        cls, sync_data: dict[str, dict[str, int]], target_names: list[str], scope: str
+    ) -> None:
+        """Write a batch to Redis and set every packet's received_count from the global counters.
+
+        Only one thread runs this at a time (see sync_packet_count_in_progress).
+
+        Args:
+            sync_data: Counts to add, by target and packet, detached from sync_packet_count_data.
+            target_names: Targets whose counts to read back.
+            scope: Scope of the targets.
+
+        Raises:
+            Exception: A Redis write failed. The unwritten counts are kept for the next sync.
+        """
+        try:
+            cls._write_packet_counts(sync_data, scope)
+
+            # Get all the packet counts with the global counters
+            counts = {}
+            for target_name in target_names:
+                counts[target_name] = TargetModel.get_all_telemetry_counts(target_name, scope=scope)
+            with cls.sync_packet_count_lock:
+                for target_name, packet_counts in counts.items():
+                    for packet_name, count in packet_counts.items():
+                        if isinstance(packet_name, bytes):
+                            packet_name = packet_name.decode()
+                        try:
+                            update_packet = System.telemetry.packet(target_name, packet_name)
+                            # Add the increments threads in this process queued since the flush
+                            # (e.g. UNKNOWN is shared) so the count doesn't go backwards
+                            pending = cls.sync_packet_count_data.get(target_name, {}).get(packet_name, 0)
+                            update_packet.received_count = int(count) + pending
+                        except RuntimeError:
+                            key = f"{target_name} {packet_name}"
+                            if key not in cls.stale_packet_keys_warned:
+                                cls.stale_packet_keys_warned.add(key)
+                                Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+        finally:
+            with cls.sync_packet_count_lock:
+                cls.sync_packet_count_in_progress = False
 
     @classmethod
     def _write_packet_counts(cls, sync_data, scope):

@@ -35,6 +35,13 @@ module OpenC3
       @mm.shutdown
     end
 
+    it "leaves System for its children" do
+      # Its own setup would build an empty System, and the first setup decides
+      # which targets System has, so only run sets it up (for its children)
+      expect(System).not_to receive(:setup_targets)
+      MultiMicroservice.new(name).shutdown
+    end
+
     it "runs the microservices given on the command line" do
       stub_const('ARGV', ['DEFAULT__DECOM__D', 'DEFAULT__PACKETLOG__A'])
       expect(@mm.child_models.map(&:name)).to eql ['DEFAULT__DECOM__D', 'DEFAULT__PACKETLOG__A']
@@ -78,6 +85,19 @@ module OpenC3
       # Shutdown also stops metrics, which can take a moment on a busy machine
       thread.join(10)
       expect(thread).to_not be_alive
+    end
+
+    it "stops without an error when shutdown cancels its sleep before setting cancel_thread" do
+      stub_const('ARGV', [])
+      empty = MultiMicroservice.new('DEFAULT__MULTIGROUP__EMPTY')
+      thread = Thread.new { empty.run }
+      thread.report_on_exception = false
+      sleep 0.1 until empty.instance_variable_get(:@sleeper)
+      # shutdown cancels the sleeper and then logs before it sets cancel_thread
+      empty.instance_variable_get(:@sleeper).cancel
+      expect(thread.join(5)).to_not be_nil
+      expect { thread.value }.to_not raise_error
+      empty.shutdown
     end
   end
 end

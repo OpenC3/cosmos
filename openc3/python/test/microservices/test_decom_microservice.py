@@ -343,6 +343,15 @@ class TestDecomMicroservice(unittest.TestCase):
         self.assertEqual(EphemeralStoreQueued.all_shards_update_interval, 0.1)
         self.assertEqual(StoreQueued.all_shards_update_interval, 0.1)
 
+    def test_uses_the_fastest_update_interval_of_the_decoms_in_one_process(self):
+        # Like the decoms of a microservice group, which share the process's queues
+        self.dm.config = {"options": [["UPDATE_INTERVAL", 0.01]]}
+        self.dm.setup_queued_writes()
+        self.dm.config = {"options": [["UPDATE_INTERVAL", 5.0]]}
+        self.dm.setup_queued_writes()
+        self.assertEqual(EphemeralStoreQueued.all_shards_update_interval, 0.01)
+        self.assertEqual(StoreQueued.all_shards_update_interval, 0.01)
+
     def test_uses_the_update_interval_option_and_disables_queuing_with_zero(self):
         self.dm.config = {"options": [["UPDATE_INTERVAL", 0.5]]}
         with (
@@ -350,8 +359,8 @@ class TestDecomMicroservice(unittest.TestCase):
             patch.object(StoreQueued, "set_update_interval_all_shards") as store_set,
         ):
             self.dm.setup_queued_writes()
-        ephemeral_set.assert_called_once_with(0.5)
-        store_set.assert_called_once_with(0.5)
+        ephemeral_set.assert_called_once_with(0.5, fastest=True)
+        store_set.assert_called_once_with(0.5, fastest=True)
         self.assertTrue(self.dm.queued)
 
         self.dm.config = {"options": [["UPDATE_INTERVAL", "0"]]}

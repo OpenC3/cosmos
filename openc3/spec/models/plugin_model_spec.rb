@@ -835,6 +835,50 @@ module OpenC3
         plugin.undeploy
       end
 
+      it "keeps a microservice group's parent running the members of other plugins" do
+        pymulti = "DEFAULT__PYMULTIGROUP__HK"
+        MicroserviceModel.new(name: "DEFAULT__DECOM__A", parent: pymulti, cmd: ['python', 'decom_microservice.py'],
+                              scope: "DEFAULT", plugin: "PLUG").create
+        MicroserviceModel.new(name: "DEFAULT__TSDB__B", parent: pymulti, cmd: ['python', 'tsdb_microservice.py'],
+                              scope: "DEFAULT", plugin: "OTHER").create
+        MicroserviceGroup.update('HK', scope: "DEFAULT")
+        # The parent uses the plugin of its Python decom child for its venv
+        expect(MicroserviceModel.get_model(name: pymulti, scope: "DEFAULT").plugin).to eql "PLUG"
+
+        plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
+        allow(plugin).to receive(:sleep)
+        expect_any_instance_of(MicroserviceModel).to receive(:destroy).once.and_call_original # Only DECOM__A
+        plugin.undeploy
+
+        expect(MicroserviceModel.get_model(name: "DEFAULT__DECOM__A", scope: "DEFAULT")).to be_nil
+        parent = MicroserviceModel.get_model(name: pymulti, scope: "DEFAULT")
+        expect(parent).to_not be_nil
+        expect(parent.plugin).to be_nil
+      end
+
+      it "removes a microservice group's parents with its last plugin's members" do
+        multi = "DEFAULT__MULTIGROUP__HK"
+        pymulti = "DEFAULT__PYMULTIGROUP__HK"
+        MicroserviceModel.new(name: "DEFAULT__DECOM__A", parent: pymulti, cmd: ['python', 'decom_microservice.py'],
+                              scope: "DEFAULT", plugin: "PLUG").create
+        MicroserviceModel.new(name: "DEFAULT__TSDB__A", parent: pymulti, cmd: ['python', 'tsdb_microservice.py'],
+                              scope: "DEFAULT", plugin: "PLUG").create
+        MicroserviceModel.new(name: "DEFAULT__PACKETLOG__A", parent: multi, cmd: ['ruby', 'log_microservice.rb'],
+                              scope: "DEFAULT", plugin: "PLUG").create
+        MicroserviceGroup.update('HK', scope: "DEFAULT")
+        expect(MicroserviceModel.get_model(name: multi, scope: "DEFAULT")).to_not be_nil
+        expect(MicroserviceModel.get_model(name: pymulti, scope: "DEFAULT").plugin).to eql "PLUG"
+
+        plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
+        allow(plugin).to receive(:sleep)
+        # Raises if any of the plugin's microservices are left
+        expect { plugin.undeploy }.to_not raise_error
+
+        %w(DECOM__A TSDB__A PACKETLOG__A MULTIGROUP__HK PYMULTIGROUP__HK).each do |name|
+          expect(MicroserviceModel.get_model(name: "DEFAULT__#{name}", scope: "DEFAULT")).to be_nil
+        end
+      end
+
       it "removes per-plugin Python venv directory when it exists" do
         plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
         venv_path = '/gems/plugin_venvs/DEFAULT__PLUG'

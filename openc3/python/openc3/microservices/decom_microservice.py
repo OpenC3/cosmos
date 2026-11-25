@@ -118,9 +118,10 @@ class DecomMicroservice(Microservice):
                 update_interval = float(option[1])
         self.queued = update_interval > 0.0
         if self.queued:
-            # Apply to every db_shard since writes are routed to the shard of each target
-            EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
-            StoreQueued.set_update_interval_all_shards(update_interval)
+            # Apply to every db_shard since writes are routed to the shard of each target.
+            # Decoms in a microservice group share the process's queues, so the fastest wins.
+            EphemeralStoreQueued.set_update_interval_all_shards(update_interval, fastest=True)
+            StoreQueued.set_update_interval_all_shards(update_interval, fastest=True)
 
     def __init__(self, *args):
         super().__init__(*args)

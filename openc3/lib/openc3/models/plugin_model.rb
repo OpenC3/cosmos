@@ -33,6 +33,7 @@ require 'openc3/models/tool_model'
 require 'openc3/models/widget_model'
 require 'openc3/models/panel_model'
 require 'openc3/models/microservice_model'
+require 'openc3/models/microservice_group'
 require 'openc3/api/api'
 require 'openc3/utilities/pypi_url'
 require 'tmpdir'
@@ -506,6 +507,10 @@ module OpenC3
       errors = []
       microservice_count = 0
       microservices = MicroserviceModel.find_all_by_plugin(plugin: @name, scope: @scope)
+      # A microservice group's Python parent takes the plugin of its Python decom
+      # children for their venv, but it also runs the members of other plugins.
+      # Update it once this plugin's members are gone instead of removing it.
+      group_parents, microservices = microservices.partition { |name, _model| MicroserviceGroup.parent?(name) }
       microservices.each do |_name, model_instance|
         begin
           model_instance.destroy
@@ -525,6 +530,14 @@ module OpenC3
           rescue Exception => e
             errors << e
           end
+        end
+      end
+      # TargetModel#undeploy already did this unless it failed first
+      group_parents.each do |name, _model|
+        begin
+          MicroserviceGroup.update(name.split('__')[2], scope: @scope)
+        rescue => e
+          errors << e
         end
       end
       # Cleanup Redis stuff that might have been left by microservices

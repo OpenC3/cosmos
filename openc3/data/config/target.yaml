@@ -174,7 +174,9 @@ TARGET:
         processes shared by the whole group, one for Ruby and one for Python, which uses
         much less memory when there are many targets. Targets from different plugins can
         share a group. All targets in a group must use the same SHARD and DB_SHARD, and
-        Python targets in a group must come from one plugin. Adding or removing a target
+        Python targets in a group must come from one plugin. The decoms in each process
+        share one write queue that flushes at the fastest DECOM_UPDATE_INTERVAL of its
+        targets. Adding or removing a target
         restarts the group's processes. Cannot be combined with TARGET_MICROSERVICE.
       since: _Coming Soon_
       parameters:

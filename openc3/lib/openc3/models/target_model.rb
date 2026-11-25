@@ -66,6 +66,10 @@ module OpenC3
     @@sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
     # Decom microservices sharing a process (a MULTI or MULTIGROUP) share these counts
     @@sync_packet_count_mutex = Mutex.new
+    # Targets decom'd in this process, whose counts each sync reads back
+    @@sync_packet_count_target_names = Set.new
+    # Only one sync at a time so an older read back can't overwrite a newer one
+    @@sync_packet_count_in_progress = false
     @@stale_packet_keys_warned = Set.new # Track stale keys already warned about
 
     attr_accessor :folder_name
@@ -826,8 +830,15 @@ module OpenC3
         unless validate_only
           build_target_archive(temp_dir, target_folder)
           system = update_store(system)
-          # Persist language so other members can be checked against it (see MicroserviceGroup.validate_member)
-          update(force: true) if @microservice_group
+          if @microservice_group
+            # Check again and save (with language) under the group lock so a
+            # target of another plugin installed at the same time is checked
+            # against this one, or this one against it
+            MicroserviceGroup.with_lock(@microservice_group, scope: @scope) do
+              MicroserviceGroup.validate_member(self)
+              update(force: true)
+            end
+          end
           deploy_microservices(gem_path, variables, system)
           MicroserviceGroup.update(@microservice_group, scope: @scope) if @microservice_group
           ConfigTopic.write({ kind: 'created', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
@@ -1626,7 +1637,9 @@ module OpenC3
         # This is a trade off between speed and accuracy
         # The packet count is eventually consistent
         sync_data = nil
+        sync_target_names = nil
         @@sync_packet_count_mutex.synchronize do
+          @@sync_packet_count_target_names.merge(tlm_target_names)
           @@sync_packet_count_data[packet.target_name] ||= {}
           @@sync_packet_count_data[packet.target_name][packet.packet_name] ||= 0
           @@sync_packet_count_data[packet.target_name][packet.packet_name] += 1
@@ -1637,43 +1650,55 @@ module OpenC3
           packet.received_count = update_packet.received_count
 
           # Check if we need to sync the packet counts
-          if @@sync_packet_count_time.nil? or (Time.now - @@sync_packet_count_time) > @@sync_packet_count_delay_seconds
+          if !@@sync_packet_count_in_progress and (@@sync_packet_count_time.nil? or (Time.now - @@sync_packet_count_time) > @@sync_packet_count_delay_seconds)
+            @@sync_packet_count_in_progress = true
             @@sync_packet_count_time = Time.now
             sync_data = @@sync_packet_count_data
             @@sync_packet_count_data = {}
+            # Every target in the process, since the other decoms skip the sync
+            # while this one runs it (and the timer it reset)
+            sync_target_names = @@sync_packet_count_target_names.to_a + ['UNKNOWN']
           end
         end
 
-        if sync_data
-          write_packet_counts(sync_data, scope: scope)
+        sync_and_read_back_packet_counts(sync_data, sync_target_names.uniq, scope: scope) if sync_data
+      end
+    end
 
-          # Get all the packet counts with the global counters
-          counts = {}
-          (tlm_target_names + ['UNKNOWN']).uniq.each do |target_name|
-            counts[target_name] = get_all_telemetry_counts(target_name, scope: scope)
-          end
-          @@sync_packet_count_mutex.synchronize do
-            counts.each do |target_name, packet_counts|
-              packet_counts.each do |packet_name, count|
-                begin
-                  update_packet = System.telemetry.packet(target_name, packet_name)
-                  # Add the increments other threads in this process queued since the
-                  # flush (e.g. UNKNOWN is shared) so the count doesn't go backwards
-                  pending = @@sync_packet_count_data.dig(target_name, packet_name) || 0
-                  update_packet.received_count = count.to_i + pending
-                rescue RuntimeError
-                  key = "#{target_name} #{packet_name}"
-                  unless @@stale_packet_keys_warned.include?(key)
-                    @@stale_packet_keys_warned.add(key)
-                    Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
-                  end
-                end
+    # Write a batch to Redis and set every packet's received_count from the
+    # global counters. Only one thread runs this at a time (see
+    # @@sync_packet_count_in_progress).
+    def self.sync_and_read_back_packet_counts(sync_data, target_names, scope:)
+      write_packet_counts(sync_data, scope: scope)
+
+      # Get all the packet counts with the global counters
+      counts = {}
+      target_names.each do |target_name|
+        counts[target_name] = get_all_telemetry_counts(target_name, scope: scope)
+      end
+      @@sync_packet_count_mutex.synchronize do
+        counts.each do |target_name, packet_counts|
+          packet_counts.each do |packet_name, count|
+            begin
+              update_packet = System.telemetry.packet(target_name, packet_name)
+              # Add the increments threads in this process queued since the flush
+              # (e.g. UNKNOWN is shared) so the count doesn't go backwards
+              pending = @@sync_packet_count_data.dig(target_name, packet_name) || 0
+              update_packet.received_count = count.to_i + pending
+            rescue RuntimeError
+              key = "#{target_name} #{packet_name}"
+              unless @@stale_packet_keys_warned.include?(key)
+                @@stale_packet_keys_warned.add(key)
+                Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
               end
             end
           end
         end
       end
+    ensure
+      @@sync_packet_count_mutex.synchronize { @@sync_packet_count_in_progress = false }
     end
+    private_class_method :sync_and_read_back_packet_counts
 
     # Write a batch detached from @@sync_packet_count_data to Redis. Entries are
     # removed as they're written so if a write fails only the unwritten counts

@@ -21,6 +21,11 @@ module OpenC3
   # command line, or if none are given (as for a MICROSERVICE_GROUP's
   # MULTIGROUP) they are the microservices that name this one as their parent.
   class MultiMicroservice < Microservice
+    def setup_system
+      # Intentionally empty. This microservice has no targets of its own, so
+      # leave System for run to set up for its children's targets.
+    end
+
     def child_models
       names = ARGV.dup
       if names.empty?
@@ -60,8 +65,12 @@ module OpenC3
       end
       if models.empty?
         # Nothing to run until the operator restarts this with children
+        # Stop when the sleep is canceled too. shutdown cancels it before it
+        # sets @cancel_thread, and a canceled Sleeper can't sleep again.
         @sleeper = Sleeper.new
-        @sleeper.sleep(1) until @cancel_thread
+        until @cancel_thread
+          break if @sleeper.sleep(1)
+        end
       else
         ThreadManager.instance.monitor
         ThreadManager.instance.shutdown

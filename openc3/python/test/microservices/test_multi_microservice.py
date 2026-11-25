@@ -152,6 +152,13 @@ class TestMultiMicroservice(unittest.TestCase):
         for mock in stores.values():
             mock.ensure_pool_size.assert_called_once_with(400)
 
+    def test_leaves_system_for_its_children(self):
+        # Its own setup would build an empty System, and the first setup decides
+        # which targets System has, so only run sets it up (for its children)
+        with patch("openc3.microservices.microservice.System") as system:
+            MultiMicroservice(NAME)
+        system.setup_targets.assert_not_called()
+
     def test_waits_for_a_shutdown_if_it_has_no_children(self):
         with patch("openc3.microservices.microservice.System"):
             empty = MultiMicroservice("DEFAULT__PYMULTIGROUP__EMPTY")
@@ -164,3 +171,18 @@ class TestMultiMicroservice(unittest.TestCase):
             # Shutdown also stops metrics, which can take a moment on a busy machine
             thread.join(10)
         self.assertFalse(thread.is_alive())
+
+    def test_stops_when_shutdown_cancels_its_sleep_before_setting_cancel_thread(self):
+        with patch("openc3.microservices.microservice.System"):
+            empty = MultiMicroservice("DEFAULT__PYMULTIGROUP__EMPTY")
+        with patch.object(sys, "argv", ["multi_microservice.py"]):
+            thread = threading.Thread(target=empty.run)
+            thread.start()
+            time.sleep(0.1)
+            # shutdown cancels the sleeper and then logs before it sets cancel_thread
+            empty.sleeper.cancel()
+            thread.join(5)
+            alive = thread.is_alive()
+            empty.shutdown()
+            thread.join(10)
+        self.assertFalse(alive)

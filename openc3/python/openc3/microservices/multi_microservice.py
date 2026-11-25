@@ -41,6 +41,11 @@ class MultiMicroservice(Microservice):
         super().__init__(*args)
         self.sleeper = Sleeper()
 
+    # This microservice has no targets of its own, so leave System for run to
+    # set up for its children's targets
+    def setup_system(self):
+        pass
+
     def child_models(self):
         names = sys.argv[1:]
         if not names:
@@ -97,8 +102,11 @@ class MultiMicroservice(Microservice):
 
         if not models:
             # Nothing to run until the operator restarts this with children
+            # Stop when the sleep is canceled too. shutdown cancels it before it
+            # sets cancel_thread, and a canceled Sleeper can't sleep again.
             while not self.cancel_thread:
-                self.sleeper.sleep(1)
+                if self.sleeper.sleep(1):
+                    break
         else:
             ThreadManager.instance().monitor()
             ThreadManager.instance().shutdown()

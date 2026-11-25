@@ -299,14 +299,23 @@ class TestSystemSetupTargets(unittest.TestCase):
     def tearDown(self):
         System.instance_obj = None
 
-    def test_does_nothing_without_targets(self):
-        # Matches Ruby. A MULTI microservice sets up System for its children's
-        # targets after its own (target-less) setup, so this must not build one.
-        with patch("openc3.system.system.Bucket") as bucket:
-            System.setup_targets([], "/tmp/unused", scope="DEFAULT")
-            System.setup_targets(None, "/tmp/unused", scope="DEFAULT")
-        self.assertIsNone(System.instance_obj)
-        bucket.get_client.assert_not_called()
+    def test_builds_an_empty_system_without_targets(self):
+        # Microservices without targets, such as an interface without
+        # MAP_TARGET, still use System (e.g. to identify UNKNOWN packets)
+        self.check_empty_system([])
+
+    def test_builds_an_empty_system_for_none(self):
+        self.check_empty_system(None)
+
+    def check_empty_system(self, target_names):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch("openc3.system.system.Bucket") as bucket:
+            System.setup_targets(target_names, temp_dir, scope="DEFAULT")
+            self.assertIsNotNone(System.instance_obj)
+            self.assertEqual(System.targets, {})
+            self.assertIsNotNone(System.telemetry.packet("UNKNOWN", "UNKNOWN"))
+            bucket.get_client.return_value.get_object.assert_not_called()
 
 
 class TestSystemIntegration(unittest.TestCase):
