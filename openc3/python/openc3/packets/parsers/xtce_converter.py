@@ -331,10 +331,11 @@ class XtceConverter:
         """
         root = etree.Element("types")
         self._to_xtce_type(item, "Parameter", root)
-        for node in list(root.iter()):
+        for node in root.iter():
             node.attrib.pop("shortDescription", None)
-            if node.tag == f"{{{self.XTCE_NAMESPACE}}}LongDescription":
-                node.getparent().remove(node)
+        # Collect descriptions before removing nodes from the tree.
+        for description in root.findall(f".//{{{self.XTCE_NAMESPACE}}}LongDescription"):
+            description.getparent().remove(description)
         return etree.tostring(root, method="c14n")
 
     def _get_unique(self, packets: dict[str, Any]) -> dict[str, Any]:
