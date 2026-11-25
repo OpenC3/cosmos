@@ -159,22 +159,52 @@ class LimitsParser:
             raise self.parser.error("Initial LIMITS state must be ENABLED or DISABLED.", self.usage)
         return enabled == "ENABLED"
 
+    @staticmethod
+    def _parse_limit(value: str) -> int | float:
+        """Preserve large integer limits and the legacy float type for small ones.
+
+        Args:
+            value: A numeric limit from the configuration file.
+
+        Returns:
+            An exact integer outside the binary64 safe integer range, otherwise
+            the legacy floating-point representation.
+
+        Raises:
+            ValueError: If the value is not a valid integer or float.
+        """
+        try:
+            integer = int(value)
+        except ValueError:
+            return float(value)
+        return float(integer) if abs(integer) <= 2**53 else integer
+
     def _get_values(self):
         values = self._get_red_yellow_values()
         return values + self._get_green_values(values[1], values[2])
 
-    def _get_red_yellow_values(self):
+    def _get_red_yellow_values(self) -> list[int | float]:
+        """Parse and validate the four red and yellow limits.
+
+        Returns:
+            Red low, yellow low, yellow high, and red high limits, preserving
+            exact integer literals.
+
+        Raises:
+            ConfigParser.Error: If a limit is not numeric or the limits are
+                out of order.
+        """
         params = self.parser.parameters
         err = None
         try:
             err = "red low"
-            red_low = float(params[3])
+            red_low = self._parse_limit(params[3])
             err = "yellow low"
-            yellow_low = float(params[4])
+            yellow_low = self._parse_limit(params[4])
             err = "yellow high"
-            yellow_high = float(params[5])
+            yellow_high = self._parse_limit(params[5])
             err = "red high"
-            red_high = float(params[6])
+            red_high = self._parse_limit(params[6])
         except ValueError as error:
             raise self.parser.error(
                 f"Invalid {err} limit value. Limits can be integers or floats.",
@@ -190,7 +220,20 @@ class LimitsParser:
 
         return [red_low, yellow_low, yellow_high, red_high]
 
-    def _get_green_values(self, yellow_low, yellow_high):
+    def _get_green_values(self, yellow_low: int | float, yellow_high: int | float) -> list[int | float]:
+        """Parse optional green limits without rounding integer literals.
+
+        Args:
+            yellow_low: The lower yellow limit.
+            yellow_high: The upper yellow limit.
+
+        Returns:
+            The two green limits, or an empty list if neither is configured.
+
+        Raises:
+            ConfigParser.Error: If only one green limit is given, a limit is
+                not numeric, or the green limits are out of order.
+        """
         params = self.parser.parameters
         # Since our initial parameter check verifies between 7 and 9 we do a
         # special check for 8 parameters which is an error
@@ -201,9 +244,9 @@ class LimitsParser:
 
         try:
             err = "green low"
-            green_low = float(params[7])
+            green_low = self._parse_limit(params[7])
             err = "green high"
-            green_high = float(params[8])
+            green_high = self._parse_limit(params[8])
         except ValueError as error:
             raise self.parser.error(
                 f"Invalid {err} limit value. Limits can be integers or floats.",
