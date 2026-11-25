@@ -24,7 +24,7 @@
     "rollup-plugin-sourcemaps2": "^0.5.10",
     "sass": "1.108.2",
     "vite": "7.3.8",
-    "vitest": "5.1.0",
+    "vitest": "5.1.1",
     "vue": "3.5.45"
   }
 }
