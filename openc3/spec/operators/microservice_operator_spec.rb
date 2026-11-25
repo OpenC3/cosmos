@@ -568,6 +568,97 @@ module OpenC3
       end
     end
 
+    describe "disabled scopes" do
+      before(:each) do
+        mock_redis()
+        allow(Logger).to receive(:info)
+        SharedResourceModel.clear_cache
+        ScopeModel.new(name: 'DEFAULT').create
+        ScopeModel.new(name: 'OTHER').create
+        @operator = MicroserviceOperator.new
+      end
+
+      def create_microservice(name, scope, parent: nil, enabled: true)
+        model = MicroserviceModel.new(name: "#{scope}__#{name}", cmd: %w(ruby x.rb), parent: parent, enabled: enabled, scope: scope)
+        model.create
+        model
+      end
+
+      def set_scope_enabled(scope, enabled)
+        model = ScopeModel.get_model(name: scope)
+        model.enabled = enabled
+        model.update
+      end
+
+      def processes
+        @operator.instance_variable_get(:@processes)
+      end
+
+      def removed_processes
+        @operator.instance_variable_get(:@removed_processes)
+      end
+
+      it "doesn't spawn microservices in a disabled scope" do
+        set_scope_enabled('OTHER', false)
+        create_microservice('USER__MICRO', 'DEFAULT')
+        create_microservice('USER__MICRO', 'OTHER')
+        @operator.update
+        expect(processes.keys).to eql ['DEFAULT__USER__MICRO']
+      end
+
+      it "stops microservices when the scope is disabled and restarts them when enabled" do
+        create_microservice('USER__MICRO', 'OTHER')
+        create_microservice('USER__STOPPED', 'OTHER', enabled: false)
+        @operator.update
+        expect(processes.keys).to eql ['OTHER__USER__MICRO']
+
+        set_scope_enabled('OTHER', false)
+        @operator.update
+        expect(processes).to be_empty
+        expect(removed_processes.keys).to eql ['OTHER__USER__MICRO']
+        @operator.instance_variable_set(:@removed_processes, {})
+
+        set_scope_enabled('OTHER', true)
+        @operator.update
+        # A microservice stopped by the user stays stopped
+        expect(processes.keys).to eql ['OTHER__USER__MICRO']
+        expect(@operator.instance_variable_get(:@new_processes).keys).to eql ['OTHER__USER__MICRO']
+      end
+
+      it "doesn't spawn a disabled parent when its child changes" do
+        create_microservice('SCOPEMULTI__OTHER', 'OTHER')
+        child = create_microservice('USER__CHILD', 'OTHER', parent: 'OTHER__SCOPEMULTI__OTHER')
+        @operator.update
+        expect(processes.keys).to eql ['OTHER__SCOPEMULTI__OTHER']
+
+        set_scope_enabled('OTHER', false)
+        @operator.update
+        expect(processes).to be_empty
+        # Never started (start_new didn't run) so must not be left queued to start
+        expect(@operator.instance_variable_get(:@new_processes)).to be_empty
+        @operator.instance_variable_set(:@removed_processes, {})
+
+        # e.g. a plugin reinstalled in the disabled scope
+        child.options = [['NEW', 'OPTION']]
+        child.update
+        create_microservice('USER__CHILD2', 'OTHER', parent: 'OTHER__SCOPEMULTI__OTHER')
+        @operator.update
+        expect(processes).to be_empty
+        expect(@operator.instance_variable_get(:@changed_processes)).to be_empty
+        expect(@operator.instance_variable_get(:@new_processes)).to be_empty
+      end
+
+      it "doesn't spawn a disabled microservice whose config changed" do
+        model = create_microservice('USER__MICRO', 'OTHER', enabled: false)
+        @operator.update
+        expect(processes).to be_empty
+        model.options = [['NEW', 'OPTION']]
+        model.update
+        @operator.update
+        expect(processes).to be_empty
+      end
+    end
+
     describe "redis error resilience" do
       before(:each) do
         @redis = mock_redis()

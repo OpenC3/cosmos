@@ -17,6 +17,7 @@
 
 require 'openc3/models/microservice_model'
 require 'openc3/models/shared_resource_model'
+require 'openc3/models/scope_model'
 
 class MicroservicesController < ModelController
   def initialize
@@ -48,6 +49,11 @@ class MicroservicesController < ModelController
     return unless authorization('admin')
     microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
     if microservice
+      unless OpenC3::ScopeModel.enabled?(params[:scope])
+        message = "Microservice #{params[:id]} can't be started because scope #{params[:scope]} is disabled. Enable the scope in Admin Scopes to start it."
+        render json: { status: 'error', message: message }, status: :bad_request
+        return
+      end
       if microservice.shared_resource
         record = OpenC3::SharedResourceModel.get(microservice.shared_resource)
         unless OpenC3::SharedResourceModel.active?(record, params[:scope])

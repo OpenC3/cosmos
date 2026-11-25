@@ -11,6 +11,7 @@
 
 import json
 import re
+from typing import Any
 
 from openc3.models.model import Model
 
@@ -56,20 +57,67 @@ class ScopeModel(Model):
         json_data = cls.get(name)
         return cls.from_json(json_data) if json_data else None
 
+    @classmethod
+    def disabled_scopes(cls) -> list[str]:
+        """Get the scopes whose microservices have been disabled.
+
+        Returns:
+            The names of the disabled scopes.
+        """
+        return [name for name, json_data in cls.all().items() if json_data.get("enabled") is False]
+
+    @classmethod
+    def scope_enabled(cls, name: str) -> bool:
+        """Check whether a scope's microservices should run.
+
+        Matches the Ruby ScopeModel.enabled? method.
+
+        Args:
+            name: Name of the scope.
+
+        Returns:
+            False if the scope is disabled, True otherwise (including unknown scopes).
+        """
+        json_data = cls.get(name)
+        if not json_data:
+            return True
+        return json_data.get("enabled") is not False
+
     def __init__(
         self,
         name: str,
         text_log_cycle_time: int = 600,
         text_log_cycle_size: int = 50_000_000,
-        text_log_retain_time: int = None,
-        tool_log_retain_time: int = None,
+        text_log_retain_time: int | None = None,
+        tool_log_retain_time: int | None = None,
         cleanup_poll_time: int = 3600,
         command_authority: bool = False,
         critical_commanding: str = "OFF",
         critical_cmd_approvers: int = 1,
         shard: int = 0,
-        updated_at: int = None,
+        enabled: bool | str = True,
+        updated_at: int | None = None,
     ):
+        """Create a scope model.
+
+        Args:
+            name: Name of the scope.
+            text_log_cycle_time: Seconds before a new text log file is started.
+            text_log_cycle_size: Bytes before a new text log file is started.
+            text_log_retain_time: Seconds to keep text logs, None to keep forever.
+            tool_log_retain_time: Seconds to keep tool logs, None to keep forever.
+            cleanup_poll_time: Seconds between log cleanup checks.
+            command_authority: Whether command authority is required.
+            critical_commanding: OFF, NORMAL, or ALL.
+            critical_cmd_approvers: Number of approvers required for each critical command (1 to 10).
+            shard: Operator shard that runs the scope microservices.
+            enabled: Whether the scope microservices run. A disabled scope keeps its
+                configuration and data but the operators stop all of its microservices.
+            updated_at: Nanosecond timestamp of the last update.
+
+        Raises:
+            RuntimeError: If critical_commanding or critical_cmd_approvers is invalid.
+        """
         super().__init__(
             self.PRIMARY_KEY,
             name=name,
@@ -111,10 +159,32 @@ class ScopeModel(Model):
         self.shard = shard
         if self.shard is None:
             self.shard = 0
+        # Scopes created before this setting existed are enabled
+        self.enabled = not (enabled is False or str(enabled).lower() == "false")
         self.children = []
 
-    # self.return [Hash] JSON encoding of this model
-    def as_json(self):
+    def create(self, update: bool = False, force: bool = False, queued: bool = False) -> None:
+        """Store the scope.
+
+        Args:
+            update: Whether this is an update to an existing scope.
+            force: Store even if the scope already exists (or doesn't, for update).
+            queued: Write through the queued store.
+
+        Raises:
+            RuntimeError: If the DEFAULT scope is being disabled.
+        """
+        # DEFAULT runs the cluster wide microservices (NOSCOPE logging, periodic, etc)
+        if str(self.name).upper() == "DEFAULT" and not self.enabled:
+            raise RuntimeError("DEFAULT scope cannot be disabled")
+        super().create(update=update, force=force, queued=queued)
+
+    def as_json(self) -> dict[str, Any]:
+        """Encode the scope as JSON.
+
+        Returns:
+            The scope settings.
+        """
         return {
             "name": self.name,
             "updated_at": self.updated_at,
@@ -127,4 +197,5 @@ class ScopeModel(Model):
             "critical_commanding": self.critical_commanding,
             "critical_cmd_approvers": self.critical_cmd_approvers,
             "shard": self.shard,
+            "enabled": self.enabled,
         }

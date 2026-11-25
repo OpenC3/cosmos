@@ -223,7 +223,7 @@ module OpenC3
             # Remove regular microservice
             @removed_microservices[microservice_name] = microservice_config
           end
-        else
+        elsif enabled
           # Newly enabled microservice
           @new_microservices[microservice_name] = microservice_config
         end
@@ -309,6 +309,7 @@ module OpenC3
       end
 
       apply_shared_resources(@microservices, shared_resources)
+      apply_disabled_scopes(@microservices)
 
       # Detect new and changed microservices
       @new_microservices = {}
@@ -332,6 +333,10 @@ module OpenC3
           handle_removed_microservice(microservice_name, microservice_config)
         end
       end
+
+      # A child changing asks for its parent to be respawned, but a disabled
+      # parent (e.g. its scope is disabled) must stay stopped
+      @changed_microservices.reject! { |_name, config| config['enabled'] == false }
 
       # Convert to processes
       @mutex.synchronize do
@@ -367,6 +372,10 @@ module OpenC3
         @removed_microservices.each do |microservice_name, _microservice_config|
           process = @processes[microservice_name]
           @processes.delete(microservice_name)
+          # Drop it from the per-cycle start queues so it isn't started (or
+          # restarted) after we've stopped tracking it
+          @new_processes.delete(microservice_name)
+          @changed_processes.delete(microservice_name)
           @removed_processes[microservice_name] = process
         end
       end
