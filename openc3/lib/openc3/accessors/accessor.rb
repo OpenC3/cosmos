@@ -139,9 +139,9 @@ module OpenC3
       when :UINT, :INT
         if item.array_size
           value = JSON.parse(value) if value.is_a? String
-          value = value.map { |v| Integer(v) }
+          value = value.map { |v| convert_to_int(v) }
         else
-          value = Integer(value)
+          value = convert_to_int(value)
         end
       when :FLOAT
         if item.array_size
@@ -155,5 +155,17 @@ module OpenC3
       end
       return value
     end
+
+    # Leading zeros on a decimal string, which Integer() would read as octal
+    LEADING_ZEROS = /\A(\s*[+-]?)(?:0_?)+(?=\d[\d_]*\s*\z)/
+
+    # Integer() with leading zeros treated as decimal, so "010" is 10 rather
+    # than octal 8. Prefixed strings like "0x10" are left to Integer().
+    # Python's accessor.py _convert_to_int matches this, keep the two in sync.
+    def self.convert_to_int(value)
+      value = value.sub(LEADING_ZEROS, '\1') if value.is_a?(String)
+      return Integer(value)
+    end
+    private_class_method :convert_to_int
   end
 end

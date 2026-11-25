@@ -43,7 +43,8 @@ class TestHtmlAccessor(unittest.TestCase):
         self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), "1")
 
         item = self.Html("ITEM", "/html/body/ul/li[2]/text()", "INT", None)
-        self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), 3)
+        with self.assertRaisesRegex(ValueError, "invalid value for Integer"):
+            HtmlAccessor.class_read_item(item, self.data1)
         item = self.Html("ITEM", "/html/body/ul/li[2]/text()", "FLOAT", None)
         self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), 3.14)
         item = self.Html("ITEM", "/html/body/ul/li[2]/text()", "STRING", None)

@@ -9,32 +9,61 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import re
 from ast import literal_eval
 from typing import Any
 
 from openc3.config.config_parser import ConfigParser
 
 
+# Leading zeros on a decimal string, stripped so "010" is 10 rather than octal 8.
+# Matches LEADING_ZEROS in accessor.rb.
+_LEADING_ZEROS = re.compile(r"\A([ \t\n\v\f\r]*[+-]?)(?:0_?)+(?=[0-9][0-9_]*[ \t\n\v\f\r]*\Z)")
+# Integer string syntax accepted by Ruby's Integer(): optional ASCII whitespace
+# and sign, 0x/0b/0o/0d prefixes, and single underscores between digits.
+_INTEGER_STRING = re.compile(
+    r"[ \t\n\v\f\r]*(?P<sign>[+-]?)(?:"
+    r"0[xX](?P<hex>[0-9a-fA-F]+(?:_[0-9a-fA-F]+)*)"
+    r"|0[bB](?P<bin>[01]+(?:_[01]+)*)"
+    r"|0[oO](?P<oct>[0-7]+(?:_[0-7]+)*)"
+    r"|0[dD](?P<dec>[0-9]+(?:_[0-9]+)*)"
+    r"|(?P<plain>0|[1-9][0-9]*(?:_[0-9]+)*)"
+    r")[ \t\n\v\f\r]*"
+)
+_INTEGER_BASES = {"hex": 16, "bin": 2, "oct": 8, "dec": 10, "plain": 10}
+
+
 def _convert_to_int(value: Any) -> int:
-    """Convert integers and decimal integer strings without losing precision.
+    """Convert a value to an integer the same way accessor.rb convert_to_int does.
+
+    Strings must be integer literals: "3.7" and "1e3" are rejected, "0x10" is
+    16, "0b10" is 2, and leading zeros are decimal ("010" is 10). Other values
+    go through int(), so numpy integers and Decimal stay exact and floats
+    truncate toward zero.
 
     Args:
-        value: The numeric value to convert.
+        value: A str, bytes, bytearray, or any value int() accepts.
 
     Returns:
-        The integer value, truncating fractional inputs toward zero.
+        The integer value.
 
     Raises:
-        TypeError: The value does not support numeric conversion.
-        ValueError: The value is not numeric or is NaN.
-        OverflowError: The value converts to an infinite float.
+        TypeError: The value does not support integer conversion.
+        ValueError: The string is not an integer literal, or the value is NaN.
+        OverflowError: The value is infinite.
     """
-    if isinstance(value, (int, str)):
-        try:
-            return int(value)
-        except ValueError:
-            pass
-    return int(float(value))
+    if isinstance(value, (bytes, bytearray)):
+        value = value.decode("ascii")
+    if isinstance(value, str):
+        match = _INTEGER_STRING.fullmatch(_LEADING_ZEROS.sub(r"\1", value))
+        if match is None:
+            raise ValueError(f"invalid value for Integer(): {value!r}")
+        for name, base in _INTEGER_BASES.items():
+            digits = match.group(name)
+            if digits is not None:
+                result = int(digits, base)
+                return -result if match.group("sign") == "-" else result
+    return int(value)
 
 
 class Accessor:
