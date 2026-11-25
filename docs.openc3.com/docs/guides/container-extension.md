@@ -46,7 +46,7 @@ Most interface, router, and microservice runtime dependencies belong in `openc3-
 
 ## Writing the Dockerfile
 
-Create a directory for each image you extend in your COSMOS project, next to `compose.yaml`, e.g. `custom/openc3-operator/Dockerfile`:
+Create a directory for each image you extend under `custom/` in your COSMOS project, next to `compose.yaml`, e.g. `custom/openc3-operator/Dockerfile`. COSMOS upgrades never touch `custom/`, so keep your Dockerfiles there even if you commit them:
 
 ```dockerfile
 # Build arguments are passed in from compose.override.yaml so this always

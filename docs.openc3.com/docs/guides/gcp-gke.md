@@ -114,7 +114,7 @@ Change `cosmosDomain`, `cosmosExternalUrl`, and potentially the registry. You al
 - `logsBucket`, `toolsBucket`, and `configBucket` to the `bucket_names` Terraform output
 - `cloud.gcp.serviceAccountEmail` and the `iam.gke.io/gcp-service-account` annotation under `serviceAccount.annotations` to the `service_account_email` Terraform output
 - `gcp.ipAddressName` to the name of the static IP address (the last part of the `static_ip_name` Terraform output)
-- `grafana.rootUrl`, `grafana.authUrl`, and `keycloak.externalUrl` to match your domain
+- `keycloak.externalUrl` to match your domain. Grafana uses it and `cosmosExternalUrl`, so the `grafana.rootUrl` and `grafana.authUrl` values from older charts are no longer needed.
 
 The GCP load balancer terminates TLS with a Google-managed certificate for `cosmosDomain`, so keep `ssl: true` and `traefik.tlsCerts: false`. See [SSL-TLS](/docs/configuration/ssl-tls#pattern-1-platform-load-balancer-terminates-tls-aws-eks-gcp-gke) for details on this pattern and the `openc3-cacert` secret.
 

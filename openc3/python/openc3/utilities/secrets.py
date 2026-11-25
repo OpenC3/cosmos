@@ -29,7 +29,7 @@ class Secrets:
     # operator (which rejects symlinks and re-checks the resolved path against
     # this directory), and validate_file_path below rejects any path that
     # escapes it. Deployments that want a dedicated volume instead set
-    # OPENC3_SECRET_FILE_DIR (see compose.override.yaml).
+    # OPENC3_SECRET_FILE_DIR (see compose.override.example.yaml).
     DEFAULT_SECRET_FILE_DIR = "/tmp"  # NOSONAR - see above; container-private /tmp, writes are symlink-checked
 
     def __init__(self):

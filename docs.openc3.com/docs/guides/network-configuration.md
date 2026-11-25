@@ -31,31 +31,26 @@ Each service can only appear once in `compose.override.yaml`. If this guide and 
 
 COSMOS Core needs no changes in this step. Skip to [Choose a Configuration](#choose-a-configuration).
 
-COSMOS Enterprise needs the external URL users will browse to (the correct scheme, domain or IP address, and port) in several places. The examples below use `https://mydomain.com`.
+COSMOS Enterprise needs the external URL users will browse to: the correct scheme, domain or IP address, and port. The example below uses `https://mydomain.com`.
 
-1. In `.env.local`, set the COSMOS and Keycloak external URLs:
+In `.env.local`, set the COSMOS and Keycloak external URLs:
 
-   ```sh
-   OPENC3_EXTERNAL_URL=https://mydomain.com
-   OPENC3_KEYCLOAK_EXTERNAL_URL=https://mydomain.com/auth
-   ```
+```sh
+OPENC3_EXTERNAL_URL=https://mydomain.com
+OPENC3_KEYCLOAK_EXTERNAL_URL=https://mydomain.com/auth
+```
 
-   Leave `OPENC3_KEYCLOAK_URL` set to the internal service URL `http://openc3-keycloak:8080/auth`. COSMOS containers use it to talk to Keycloak directly.
+A variable exported in your shell overrides `.env.local`, so if either one is exported, unset it or change it before starting COSMOS.
 
-2. In `compose.override.yaml`, set the Keycloak hostname to the same URL as `OPENC3_KEYCLOAK_EXTERNAL_URL`:
+That is the only file change needed. `compose.yaml` passes these values to Keycloak (its `KC_HOSTNAME`) and to Grafana, whose `grafana.ini` and COSMOS data source are built into its image and read them from the environment, so you don't edit any Keycloak or Grafana files. Keycloak itself must also accept the new URL: add it to the valid redirect URIs of the `api` and `grafana` clients as described in [Keycloak Configuration](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md#updating-the-redirect-url).
 
-   ```yaml
-   services:
-     openc3-keycloak:
-       environment:
-         KC_HOSTNAME: "https://mydomain.com/auth"
-   ```
+Leave `OPENC3_KEYCLOAK_URL` set to the internal service URL `http://openc3-keycloak:8080/auth`. COSMOS containers, including Grafana, use it to talk to Keycloak directly.
 
-3. Edit `openc3-enterprise-grafana/cosmos.yaml` and change the `cosmosUrl` and `keycloakUrl` settings to the correct scheme, domain, and port. Keep `/auth` if present.
+To change any other Grafana setting, add a `GF_<SECTION>_<KEY>` variable to the `openc3-grafana` service in `compose.override.yaml`, e.g. `GF_LOG_LEVEL=debug` for `level` under `[log]`. To use your own secret for the Keycloak `grafana` client, set `OPENC3_GRAFANA_CLIENT_SECRET` in `.env.local` before you first start COSMOS; Keycloak and Grafana both read it. Keycloak only reads it when it first creates the realm, so on an existing install regenerate the secret in the Keycloak admin console (Clients > grafana > Credentials), set the new value in `.env.local`, and then run `openc3.sh run`. It recreates Grafana with the new value. A container restart (`docker compose restart`) keeps the old environment.
 
-4. Edit `openc3-enterprise-grafana/grafana.ini` and change the `root_url`, `auth_url`, `token_url`, and `api_url` settings to the correct scheme, domain, and port. Leave any additional path information.
-
-The Grafana files are tracked in the project, so check these edits again after upgrading COSMOS.
+:::note[Upgrading from 7.5.1 or earlier]
+Earlier releases had you set `KC_HOSTNAME` in `compose.override.yaml` and edit `openc3-enterprise-grafana/cosmos.yaml` and `grafana.ini` directly. Those files are no longer used. The upgrade (or the first `openc3.sh run` afterwards, if an older upgrade script did the upgrade) migrates them for you: it moves a changed client secret into `.env.local`, prints any other changed setting as the `GF_` line to add to `compose.override.yaml`, and saves copies as `.bak` files. Once the two URLs are in `.env.local`, you can remove the `KC_HOSTNAME` entry from your `compose.override.yaml`.
+:::
 
 ## Choose a Configuration
 

@@ -202,7 +202,8 @@ detect_compose_cmd
 #
 # Compose files: a user-provided compose.override.yaml (if present) is merged
 # last so local (non-secret) customizations layer on top of compose.yaml
-# without editing it. See:
+# without editing it. COSMOS ships only compose.override.example.yaml, which
+# is not loaded, so upgrades never touch the user's file. See:
 # https://github.com/OpenC3/cosmos/issues/3024
 # https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
 COMPOSE_ENV_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")

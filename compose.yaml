@@ -21,8 +21,9 @@
 # This file ships the upstream COSMOS defaults. Editing it causes conflicts
 # when pulling in future COSMOS updates. To customize your deployment
 # (override a value, change ports, add services/volumes, toggle install
-# flags), edit compose.override.yaml instead - openc3.sh merges it on top of
-# this file automatically, and a value set there wins over the value here.
+# flags), edit compose.override.yaml instead (copy compose.override.example.yaml
+# to start) - openc3.sh merges it on top of this file automatically, and a
+# value set there wins over the value here.
 # ===========================================================================
 
 services:
@@ -412,7 +413,7 @@ services:
     volumes:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"
-      # See compose.override.yaml for OPENC3_ALLOW_HTTP and OPENC3_NO_EVAL
+      # See compose.override.example.yaml for OPENC3_ALLOW_HTTP and OPENC3_NO_EVAL
       # - "./openc3-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/cert.key:/etc/traefik/cert.key:z"

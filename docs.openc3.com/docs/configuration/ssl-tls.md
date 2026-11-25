@@ -72,7 +72,7 @@ Follow earlier instructions to obtain your private key, public key, and to modif
 
 If running COSMOS Core skip to the next section.
 
-COSMOS Enterprise needs its external URLs set (in `.env.local`, `compose.override.yaml`, and the Grafana configuration) before it is opened to the network. Follow [Changes Required for All Network Configurations](/docs/guides/network-configuration#changes-required-for-all-network-configurations) in the Network Configuration guide using your `https://` URL.
+COSMOS Enterprise needs its external URLs set in `.env.local` before it is opened to the network. Follow [Changes Required for All Network Configurations](/docs/guides/network-configuration#changes-required-for-all-network-configurations) in the Network Configuration guide using your `https://` URL.
 
 #### Using TLS and your own certificates
 

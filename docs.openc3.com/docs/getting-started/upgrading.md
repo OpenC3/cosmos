@@ -75,6 +75,20 @@ For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACK
 </TabItem>
 </Tabs>
 
+The upgrade runs the upgrade script from the version you're installing, then makes every COSMOS file in your project match that release. It leaves your own files alone: `plugins/`, `custom/`, `compose.override.yaml` and `.env.local`. Any edits you made to COSMOS files such as `compose.yaml`, `.env` or `compose.override.example.yaml` are replaced, which is why customizations belong in [`compose.override.yaml`](/docs/configuration/compose) and [`.env.local`](/docs/configuration/environment#envlocal). Add `--preview` to see the changes without applying them.
+
+:::warning[Upgrading from 7.3.0 through 7.5.1 deletes compose.override.yaml]
+Releases 7.3.0 through 7.5.1 shipped the example override as `compose.override.yaml` itself. Later releases ship it as `compose.override.example.yaml` so that `compose.override.yaml` is only ever yours. The upgrade script in those older releases doesn't skip `compose.override.yaml`, so the first upgrade past 7.5.1 deletes it. If you edited and committed it, restore it before committing the upgrade:
+
+```sh
+git checkout HEAD -- compose.override.yaml
+```
+
+If you never edited it, there's nothing to restore. Later upgrades leave the file alone.
+:::
+
+When a release moves a setting out of a file the upgrade replaces, the upgrade carries your value forward before replacing the file and prints anything you still need to do, marked `ACTION NEEDED`. With `--preview` it only reports. For example, COSMOS Enterprise 7.6.0 builds Grafana's `grafana.ini` and data source into its image: the upgrade moves a changed Grafana client secret into `.env.local` and prints other changed Grafana settings as lines for `compose.override.yaml`. Upgrade scripts from 7.5.1 and earlier don't run this step, so the first `openc3.sh run` after the upgrade runs it instead.
+
 3. Run the new COSMOS version
 
 <Tabs groupId="platform">
