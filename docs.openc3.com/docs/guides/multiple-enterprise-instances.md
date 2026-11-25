@@ -35,8 +35,11 @@ Size each installation separately for its own targets and data rates. Disk is us
 
 For production, put each installation on its own host or virtual machine so that a hardware failure, a full disk, or a heavy load only affects one installation. If you run several installations on one host, for example for development:
 
-- Put each installation in its own project directory. Docker Compose names the containers and volumes after the directory, which keeps them separate.
-- Give each installation its own host ports. Two installations can't both publish the same port, so change the host side of the Traefik ports (`2900` and `2943`) and any interface or router ports you've opened. The operator also publishes a fixed UDP port range for [bridges](/docs/guides/bridges). Docker Compose adds the ports in `compose.override.yaml` to the ones in `compose.yaml` instead of replacing them, so use `!override` to replace the list:
+- Put each installation in its own project directory, and give each one its own Docker Compose project name. Docker Compose names the containers, networks, and volumes after the project name, which defaults to the name of the directory. Two installations in directories with the same name, such as `/ops/cosmos-enterprise-project` and `/test/cosmos-enterprise-project`, share the same containers and volumes. Either give the directories different names or set a different `COMPOSE_PROJECT_NAME` in each installation's `.env.local`, for example `COMPOSE_PROJECT_NAME=cosmos-test`. Set it before the first start. Changing it later starts the installation with new, empty volumes.
+- Give each installation its own host ports. Two installations can't both publish the same port, so change the host side of the Traefik ports (`2900` and `2943`) and any interface or router ports you've opened. Docker Compose adds the ports in `compose.override.yaml` to the ones in `compose.yaml` instead of replacing them, so use `!override` to replace the list.
+- Give each installation its own UDP port range for [bridges](/docs/guides/bridges). The operator publishes `7799-7814/udp` by default. Each bridge advertises the port it uses inside the container, so the host and container ports must be the same. Move the whole range, and set `OPENC3_BRIDGE_PORT_BASE` on the operator to the first port of the new range. If you don't use bridges, you can remove the range with `ports: !reset []` on `openc3-operator` instead.
+
+  For example, in the second installation's `compose.override.yaml`:
 
   ```yaml
   services:
@@ -44,9 +47,14 @@ For production, put each installation on its own host or virtual machine so that
       ports: !override
         - "127.0.0.1:3900:2900"
         - "127.0.0.1:3943:2943"
+    openc3-operator:
+      ports: !override
+        - "127.0.0.1:7899-7914:7899-7914/udp"
+      environment:
+        - OPENC3_BRIDGE_PORT_BASE=7899
   ```
 
-  Then update `OPENC3_EXTERNAL_URL` and `OPENC3_KEYCLOAK_EXTERNAL_URL` in `.env.local` to match the new port.
+  Then update `OPENC3_EXTERNAL_URL` in `.env.local` to match the new Traefik port. If the installation uses its bundled Keycloak, update `OPENC3_KEYCLOAK_EXTERNAL_URL` too. If it uses a [shared Keycloak](#shared-keycloak-for-single-sign-on), leave `OPENC3_KEYCLOAK_EXTERNAL_URL` set to the shared Keycloak's URL.
 
 - QuestDB is the heaviest user of disk I/O and memory, so several QuestDB instances on one host can slow each other down.
 
@@ -133,8 +141,10 @@ OPENC3_KEYCLOAK_EXTERNAL_URL=https://sso.example.com/auth
 OPENC3_KEYCLOAK_URL=https://sso.example.com/auth
 OPENC3_KEYCLOAK_REALM=openc3
 OPENC3_API_CLIENT=api
-OPENC3_GRAFANA_CLIENT_SECRET=<the grafana client secret>
+OPENC3_GRAFANA_CLIENT_SECRET='<the grafana client secret>'
 ```
+
+`openc3.sh` reads `.env.local` as shell code, so keep the secret in single quotes. Without them, characters such as `$` change the value before Grafana gets it. Secrets that Keycloak generates contain only letters and numbers. If you choose your own, don't use a single quote in it.
 
 `compose.yaml` passes these to every COSMOS container and to Grafana, so no other changes are needed for COSMOS or Grafana to use the shared Keycloak.
 
@@ -175,7 +185,7 @@ keycloak:
 Grafana reads the `grafana` client secret from the `client-secret` key of a secret named `openc3-grafana`. Create it in each installation's namespace:
 
 ```bash
-kubectl create secret generic openc3-grafana --from-literal=client-secret='<the grafana client secret>'
+kubectl create secret generic openc3-grafana --namespace <installation namespace> --from-literal=client-secret='<the grafana client secret>'
 ```
 
 PostgreSQL is only used by Keycloak, so also turn it off in the values for the `openc3-db` chart:
