@@ -465,6 +465,17 @@ module OpenC3
       end
     end
 
+    describe "process_event" do
+      it "applies the current limits set rather than an older LIMITS_SET event's set" do
+        Store.hset("DEFAULT__limits_sets", "DEFAULT", "true")
+        Store.hset("DEFAULT__limits_sets", "TVAC", "false")
+        System.limits_set = :DEFAULT
+        # A delayed reader processing an old switch to TVAC after the switch back to DEFAULT
+        LimitsEventTopic.process_event({ 'type' => 'LIMITS_SET', 'set' => 'TVAC' }, scope: "DEFAULT")
+        expect(System.limits_set).to eql :DEFAULT
+      end
+    end
+
     describe "limits group events" do
       it "sync_system_thread_body applies a LIMITS_GROUP_ENABLE_STATE event" do
         LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT") # Set the stream offset

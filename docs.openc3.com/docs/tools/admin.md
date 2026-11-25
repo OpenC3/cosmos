@@ -41,6 +41,8 @@ The Routers tab shows all the routers installed. Clicking the eyeball shows the 
 
 The Microservices tab shows all the microservices installed, their update time, state, and count. Clicking the eyeball shows the raw JSON that makes up the microservice configuration.
 
+Microservices that run as threads in another microservice's process, such as a target's decom and logging microservices in its MULTI microservice, are listed under that microservice. The shared processes of a [MICROSERVICE_GROUP](/docs/configuration/plugins#microservice_group) are listed under a header for the group. Click the arrow next to a microservice or group to collapse or expand what's under it.
+
 ![Microservices](/img/admin/microservices.png)
 
 ### Packages
