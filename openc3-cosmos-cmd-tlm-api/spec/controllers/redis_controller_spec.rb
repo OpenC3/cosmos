@@ -44,10 +44,18 @@ RSpec.describe RedisController, type: :controller do
       expect(json["result"]).to eq("OK")
     end
 
-    it "requires admin access" do
+    it "requires a scope" do
       request.content_type = "text/plain"
       post :execute_raw, body: "GET key"
       expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "requires superadmin rather than admin of the requested scope" do
+      expect(controller).to receive(:authorize).with(hash_including(permission: "superadmin", scope: "DEFAULT")).and_raise(OpenC3::ForbiddenError.new("no superadmin"))
+      expect(OpenC3::Store).not_to receive(:instance)
+      request.content_type = "text/plain"
+      post :execute_raw, body: "GET key", params: {scope: "DEFAULT"}
+      expect(response).to have_http_status(:forbidden)
     end
   end
 end
