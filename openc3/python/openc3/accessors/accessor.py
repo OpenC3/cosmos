@@ -16,19 +16,20 @@ from typing import Any
 from openc3.config.config_parser import ConfigParser
 
 
-# Leading zeros on a decimal string, stripped so "010" is 10 rather than octal 8.
-# Matches LEADING_ZEROS in accessor.rb.
-_LEADING_ZEROS = re.compile(r"\A([ \t\n\v\f\r]*[+-]?)(?:0_?)+(?=[0-9][0-9_]*[ \t\n\v\f\r]*\Z)")
 # Integer string syntax accepted by Ruby's Integer(): optional ASCII whitespace
-# and sign, 0x/0b/0o/0d prefixes, and single underscores between digits.
+# and sign, 0x/0b/0o/0d prefixes, and single underscores between digits. Plain
+# digits may have leading zeros and stay decimal ("010" is 10), matching the
+# LEADING_ZEROS strip in accessor.rb. re.ASCII keeps \d to 0-9, since Ruby's
+# Integer() rejects other Unicode digits that int() would accept.
 _INTEGER_STRING = re.compile(
     r"[ \t\n\v\f\r]*(?P<sign>[+-]?)(?:"
     r"0[xX](?P<hex>[0-9a-fA-F]+(?:_[0-9a-fA-F]+)*)"
     r"|0[bB](?P<bin>[01]+(?:_[01]+)*)"
     r"|0[oO](?P<oct>[0-7]+(?:_[0-7]+)*)"
-    r"|0[dD](?P<dec>[0-9]+(?:_[0-9]+)*)"
-    r"|(?P<plain>0|[1-9][0-9]*(?:_[0-9]+)*)"
-    r")[ \t\n\v\f\r]*"
+    r"|0[dD](?P<dec>\d+(?:_\d+)*)"
+    r"|(?P<plain>\d+(?:_\d+)*)"
+    r")[ \t\n\v\f\r]*",
+    re.ASCII,
 )
 _INTEGER_BASES = {"hex": 16, "bin": 2, "oct": 8, "dec": 10, "plain": 10}
 
@@ -55,7 +56,7 @@ def _convert_to_int(value: Any) -> int:
     if isinstance(value, (bytes, bytearray)):
         value = value.decode("ascii")
     if isinstance(value, str):
-        match = _INTEGER_STRING.fullmatch(_LEADING_ZEROS.sub(r"\1", value))
+        match = _INTEGER_STRING.fullmatch(value)
         if match is None:
             raise ValueError(f"invalid value for Integer(): {value!r}")
         for name, base in _INTEGER_BASES.items():

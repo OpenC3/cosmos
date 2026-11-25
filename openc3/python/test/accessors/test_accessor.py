@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import time
 import unittest
 from decimal import Decimal
 from fractions import Fraction
@@ -268,6 +269,15 @@ class TestAccessor(unittest.TestCase):
                     item.array_size = 64
                     with self.assertRaises(ValueError):
                         Accessor.convert_to_type([value], item)
+
+    def test_parses_long_zero_runs_in_linear_time(self):
+        # A leading-zero regex with backtracking took about 18 seconds here
+        item = Mock(data_type="INT", array_size=None)
+        start = time.perf_counter()
+        for value in ("0" * 50_000 + "x", "0_" * 50_000 + "x"):
+            with self.assertRaises(ValueError):
+                Accessor.convert_to_type(value, item)
+        self.assertLess(time.perf_counter() - start, 1.0)
 
     def test_converts_float_array_values(self):
         item = Mock()
