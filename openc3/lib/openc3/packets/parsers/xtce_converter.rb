@@ -154,6 +154,9 @@ module OpenC3
       targets.each do |target_name|
         next if target_name == 'UNKNOWN'
 
+        # Check before deleting an existing export or combining incompatible definitions.
+        get_unique(telemetry[target_name]) if telemetry[target_name]
+
         # Reverse order of packets for the target so things are expected (reverse) order for xtce
         XtceParser.reverse_packet_order(target_name, commands)
         XtceParser.reverse_packet_order(target_name, telemetry)
@@ -459,18 +462,35 @@ module OpenC3
       initial_value
     end
 
+    def parameter_signature(item)
+      builder = Nokogiri::XML::Builder.new do |xml|
+        xml['xtce'].ParameterTypeSet('xmlns:xtce' => XTCE_1_2_NAMESPACE) do
+          to_xtce_type(item, 'Parameter', xml)
+        end
+      end
+      builder.doc.xpath('//@shortDescription').remove
+      builder.doc.xpath('//*[local-name()="LongDescription"]').remove
+      builder.doc.root.canonicalize
+    end
+
     def get_unique(items)
       unique = {}
+      origins = {}
       items.each do |packet_name, packet|
         packet.sorted_items.each do |item|
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
+          (origins[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []) << packet_name
         end
       end
       unique.each do |item_name, unique_items|
         if unique_items.length <= 1
           unique[item_name] = unique_items[0]
           next
+        end
+        signature = parameter_signature(unique_items[0])
+        if unique_items.drop(1).any? { |item| parameter_signature(item) != signature }
+          raise "Telemetry item '#{item_name}' has conflicting XTCE definitions in packets #{origins[item_name].join(', ')}. Give these items distinct names before exporting."
         end
         unique[item_name] = unique_items[0]
       end
@@ -619,8 +639,8 @@ module OpenC3
         if limits_set == :DEFAULT
           xml['xtce'].DefaultAlarm do
             xml['xtce'].StaticAlarmRanges do
-              xml['xtce'].WarningRange(:minInclusive => limits_values[1], :maxInclusive => limits_values[2])
-              xml['xtce'].CriticalRange(:minInclusive => limits_values[0], :maxInclusive => limits_values[3])
+              xml['xtce'].WarningRange(:minExclusive => limits_values[1], :maxExclusive => limits_values[2])
+              xml['xtce'].CriticalRange(:minExclusive => limits_values[0], :maxExclusive => limits_values[3])
             end
           end
         end

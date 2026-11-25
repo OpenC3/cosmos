@@ -356,12 +356,16 @@ module OpenC3
         xtce_recurse_element(element) do |block_element|
           if block_element.name == 'WarningRange'
             @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            @current_type.limits[1] = Float(block_element['minInclusive']) if block_element['minInclusive']
-            @current_type.limits[2] = Float(block_element['maxInclusive']) if block_element['maxInclusive']
+            lower = block_element['minExclusive'] || block_element['minInclusive']
+            upper = block_element['maxExclusive'] || block_element['maxInclusive']
+            @current_type.limits[1] = Float(lower) if lower
+            @current_type.limits[2] = Float(upper) if upper
           elsif block_element.name == 'CriticalRange'
             @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            @current_type.limits[0] = Float(block_element['minInclusive']) if block_element['minInclusive']
-            @current_type.limits[3] = Float(block_element['maxInclusive']) if block_element['maxInclusive']
+            lower = block_element['minExclusive'] || block_element['minInclusive']
+            upper = block_element['maxExclusive'] || block_element['maxInclusive']
+            @current_type.limits[0] = Float(lower) if lower
+            @current_type.limits[3] = Float(upper) if upper
           end
           true
         end
@@ -792,6 +796,7 @@ module OpenC3
         values = {}
         values[:DEFAULT] = type.limits
         item.limits.values = values
+        @current_packet.update_limits_items_cache(item)
       end
     end
 

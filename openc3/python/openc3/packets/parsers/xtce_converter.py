@@ -11,6 +11,7 @@
 
 import math
 import os
+from typing import Any
 
 from lxml import etree  # type: ignore[import]
 
@@ -48,13 +49,22 @@ class XtceConverter:
         """
         return cls(commands, telemetry, output_dir)
 
-    def __init__(self, commands, telemetry, output_dir):
-        """Initialize and perform the XTCE conversion
+    def __init__(
+        self,
+        commands: dict[str, Any],
+        telemetry: dict[str, Any],
+        output_dir: str | os.PathLike[str],
+    ) -> None:
+        """Export definitions after checking for incompatible telemetry names.
 
         Args:
-            commands (dict): Hash of all command packets keyed by target name
-            telemetry (dict): Hash of all telemetry packets keyed by target name
-            output_dir (str): Directory to write XTCE files to
+            commands: Command packets keyed by target name.
+            telemetry: Telemetry packets keyed by target name.
+            output_dir: Directory in which to write XTCE files.
+
+        Raises:
+            ValueError: If a shared name would combine conflicting definitions.
+            OSError: If the output directory or files cannot be written.
         """
         os.makedirs(output_dir, exist_ok=True)
 
@@ -68,6 +78,10 @@ class XtceConverter:
         for target_name in targets:
             if target_name == "UNKNOWN":
                 continue
+
+            # Reject ambiguous telemetry definitions before replacing an existing export.
+            if target_name in telemetry:
+                self._get_unique(telemetry[target_name])
 
             # Reverse order of packets for the target so things are in expected order for XTCE
             self._reverse_packet_order(target_name, commands)
@@ -306,16 +320,37 @@ class XtceConverter:
                     },
                 )
 
-    def _get_unique(self, packets):
-        """Get unique items from packets
+    def _parameter_signature(self, item: Any) -> bytes:
+        """Describe the emitted parameter type without cosmetic descriptions.
+
+        Args:
+            item: The telemetry item whose XTCE definition will be emitted.
+
+        Returns:
+            Canonical XML containing the item's exported type semantics.
+        """
+        root = etree.Element("types")
+        self._to_xtce_type(item, "Parameter", root)
+        for node in list(root.iter()):
+            node.attrib.pop("shortDescription", None)
+            if node.tag == f"{{{self.XTCE_NAMESPACE}}}LongDescription":
+                node.getparent().remove(node)
+        return etree.tostring(root, method="c14n")
+
+    def _get_unique(self, packets: dict[str, Any]) -> dict[str, Any]:
+        """Share names only when their emitted parameter types agree.
 
         Args:
             packets (dict): Hash of packets
 
         Returns:
-            dict: Hash of unique items
+            A dictionary containing one item for each equivalent definition.
+
+        Raises:
+            ValueError: If a name would merge different XTCE definitions.
         """
         unique = {}
+        origins = {}
         for _packet_name, packet in packets.items():
             for item in packet.sorted_items:
                 if item.data_type == "DERIVED":
@@ -323,14 +358,21 @@ class XtceConverter:
 
                 if item.name not in unique:
                     unique[item.name] = []
+                    origins[item.name] = []
                 unique[item.name].append(item)
+                origins[item.name].append(_packet_name)
 
         # Flatten arrays with single items, keep first for duplicates
         for item_name, unique_items in unique.items():
             if len(unique_items) <= 1:
                 unique[item_name] = unique_items[0] if unique_items else None
             else:
-                # TODO: Verify all items in the array are exactly the same
+                signature = self._parameter_signature(unique_items[0])
+                if any(self._parameter_signature(item) != signature for item in unique_items[1:]):
+                    raise ValueError(
+                        f"Telemetry item '{item_name}' has conflicting XTCE definitions in packets "
+                        f"{', '.join(origins[item_name])}. Give these items distinct names before exporting."
+                    )
                 unique[item_name] = unique_items[0]
 
         return unique
@@ -738,8 +780,8 @@ class XtceConverter:
             range_set = etree.SubElement(parent, f"{{{self.XTCE_NAMESPACE}}}ValidRangeSet")
             etree.SubElement(range_set, f"{{{self.XTCE_NAMESPACE}}}ValidRange", attrib=attrs)
 
-    def _to_xtce_limits(self, item, parent):
-        """Add limits to XTCE type
+    def _to_xtce_limits(self, item: Any, parent: Any) -> None:
+        """Export ranges whose excluded boundaries retain OpenC3 alarm severity.
 
         Args:
             item: Packet item
@@ -756,15 +798,15 @@ class XtceConverter:
                     ranges,
                     f"{{{self.XTCE_NAMESPACE}}}WarningRange",
                     attrib={
-                        "minInclusive": str(limits_values[1]),
-                        "maxInclusive": str(limits_values[2]),
+                        "minExclusive": str(limits_values[1]),
+                        "maxExclusive": str(limits_values[2]),
                     },
                 )
                 etree.SubElement(
                     ranges,
                     f"{{{self.XTCE_NAMESPACE}}}CriticalRange",
                     attrib={
-                        "minInclusive": str(limits_values[0]),
-                        "maxInclusive": str(limits_values[3]),
+                        "minExclusive": str(limits_values[0]),
+                        "maxExclusive": str(limits_values[3]),
                     },
                 )

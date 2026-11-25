@@ -836,11 +836,11 @@ class TestXtceConverter(unittest.TestCase):
             self.assertEqual(unit.get("description"), "Celsius")
 
             warning = float_type.find("xtce:DefaultAlarm/xtce:StaticAlarmRanges/xtce:WarningRange", namespaces=nsmap)
-            self.assertEqual(warning.get("minInclusive"), "-70.0")
-            self.assertEqual(warning.get("maxInclusive"), "60.0")
+            self.assertEqual(warning.get("minExclusive"), "-70.0")
+            self.assertEqual(warning.get("maxExclusive"), "60.0")
             critical = float_type.find("xtce:DefaultAlarm/xtce:StaticAlarmRanges/xtce:CriticalRange", namespaces=nsmap)
-            self.assertEqual(critical.get("minInclusive"), "-80.0")
-            self.assertEqual(critical.get("maxInclusive"), "80.0")
+            self.assertEqual(critical.get("minExclusive"), "-80.0")
+            self.assertEqual(critical.get("maxExclusive"), "80.0")
 
     def test_xtce_abstract_meta_command_only_with_id_items(self):
         """The abstract MetaCommand exists to carry ArgumentAssignments for ID items"""
