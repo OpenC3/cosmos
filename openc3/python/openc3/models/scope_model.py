@@ -93,11 +93,11 @@ class ScopeModel(Model):
         cleanup_poll_time: int = 3600,
         command_authority: bool = False,
         critical_commanding: str = "OFF",
-        critical_cmd_approvers: int = 1,
+        critical_cmd_approvers: int | str | None = 1,
         shard: int = 0,
         enabled: bool | str = True,
         updated_at: int | None = None,
-    ):
+    ) -> None:
         """Create a scope model.
 
         Args:

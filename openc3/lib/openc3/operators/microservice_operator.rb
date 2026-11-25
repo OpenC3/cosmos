@@ -294,22 +294,29 @@ module OpenC3
       end
     end
 
+    # @return [Boolean] Whether the microservice was enabled or disabled
+    def enabled_changed?(previous_config, config)
+      # A missing enabled (nil) means enabled
+      (previous_config['enabled'] != false) != (config['enabled'] != false)
+    end
+
     def update
       shared_resources = SharedResourceModel.all
       acknowledge_shared_resources(shared_resources)
 
-      @previous_microservices = @microservices.dup
-      # Get all the microservice configuration
-      @microservices = MicroserviceModel.all
-
-      # Filter to just this shard
-      @microservices = @microservices.select do |microservice_name, microservice_config|
+      # Get all the microservice configuration for just this shard
+      microservices = MicroserviceModel.all.select do |_microservice_name, microservice_config|
         microservice_shard = microservice_config['shard'] || 0
         microservice_shard == @shard
       end
+      apply_shared_resources(microservices, shared_resources)
+      apply_disabled_scopes(microservices)
 
-      apply_shared_resources(@microservices, shared_resources)
-      apply_disabled_scopes(@microservices)
+      # Only move on to the new config once every lookup above has succeeded.
+      # Otherwise a failed cycle would leave the raw config (without disabled
+      # scopes applied) as the baseline the next cycle compares against.
+      @previous_microservices = @microservices
+      @microservices = microservices
 
       # Detect new and changed microservices
       @new_microservices = {}
@@ -317,8 +324,12 @@ module OpenC3
       @removed_microservices = {}
       @microservices.each do |microservice_name, microservice_config|
         if @previous_microservices[microservice_name]
-          if @previous_microservices[microservice_name] != microservice_config
-            if not microservice_config['ignore_changes']
+          previous_config = @previous_microservices[microservice_name]
+          if previous_config != microservice_config
+            # ignore_changes skips restarts for config changes (e.g. topics
+            # added by a dynamic packet) but must not keep a microservice
+            # running after it has been disabled, or stopped once re-enabled
+            if not microservice_config['ignore_changes'] or enabled_changed?(previous_config, microservice_config)
               handle_changed_microservice(microservice_name, microservice_config)
             end
           end
@@ -335,8 +346,10 @@ module OpenC3
       end
 
       # A child changing asks for its parent to be respawned, but a disabled
-      # parent (e.g. its scope is disabled) must stay stopped
-      @changed_microservices.reject! { |_name, config| config['enabled'] == false }
+      # parent (e.g. its scope is disabled) must stay stopped, and a parent
+      # being started already gets the new config (starting it from both
+      # queues would orphan the first process)
+      @changed_microservices.reject! { |name, config| config['enabled'] == false or @new_microservices.key?(name) }
 
       # Convert to processes
       @mutex.synchronize do
@@ -376,7 +389,8 @@ module OpenC3
           # restarted) after we've stopped tracking it
           @new_processes.delete(microservice_name)
           @changed_processes.delete(microservice_name)
-          @removed_processes[microservice_name] = process
+          # Nothing to stop if it was never started
+          @removed_processes[microservice_name] = process if process
         end
       end
     end

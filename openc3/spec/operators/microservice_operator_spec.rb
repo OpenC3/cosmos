@@ -17,6 +17,7 @@
 
 require 'spec_helper'
 require 'openc3/operators/microservice_operator'
+require 'openc3/models/scope_model'
 require 'openc3/utilities/aws_bucket'
 
 # Override at_exit to do nothing for testing
@@ -578,8 +579,8 @@ module OpenC3
         @operator = MicroserviceOperator.new
       end
 
-      def create_microservice(name, scope, parent: nil, enabled: true)
-        model = MicroserviceModel.new(name: "#{scope}__#{name}", cmd: %w(ruby x.rb), parent: parent, enabled: enabled, scope: scope)
+      def create_microservice(name, scope, parent: nil, enabled: true, ignore_changes: nil)
+        model = MicroserviceModel.new(name: "#{scope}__#{name}", cmd: %w(ruby x.rb), parent: parent, enabled: enabled, ignore_changes: ignore_changes, scope: scope)
         model.create
         model
       end
@@ -656,6 +657,79 @@ module OpenC3
         model.update
         @operator.update
         expect(processes).to be_empty
+      end
+
+      it "stops and restarts a microservice that ignores changes with its scope" do
+        # e.g. a TSDB microservice after a dynamic packet added its topics
+        model = create_microservice('TSDB__INST', 'OTHER', ignore_changes: true)
+        @operator.update
+        expect(processes.keys).to eql ['OTHER__TSDB__INST']
+        @operator.instance_variable_set(:@new_processes, {})
+
+        # Ordinary changes are still ignored
+        model.options = [['NEW', 'OPTION']]
+        model.update
+        @operator.update
+        expect(@operator.instance_variable_get(:@changed_processes)).to be_empty
+
+        set_scope_enabled('OTHER', false)
+        @operator.update
+        expect(processes).to be_empty
+        expect(removed_processes.keys).to eql ['OTHER__TSDB__INST']
+        @operator.instance_variable_set(:@removed_processes, {})
+
+        set_scope_enabled('OTHER', true)
+        @operator.update
+        expect(@operator.instance_variable_get(:@new_processes).keys).to eql ['OTHER__TSDB__INST']
+      end
+
+      it "keeps the last effective config when the disabled scope lookup fails" do
+        set_scope_enabled('OTHER', false)
+        create_microservice('USER__MICRO', 'OTHER')
+        @operator.update
+        expect(processes).to be_empty
+
+        # Re-enabled while Redis is failing
+        set_scope_enabled('OTHER', true)
+        allow(ScopeModel).to receive(:disabled_scopes).and_raise(RuntimeError, "Redis down")
+        expect { @operator.update }.to raise_error(RuntimeError, "Redis down")
+        allow(ScopeModel).to receive(:disabled_scopes).and_call_original
+
+        @operator.update
+        expect(processes.keys).to eql ['OTHER__USER__MICRO']
+        expect(@operator.instance_variable_get(:@new_processes).keys).to eql ['OTHER__USER__MICRO']
+        expect(removed_processes).to be_empty
+      end
+
+      it "doesn't remove a microservice it never started" do
+        set_scope_enabled('OTHER', false)
+        create_microservice('USER__MICRO', 'OTHER')
+        @operator.update
+        # Lookup fails before the scope's microservices are marked disabled
+        allow(ScopeModel).to receive(:disabled_scopes).and_raise(RuntimeError, "Redis down")
+        expect { @operator.update }.to raise_error(RuntimeError, "Redis down")
+        allow(ScopeModel).to receive(:disabled_scopes).and_call_original
+
+        @operator.update
+        expect(removed_processes).to be_empty
+        expect { @operator.remove_old }.not_to raise_error
+      end
+
+      it "starts a re-enabled parent once when its child changes in the same cycle" do
+        create_microservice('SCOPEMULTI__OTHER', 'OTHER')
+        child = create_microservice('USER__CHILD', 'OTHER', parent: 'OTHER__SCOPEMULTI__OTHER')
+        @operator.update
+        set_scope_enabled('OTHER', false)
+        @operator.update
+        @operator.instance_variable_set(:@removed_processes, {})
+
+        set_scope_enabled('OTHER', true)
+        child.options = [['NEW', 'OPTION']]
+        child.update
+        @operator.update
+        expect(@operator.instance_variable_get(:@new_processes).keys).to eql ['OTHER__SCOPEMULTI__OTHER']
+        # Queued in both it would be started twice, orphaning the first process
+        expect(@operator.instance_variable_get(:@changed_processes)).to be_empty
       end
     end
 
