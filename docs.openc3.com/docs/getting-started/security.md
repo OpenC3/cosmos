@@ -191,7 +191,7 @@ Using hashed passwords is recommended for production to avoid storing cleartext 
 | -------------- | ---------------------- | ----------------------------------------------------- |
 | `openc3`       | `openc3password`       | Main COSMOS service account with full keyspace access |
 | `scriptrunner` | `scriptrunnerpassword` | Limited access for Script Runner                      |
-| `admin`        | `admin`                | Optional admin account for Redis management           |
+| `admin`        | (disabled)             | Optional admin account for Redis management           |
 | `healthcheck`  | (no password)          | Health check user with minimal permissions            |
 | `default`      | (disabled)             | Default Redis user, disabled for security             |
 
@@ -202,11 +202,11 @@ Using hashed passwords is recommended for production to avoid storing cleartext 
 **scriptrunner**: Has restricted access to only:
 
 - Keys matching `running-script*`, `*script-locks`, `*script-breakpoints`, `*openc3_log_messages`
-- Channels for `_action_cable_internal`, `script-api:*`
+- Channels for `__anycable__`, `_action_cable_internal`, `script-api:*`
 
 This prevents user scripts from accessing or destroying other COSMOS data.
 
-**admin**: Has `@admin` permissions which includes the `ACL` command. This user is optional and can be disabled by changing `on` to `off` or removing the line entirely.
+**admin**: Has `@admin` permissions which includes the `ACL` command, so it can grant itself any other permission. This user is optional and ships disabled (`off`). Its shipped hash is for the password `adminpassword`, so to enable it, replace the hash with the hash of your own password (see [Changing Redis Passwords](#changing-redis-passwords)) and change `off` to `on`. Leave it disabled unless you need it.
 
 **healthcheck**: Used during container startup to verify Redis is available. Has no password and can only run the `ping` command (Enterprise also allows `info`).
 
@@ -336,10 +336,10 @@ For production deployments:
 
 4. **Configure SSL/TLS** before exposing COSMOS to any network. See [SSL/TLS Configuration](../configuration/ssl-tls).
 
-5. **Disable or secure the Redis admin user** if not needed:
+5. **Keep the Redis admin user disabled** (the default) unless you need it. If you enable it, give it a new password first:
 
    ```
-   user admin off #hashvalue +@admin
+   user admin on #yournewhashvalue +@admin
    ```
 
 6. **Generate a unique SECRET_KEY_BASE** for each installation.
