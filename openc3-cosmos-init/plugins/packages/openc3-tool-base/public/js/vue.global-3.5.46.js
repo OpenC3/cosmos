@@ -1,5 +1,5 @@
 /**
-* vue v3.5.45
+* vue v3.5.46
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -56,11 +56,18 @@ var Vue = (function (exports) {
   const isBuiltInDirective = /* @__PURE__ */ makeMap(
     "bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text,memo"
   );
+  const STRING_CACHE_MAX_SIZE = 1e4;
   const cacheStringFunction = (fn) => {
-    const cache = /* @__PURE__ */ Object.create(null);
+    let cache = /* @__PURE__ */ Object.create(null);
+    let size = 0;
     return ((str) => {
       const hit = cache[str];
-      return hit || (cache[str] = fn(str));
+      if (hit !== void 0) return hit;
+      if (++size > STRING_CACHE_MAX_SIZE) {
+        cache = /* @__PURE__ */ Object.create(null);
+        size = 1;
+      }
+      return cache[str] = fn(str);
     });
   };
   const camelizeRE = /-\w/g;
@@ -335,13 +342,13 @@ var Vue = (function (exports) {
       return false;
     }
     for (const key in a) {
-      const aHasKey = a.hasOwnProperty(key);
-      const bHasKey = b.hasOwnProperty(key);
+      const aHasKey = hasOwn(a, key);
+      const bHasKey = hasOwn(b, key);
       if (aHasKey && !bHasKey || !aHasKey && bHasKey || !looseEqual(a[key], b[key], seen)) {
         return false;
       }
     }
-    return String(a) === String(b);
+    return toComparableString(a) === toComparableString(b);
   }
   function looseCompareNested(a, b, seen, compare) {
     if (!seen) {
@@ -387,6 +394,9 @@ var Vue = (function (exports) {
   }
   function looseIndexOf(arr, val) {
     return arr.findIndex((item) => looseEqual(item, val));
+  }
+  function toComparableString(value) {
+    return Object.getPrototypeOf(value) === null && value[Symbol.toPrimitive] == null && typeof value.toString !== "function" && typeof value.valueOf !== "function" ? toTypeString(value) : String(value);
   }
 
   const isRef$1 = (val) => {
@@ -3717,8 +3727,8 @@ var Vue = (function (exports) {
       const targetNode = target._lpa || target.firstChild;
       if (vnode.shapeFlag & 16) {
         if (disabled) {
-          hydrateDisabledTeleport(node, vnode);
           hydrateAnchor(target, targetNode);
+          hydrateDisabledTeleport(node, vnode);
           if (!vnode.targetAnchor) {
             prepareAnchor(
               target,
@@ -3761,19 +3771,11 @@ var Vue = (function (exports) {
   function updateCssVars(vnode, isDisabled) {
     const ctx = vnode.ctx;
     if (ctx && ctx.ut) {
-      let node, anchor;
       if (isDisabled) {
-        node = vnode.el;
-        anchor = vnode.anchor;
+        ctx.ut(vnode.el, vnode.anchor);
       } else {
-        node = vnode.targetStart;
-        anchor = vnode.targetAnchor;
+        ctx.ut(vnode.targetStart, vnode.targetAnchor);
       }
-      while (node && node !== anchor) {
-        if (node.nodeType === 1) node.setAttribute("data-v-owner", ctx.uid);
-        node = node.nextSibling;
-      }
-      ctx.ut();
     }
   }
   function prepareAnchor(target, vnode, createText, insert, anchor = null) {
@@ -4019,7 +4021,10 @@ var Vue = (function (exports) {
         callHook(hook, [el]);
       },
       enter(el) {
-        if (!isHmrUpdating && leavingVNodesCache[key] === vnode) return;
+        if (!isHmrUpdating && el[leaveCbKey]) {
+          if (hooks.delayedLeave) hooks.delayedLeave();
+          return;
+        }
         let hook = onEnter;
         let afterHook = onAfterEnter;
         let cancelHook = onEnterCancelled;
@@ -5026,7 +5031,7 @@ Server rendered element contains fewer child nodes than client vdom.`
   }
   function resolveCssVars(instance, vnode, expectedMap) {
     const root = instance.subTree;
-    if (instance.getCssVars && (vnode === root || root && root.type === Fragment && root.children.includes(vnode))) {
+    if (instance.getCssVars && isCssVarsRoot(root, vnode)) {
       const cssVars = instance.getCssVars();
       for (const key in cssVars) {
         const value = normalizeCssVarValue(cssVars[key]);
@@ -5036,6 +5041,9 @@ Server rendered element contains fewer child nodes than client vdom.`
     if (vnode === root && instance.parent) {
       resolveCssVars(instance.parent, instance.vnode, expectedMap);
     }
+  }
+  function isCssVarsRoot(root, vnode) {
+    return root === vnode || !!(root && (root.type === Fragment || root.shapeFlag & 64) && root.children.some((child) => isCssVarsRoot(child, vnode)));
   }
   const allowMismatchAttr = "data-allow-mismatch";
   const MismatchTypeString = {
@@ -9965,6 +9973,10 @@ If you want to remount the same app, move your app creation logic into a factory
           container: container2,
           isInFallback
         } = suspense;
+        let pendingAncestor = suspense.parent;
+        while (pendingAncestor && !pendingAncestor.pendingBranch) {
+          pendingAncestor = pendingAncestor.parent;
+        }
         let delayEnter = false;
         if (suspense.isHydrating) {
           suspense.isHydrating = false;
@@ -9981,7 +9993,16 @@ If you want to remount the same app, move your app creation logic into a factory
                   anchor === initialAnchor && !hasUpdatedAnchor ? next(activeBranch) : anchor,
                   0
                 );
-                queuePostFlushCb(effects);
+                let hidden = false;
+                if (pendingAncestor) {
+                  let top = container2;
+                  let parent;
+                  while (parent = parentNode(top)) top = parent;
+                  hidden = top === pendingAncestor.hiddenContainer;
+                }
+                if (!hidden) {
+                  queuePostFlushCb(effects);
+                }
                 if (isInFallback && vnode2.ssFallback) {
                   vnode2.ssFallback.el = null;
                 }
@@ -10021,19 +10042,11 @@ If you want to remount the same app, move your app creation logic into a factory
           }
         }
         effects.length = kept;
-        let parent = suspense.parent;
-        let hasUnresolvedAncestor = false;
-        while (parent) {
-          if (parent.pendingBranch) {
-            for (let i = 0; i < effects.length; i++) {
-              parent.effects.push(effects[i]);
-            }
-            hasUnresolvedAncestor = true;
-            break;
+        if (pendingAncestor) {
+          for (let i = 0; i < effects.length; i++) {
+            pendingAncestor.effects.push(effects[i]);
           }
-          parent = parent.parent;
-        }
-        if (!hasUnresolvedAncestor && !delayEnter) {
+        } else if (!delayEnter) {
           queuePostFlushCb(effects);
         }
         suspense.effects = [];
@@ -10144,7 +10157,9 @@ If you want to remount the same app, move your app creation logic into a factory
           }
         };
         instance.asyncDep.catch((err) => {
-          handleError(err, instance, 0, false, true);
+          if (instance.scope.active) {
+            handleError(err, instance, 0, false, true);
+          }
           return () => null;
         }).then((asyncSetupResult) => {
           if (instance.isUnmounted || suspense.isUnmounted) {
@@ -11379,7 +11394,7 @@ Component that was made reactive: `,
     return true;
   }
 
-  const version = "3.5.45";
+  const version = "3.5.46";
   const warn = warn$1 ;
   const ErrorTypeStrings = ErrorTypeStrings$1 ;
   const devtools = devtools$1 ;
@@ -11552,12 +11567,14 @@ Component that was made reactive: `,
       onAppearCancelled = onEnterCancelled
     } = baseProps;
     const finishEnter = (el, isAppear, done, isCancelled) => {
+      el._enterResolve = void 0;
       el._enterCancelled = isCancelled;
       removeTransitionClass(el, isAppear ? appearToClass : enterToClass);
       removeTransitionClass(el, isAppear ? appearActiveClass : enterActiveClass);
       done && done();
     };
     const finishLeave = (el, done) => {
+      el._leaveResolve = void 0;
       el._isLeaving = false;
       removeTransitionClass(el, leaveFromClass);
       removeTransitionClass(el, leaveToClass);
@@ -11567,10 +11584,18 @@ Component that was made reactive: `,
     const makeEnterHook = (isAppear) => {
       return (el, done) => {
         const hook = isAppear ? onAppear : onEnter;
-        const resolve = () => finishEnter(el, isAppear, done);
+        const resolve = () => {
+          if (el._enterResolve === resolve) {
+            finishEnter(el, isAppear, done);
+          }
+        };
+        el._enterResolve = resolve;
         callHook(hook, [el, resolve]);
         nextFrame(() => {
           removeTransitionClass(el, isAppear ? appearFromClass : enterFromClass);
+          if (el._enterResolve !== resolve) {
+            return;
+          }
           addTransitionClass(el, isAppear ? appearToClass : enterToClass);
           if (!hasExplicitCallback(hook)) {
             whenTransitionEnds(el, type, enterDuration, resolve);
@@ -11593,7 +11618,12 @@ Component that was made reactive: `,
       onAppear: makeEnterHook(true),
       onLeave(el, done) {
         el._isLeaving = true;
-        const resolve = () => finishLeave(el, done);
+        const resolve = () => {
+          if (el._leaveResolve === resolve) {
+            finishLeave(el, done);
+          }
+        };
+        el._leaveResolve = resolve;
         addTransitionClass(el, leaveFromClass);
         if (!el._enterCancelled) {
           forceReflow(el);
@@ -11603,7 +11633,7 @@ Component that was made reactive: `,
           forceReflow(el);
         }
         nextFrame(() => {
-          if (!el._isLeaving) {
+          if (el._leaveResolve !== resolve) {
             return;
           }
           removeTransitionClass(el, leaveFromClass);
@@ -11815,10 +11845,23 @@ Component that was made reactive: `,
       warn(`useCssVars is called without current active component instance.`);
       return;
     }
-    const updateTeleports = instance.ut = (vars = getter(instance.proxy)) => {
+    const updateTeleports = (vars = getter(instance.proxy)) => {
       Array.from(
         document.querySelectorAll(`[data-v-owner="${instance.uid}"]`)
       ).forEach((node) => setVarsOnNode(node, vars));
+    };
+    const owner = {
+      uid: String(instance.uid),
+      update: updateTeleports
+    };
+    onScopeDispose(() => owner.update = void 0);
+    instance.ut = (start, end) => {
+      if (start) {
+        start[TELEPORT_KEY] = [end, owner];
+        observeTeleport(start);
+        markTeleport(start);
+      }
+      updateTeleports();
     };
     {
       instance.getCssVars = () => getter(instance.proxy);
@@ -11841,6 +11884,56 @@ Component that was made reactive: `,
       ob.observe(instance.subTree.el.parentNode, { childList: true });
       onUnmounted(() => ob.disconnect());
     });
+  }
+  const TELEPORT_KEY = /* @__PURE__ */ Symbol("TELEPORT_KEY" );
+  function markTeleport(start, added) {
+    const [end, owner] = start[TELEPORT_KEY];
+    let update;
+    if (owner.update) {
+      for (let node = start; node && node !== end; node = node.nextSibling) {
+        if (node.nodeType === 1 && (!added || (added === true || added.has(node)) && (node.getAttribute("data-v-owner") || owner.uid) === owner.uid)) {
+          node.setAttribute("data-v-owner", owner.uid);
+          update = owner.update;
+        }
+      }
+    }
+    return update;
+  }
+  function observeTeleport(start) {
+    const container = start.parentNode;
+    if (container) {
+      let starts = container[TELEPORT_KEY];
+      if (!starts) {
+        starts = container[TELEPORT_KEY] = /* @__PURE__ */ new Set();
+        new MutationObserver(onTeleportMutations).observe(container, {
+          childList: true
+        });
+      }
+      starts.add(start);
+    }
+  }
+  function onTeleportMutations(records, ob) {
+    const container = records[0].target;
+    const starts = container[TELEPORT_KEY];
+    const added = /* @__PURE__ */ new Set();
+    for (const { addedNodes } of records) {
+      addedNodes.forEach((node) => added.add(node));
+    }
+    const updates = /* @__PURE__ */ new Set();
+    starts.forEach((start) => {
+      if (start.parentNode !== container) {
+        starts.delete(start);
+        observeTeleport(start);
+        updates.add(markTeleport(start, true));
+      } else if (added.size) {
+        updates.add(markTeleport(start, added));
+      }
+    });
+    updates.forEach((update) => update && update());
+    if (!starts.size) {
+      ob.disconnect();
+      container[TELEPORT_KEY] = void 0;
+    }
   }
   function setVarsOnVNode(vnode, vars) {
     if (vnode.shapeFlag & 128) {

@@ -3,7 +3,7 @@ ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 # RUBY_VERSION is the minor line (GEM_HOME below); RUBY_PATCH_VERSION is the
 # exact base image tag, so a rebuild cannot silently pick up a new Ruby patch.
 ARG RUBY_VERSION=3.4
-ARG RUBY_PATCH_VERSION=3.4.12
+ARG RUBY_PATCH_VERSION=3.4.13
 ARG DEBIAN_RELEASE=trixie
 
 # The official ruby image is Debian slim based and provides a current Ruby that
@@ -20,7 +20,7 @@ ARG APT_URL=http://deb.debian.org
 # pin this image to the previous one indefinitely. Bumping this busts that
 # layer; the dpkg check fails the build if apt fell short (stale APT_URL
 # mirror). scripts/release/package_audit.rb verifies it against deb.debian.org.
-ARG DEBIAN_POINT_RELEASE=13.7
+ARG DEBIAN_POINT_RELEASE=13.8
 # Python minor version shipped by the chosen Debian release (trixie -> 3.13)
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
@@ -181,7 +181,7 @@ ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
 # rbspy - https://github.com/rbspy/rbspy
 # Not packaged for Debian, so ship the prebuilt release binary per architecture.
-ARG RBSPY_VERSION=0.55.0
+ARG RBSPY_VERSION=0.56.0
 ARG TARGETARCH
 COPY rbspy-*-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /tmp/
 RUN RB_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64" || echo "x86_64") && \
