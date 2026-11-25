@@ -296,6 +296,17 @@ module OpenC3
       end
     end
 
+    # Whether a microservice was enabled or disabled between two cycles, which
+    # must be acted on even for a microservice with ignore_changes set
+    #
+    # @param previous_config [Hash] Microservice config from the last cycle
+    # @param config [Hash] Microservice config from this cycle
+    # @return [Boolean]
+    def enabled_changed?(previous_config, config)
+      # A missing enabled (nil) means enabled
+      (previous_config['enabled'] != false) != (config['enabled'] != false)
+    end
+
     # Report cpu and memory for every microservice this operator is running.
     #
     # Microservices that are themselves OpenC3::Microservices could report this

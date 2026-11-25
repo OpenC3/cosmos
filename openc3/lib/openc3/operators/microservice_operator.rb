@@ -294,12 +294,6 @@ module OpenC3
       end
     end
 
-    # @return [Boolean] Whether the microservice was enabled or disabled
-    def enabled_changed?(previous_config, config)
-      # A missing enabled (nil) means enabled
-      (previous_config['enabled'] != false) != (config['enabled'] != false)
-    end
-
     def update
       shared_resources = SharedResourceModel.all
       acknowledge_shared_resources(shared_resources)
