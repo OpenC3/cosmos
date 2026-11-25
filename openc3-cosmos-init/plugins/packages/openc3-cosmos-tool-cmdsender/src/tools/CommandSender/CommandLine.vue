@@ -238,6 +238,11 @@ onBeforeUnmount(() => clearTimeout(copiedTimer))
   /* Long values without spaces (e.g. hex blocks) wrap too */
   overflow-wrap: anywhere;
 }
+/* Darker than the panel, as the page behind it, so the line stands apart
+   from the form's fields */
+.cs-line-input :deep(.v-field) {
+  background: var(--color-background-base-default, rgba(0, 0, 0, 0.25));
+}
 /* Edits that aren't in the form yet */
 .cs-line-dirty :deep(.v-field__outline) {
   --v-field-border-opacity: 1;

@@ -44,11 +44,21 @@
         @command-loaded="onCommandLoaded($event)"
         @params-changed="paramsChanged"
       />
+    </section>
+    <!-- The command as it will be sent, and Send, on their own panel. Also
+         ringed for a hazardous command, since Send will ask to confirm. -->
+    <section
+      :class="[
+        'cs-panel cs-send-panel rounded-lg',
+        { 'ring-caution': sendHazardous },
+      ]"
+      aria-label="Send"
+    >
       <!-- The form's command as scripted, rebuilt as it changes. Pasting or
            editing a command there loads it into the form above. -->
       <command-line
         ref="commandLine"
-        class="px-4 pt-6"
+        class="px-4 pt-5"
         :command="commandLine"
         :load="loadCommandLine"
         :loading="loadingCommand || (!!commandName && !commandReady)"
@@ -1265,12 +1275,14 @@ export default {
   line-height: 1.5;
 }
 /* Dashboards' caution ring (dashboards.scss .panel-frame.ring-caution) */
-.cs-command {
+.cs-command,
+.cs-send-panel {
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
 }
-.cs-command.ring-caution {
+.cs-command.ring-caution,
+.cs-send-panel.ring-caution {
   border-color: color-mix(
     in srgb,
     var(--color-status-caution) 60%,

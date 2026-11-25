@@ -166,19 +166,21 @@ async function copy(item) {
 </script>
 
 <style scoped>
+/* A line between rows, as the parameter table and the server logs */
 .cs-history-row {
   border-left: 3px solid transparent;
-  padding-top: 3px;
-  padding-bottom: 3px;
+  border-bottom: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 .cs-history-row:hover {
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 /* The command last loaded into the form: a secondary bar on the left that
    doesn't shift the text, as Dashboards marks the current choice */
 .cs-history-row.current {
   border-left-color: rgb(var(--v-theme-secondary));
-  background: rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(var(--v-theme-secondary), 0.14);
 }
 .cs-time {
   min-width: 8ch;
