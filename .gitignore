@@ -1,4 +1,5 @@
 playwright/openc3-cosmos-pw-test/
+playwright/openc3-cosmos-pw-group/
 *.o
 *.def
 *.so

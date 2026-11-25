@@ -423,6 +423,27 @@ module OpenC3
       ensure
         limits&.change_type = nil
       end
+
+      it "clears a state color that was cleared with a LIMITS_STATE_COLOR event" do
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        expect(item.state_colors['CONNECTED']).to eql :GREEN
+        event = { type: :LIMITS_STATE_COLOR, target_name: "INST", packet_name: "HEALTH_STATUS", item_name: "GROUND1STATUS",
+                  state_name: "CONNECTED", color: nil, time_nsec: Time.now.to_nsec_from_epoch, message: "Clearing color" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        settings = JSON.parse(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__GROUND1STATUS"))
+        expect(settings['state_colors']).to eql({ 'CONNECTED' => nil })
+        LimitsEventTopic.resync_system(scope: "DEFAULT")
+        expect(item.state_colors).to_not have_key('CONNECTED')
+      end
+
+      it "treats a state color saved as an empty string as cleared" do
+        # Earlier versions saved a cleared color as "" which isn't a valid color
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__GROUND1STATUS",
+          JSON.generate({ 'state_colors' => { 'CONNECTED' => '' } }))
+        expect { LimitsEventTopic.resync_system(scope: "DEFAULT") }.to_not raise_error
+        expect(item.state_colors).to_not have_key('CONNECTED')
+      end
     end
 
     describe "write with publish: false" do
@@ -511,6 +532,17 @@ module OpenC3
         expect(Store.hexists("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP2")).to be false
         expect(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP3")).to eql "RED_HIGH" # Not disabled
         expect(LimitsEventTopic.out_of_limits(scope: "DEFAULT")).to eql [["INST", "HEALTH_STATUS", "TEMP3", "RED_HIGH"]]
+      end
+    end
+
+    describe "process_event" do
+      it "applies the current limits set rather than an older LIMITS_SET event's set" do
+        Store.hset("DEFAULT__limits_sets", "DEFAULT", "true")
+        Store.hset("DEFAULT__limits_sets", "TVAC", "false")
+        System.limits_set = :DEFAULT
+        # A delayed reader processing an old switch to TVAC after the switch back to DEFAULT
+        LimitsEventTopic.process_event({ 'type' => 'LIMITS_SET', 'set' => 'TVAC' }, scope: "DEFAULT")
+        expect(System.limits_set).to eql :DEFAULT
       end
     end
 

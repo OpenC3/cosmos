@@ -132,13 +132,13 @@ class CvtModel(Model):
         pkt_hash = cls.get(target_name, packet_name, cache_timeout=0.0, scope=scope)
         match type:
             case "FORMATTED" | "WITH_UNITS":
-                pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
+                pkt_hash[f"{item_name}__F"] = "" if value is None else str(value)  # FORMATTED should always be a string
             case "CONVERTED":
                 pkt_hash[f"{item_name}__C"] = value
             case "RAW":
                 pkt_hash[item_name] = value
             case "ALL":
-                pkt_hash[f"{item_name}__F"] = str(value)  # FORMATTED should always be a string
+                pkt_hash[f"{item_name}__F"] = "" if value is None else str(value)  # FORMATTED should always be a string
                 pkt_hash[f"{item_name}__C"] = value
                 pkt_hash[item_name] = value
             case _:
@@ -328,13 +328,13 @@ class CvtModel(Model):
             case "ALL":
                 pkt_hash[item_name] = value
                 pkt_hash[f"{item_name}__C"] = value
-                pkt_hash[f"{item_name}__F"] = str(value)
+                pkt_hash[f"{item_name}__F"] = "" if value is None else str(value)
             case "RAW":
                 pkt_hash[item_name] = value
             case "CONVERTED":
                 pkt_hash[f"{item_name}__C"] = value
             case "FORMATTED" | "WITH_UNITS":
-                pkt_hash[f"{item_name}__F"] = str(value)  # Always a String
+                pkt_hash[f"{item_name}__F"] = "" if value is None else str(value)  # Always a String
             case _:
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (override)")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"

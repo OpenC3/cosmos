@@ -470,18 +470,23 @@ class LimitsEventTopic(Topic):
         return [int(x) for x in oldest_id.split("-")] > [int(x) for x in previous_id.split("-")]
 
     # Reload all limits state from the store, used to recover from missed limits events.
+    # telemetry is the packets by target to update, default all in System
     @classmethod
-    def resync_system(cls, scope):
+    def resync_system(cls, scope, telemetry=None):
         System.set_limits_set(cls.current_set(scope), scope)
-        cls.sync_system(scope)
+        cls.sync_system(scope, telemetry=telemetry)
 
     # Update the local System based on overall state
+    # telemetry is the packets by target to update, default all in System.
+    # Decom microservices sharing a process pass just their own targets because
+    # disabling limits calls the target's limits change callback every time.
     @classmethod
-    def sync_system(cls, scope):
+    def sync_system(cls, scope, telemetry=None):
         all_limits_settings = Store.hgetall(f"{scope}__current_limits_settings")
         # decode the binary string keys to strings
         all_limits_settings = {k.decode(): v for (k, v) in all_limits_settings.items()}
-        telemetry = System.telemetry.all()
+        if telemetry is None:
+            telemetry = System.telemetry.all()
         disabled_fields = []
         for item, limits_settings in all_limits_settings.items():
             target_name, packet_name, item_name = item.split("__")
@@ -501,7 +506,10 @@ class LimitsEventTopic(Topic):
                             continue
                         if limits_set == "state_colors":
                             for state_name, color in settings.items():
-                                System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
+                                # Earlier versions of the Ruby API saved a cleared color as "" so treat it as cleared
+                                System.limits.set_state_color(
+                                    target_name, packet_name, item_name, state_name, color or None
+                                )
                             continue
                         if change_type:
                             Logger.warn(

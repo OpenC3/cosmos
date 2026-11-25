@@ -179,6 +179,9 @@ class System(metaclass=SystemMeta):
 
     @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE, descriptions=True):
+        # With no targets this builds an empty System, which microservices without
+        # targets (such as an interface without MAP_TARGET) still use, e.g. for UNKNOWN
+        target_names = target_names or []
         if not System.instance_obj:  # type: ignore[has-type]
             targets_path = f"{base_dir}/_targets"
             os.makedirs(targets_path, exist_ok=True)

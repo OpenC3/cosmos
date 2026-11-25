@@ -303,7 +303,8 @@ module OpenC3
           limits_settings = {}
         end
         limits_settings['state_colors'] ||= {}
-        limits_settings['state_colors'][event[:state_name].to_s] = event[:color].to_s
+        # A cleared color is saved as nil (not "") so sync_system clears it
+        limits_settings['state_colors'][event[:state_name].to_s] = event[:color]&.to_s
         Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
 
       when :LIMITS_SET
@@ -449,15 +450,19 @@ module OpenC3
     end
 
     # Reload all limits state from the store, used to recover from missed limits events
-    def self.resync_system(scope:)
+    # @param telemetry [Hash] Packets by target to update, default all in System
+    def self.resync_system(scope:, telemetry: nil)
       System.limits_set = current_set(scope: scope)
-      sync_system(scope: scope)
+      sync_system(scope: scope, telemetry: telemetry)
     end
 
     # Update the local System based on overall state
-    def self.sync_system(scope:)
+    # @param telemetry [Hash] Packets by target to update, default all in System.
+    #   Decom microservices sharing a process pass just their own targets because
+    #   disabling limits calls the target's limits change callback every time.
+    def self.sync_system(scope:, telemetry: nil)
       all_limits_settings = Store.hgetall("#{scope}__current_limits_settings")
-      telemetry = System.telemetry.all
+      telemetry ||= System.telemetry.all
       disabled_fields = []
       all_limits_settings.each do |item, limits_settings|
         target_name, packet_name, item_name = item.split('__')
@@ -476,6 +481,8 @@ module OpenC3
               next unless Hash === settings
               if limits_set == 'state_colors'
                 settings.each do |state_name, color|
+                  # Earlier versions saved a cleared color as "" so treat it as cleared
+                  color = nil if color.to_s.empty?
                   System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
                 end
                 next
@@ -598,7 +605,10 @@ module OpenC3
         end
 
       when 'LIMITS_SET'
-        System.limits_set = event['set']
+        # Read the current set rather than the event's set. Decoms sharing a process
+        # share System.limits_set, so a decom still catching up on old events must
+        # not switch the others back to an obsolete set.
+        System.limits_set = current_set(scope: scope)
       end
     end
 

@@ -118,9 +118,10 @@ class DecomMicroservice(Microservice):
                 update_interval = float(option[1])
         self.queued = update_interval > 0.0
         if self.queued:
-            # Apply to every db_shard since writes are routed to the shard of each target
-            EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
-            StoreQueued.set_update_interval_all_shards(update_interval)
+            # Apply to every db_shard since writes are routed to the shard of each target.
+            # Decoms in a microservice group share the process's queues, so the fastest wins.
+            EphemeralStoreQueued.set_update_interval_all_shards(update_interval, fastest=True)
+            StoreQueued.set_update_interval_all_shards(update_interval, fastest=True)
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -141,8 +142,26 @@ class DecomMicroservice(Microservice):
         self.limits_response_queue = queue.Queue()
         self.limits_response_thread = None
         self.resyncing_limits = False
-        System.telemetry.set_limits_change_callback(self.limits_change_callback)
-        LimitsEventTopic.sync_system(scope=self.scope)
+        # Only for this microservice's targets. Other decom microservices in the same
+        # process (a PYMULTIGROUP) share System and handle their own targets.
+        target_names: list[str] = self.target_names or []
+        for target_name in target_names:
+            try:
+                for packet in System.telemetry.packets(target_name).values():
+                    packet.limits_change_callback = self.limits_change_callback
+            except RuntimeError:
+                pass  # Target has no telemetry
+        # Likewise only apply limits events to this microservice's targets. Disabling
+        # limits calls the target's limits change callback every time, so if every
+        # decom in the process applied every event, each disable would be reported
+        # (and its limits response run) once per decom. These are the live packet
+        # dicts so dynamically added packets are included.
+        self.limits_telemetry = {
+            target_name: packets
+            for target_name, packets in System.telemetry.all().items()
+            if target_name in target_names
+        }
+        LimitsEventTopic.sync_system(scope=self.scope, telemetry=self.limits_telemetry)
         target_model = TargetModel.get_model(name=self.target_names[0], scope=self.scope)
         self.stored_limits_mode = target_model.stored_limits_mode if target_model else "PROCESS"
         self.error_count = 0
@@ -178,7 +197,7 @@ class DecomMicroservice(Microservice):
                             limits_events_checked = True
                         self.limits_event_offset = msg_id
                         event = json.loads(msg_hash[b"event"])
-                        LimitsEventTopic.process_event(event, self.scope)
+                        LimitsEventTopic.process_event(event, self.scope, telemetry=self.limits_telemetry)
                     elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm_with_ack(msg_hash[b"inject_tlm"], msg_id, self.scope, self.logger)
@@ -213,7 +232,7 @@ class DecomMicroservice(Microservice):
             # resync can trim the stream again and cause another resync.
             self.resyncing_limits = True
             try:
-                LimitsEventTopic.resync_system(self.scope)
+                LimitsEventTopic.resync_system(self.scope, telemetry=self.limits_telemetry)
             finally:
                 self.resyncing_limits = False
 
@@ -396,8 +415,9 @@ class DecomMicroservice(Microservice):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "item_name": item.name,
-            "old_limits_state": str(old_limits_state),
-            "new_limits_state": str(item.limits.state),
+            # No state (initial check or disabled) is "" to match Ruby's nil.to_s, not "None"
+            "old_limits_state": old_limits_state or "",
+            "new_limits_state": item.limits.state or "",
             "time_nsec": to_nsec_from_epoch(packet_time),
             "message": str(message),
         }
