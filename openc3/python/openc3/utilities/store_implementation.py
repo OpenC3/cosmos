@@ -69,6 +69,7 @@ class StoreMeta(type):
             "all_shards_update_interval",
             "DEFAULT_UPDATE_INTERVAL",
             "db_shard_for_target",
+            "clear_db_shard_for_target",
             "_db_shard_cache",
             "_db_shard_cache_lock",
             "DB_SHARD_CACHE_TIMEOUT",

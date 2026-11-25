@@ -110,6 +110,13 @@ class TestDbShardForTarget(unittest.TestCase):
         # Other targets stay cached
         self.assertEqual(Store.db_shard_for_target("INST2", scope="DEFAULT"), 1)
 
+    def test_clearing_a_cached_db_shard_does_not_build_a_store(self):
+        # It only touches the class-level cache, so StoreMeta must not route it
+        # through Store.instance(), which would open a db_shard 0 connection pool
+        with patch.object(Store, "instance") as instance:
+            Store.clear_db_shard_for_target("INST", scope="DEFAULT")
+        instance.assert_not_called()
+
 
 class TestStoreReadTopics(unittest.TestCase):
     def setUp(self):
