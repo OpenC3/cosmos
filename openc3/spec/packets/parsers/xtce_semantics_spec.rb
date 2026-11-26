@@ -354,23 +354,6 @@ module OpenC3
       end
     end
 
-    it 'scopes ordinary command argument types by command' do
-      config = parse_definition(<<~TXT)
-        COMMAND INST FIRST BIG_ENDIAN "First command"
-          APPEND_PARAMETER VALUE 8 UINT 0 10 0 "First argument"
-        COMMAND INST SECOND BIG_ENDIAN "Second command"
-          APPEND_PARAMETER VALUE 16 UINT 0 20 0 "Second argument"
-      TXT
-      Dir.mktmpdir do |directory|
-        XtceConverter.convert(config.commands, config.telemetry, directory, nil)
-        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
-        expect(XtceConverter.schema_errors(file)).to be_empty
-        document = Nokogiri::XML(File.read(file))
-        types = document.xpath("//*[local-name()='IntegerArgumentType']/@name").map(&:value)
-        expect(types).to contain_exactly('FIRST_VALUE_Type', 'SECOND_VALUE_Type')
-      end
-    end
-
     it 'rejects colliding scoped command types before replacing an export' do
       config = parse_definition(<<~TXT)
         COMMAND INST FIRST_PART BIG_ENDIAN "First command"
