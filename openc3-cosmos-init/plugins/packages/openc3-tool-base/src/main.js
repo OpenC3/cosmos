@@ -13,6 +13,11 @@ defineCustomElements()
 Object.getPrototypeOf(System).firstGlobalProp = true
 
 const app = createApp(App)
+// Each tool is its own Vue app on the same page, and Vue numbers useId() per
+// app starting from the same value, so the navigation and the tool would
+// generate the same element ids (e.g. a field's input-v-23 and its label).
+// A distinct prefix keeps the navigation's ids unique.
+app.config.idPrefix = 'nav'
 
 app.use(store)
 app.use(vuetify)
