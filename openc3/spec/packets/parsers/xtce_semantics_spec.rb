@@ -73,15 +73,23 @@ module OpenC3
       packet.get_item('TEMP').limits.state
     end
 
-    def duplicate_integer_definition(kind, data_type, bits: 8, offset: 0)
+    def duplicate_integer_definition(kind, data_type, bits: 8, offset: 0, states: false)
       %w[BIG_ENDIAN LITTLE_ENDIAN].each_with_index.map do |order, index|
         bit_offset = offset.is_a?(Array) ? offset[index] : offset
+        packet_name = "PACKET#{index}"
+        packet_kind = kind
         field = if kind == 'COMMAND'
                   "ID_PARAMETER VALUE #{bit_offset} #{bits} #{data_type} MIN MAX #{index + 1} \"Value\""
+                elsif kind == 'ARGUMENT'
+                  packet_kind = 'COMMAND'
+                  packet_name, item_name = [['FIRST_PART', 'VALUE'], ['FIRST', 'PART_VALUE']][index]
+                  "PARAMETER #{item_name} #{bit_offset} #{bits} #{data_type} MIN MAX 0 \"Value\""
                 else
                   "ITEM VALUE #{bit_offset} #{bits} #{data_type} \"Value\""
                 end
-        "#{kind} INST PACKET#{index} #{order} \"Packet\"\n  #{field}\n"
+        definition = "#{packet_kind} INST #{packet_name} #{order} \"Packet\"\n  #{field}\n"
+        definition += "    STATE ZERO 0\n    STATE ONE 1\n    STATE TWO 2\n" if states
+        definition
       end.join
     end
 
@@ -433,12 +441,52 @@ module OpenC3
                 ['FIRST_PART_MORE', 'VALUE_ITEM', 'BIG_ENDIAN', 0],
                 ['FIRST_PART', 'MORE_VALUE_ITEM', 'LITTLE_ENDIAN', 9],
                 ['FIRST', 'PART_MORE_VALUE_ITEM', 'LITTLE_ENDIAN', 0]]
-      %w[INT UINT].each do |data_type|
+      %w[INT UINT].product([false, true]).each do |data_type, states|
         fields.permutation.each do |ordered|
           definition = ordered.map do |packet_name, item_name, order, offset|
-            "COMMAND INST #{packet_name} #{order} \"Packet\"\n  PARAMETER #{item_name} #{offset} 8 #{data_type} 0 127 0 \"Value\"\n"
+            field = "COMMAND INST #{packet_name} #{order} \"Packet\"\n  PARAMETER #{item_name} #{offset} 8 #{data_type} 0 127 0 \"Value\"\n"
+            field += "    STATE ZERO 0\n    STATE ONE 1\n" if states
+            field
           end.join
           expect_export_rejection(parse_definition(definition))
+        end
+      end
+    end
+
+    %w[TELEMETRY COMMAND ARGUMENT].each do |kind|
+      it "rejects significant enumerated #{kind.downcase} byte-order conflicts" do
+        %w[INT UINT].product([[8, 9], [8, [0, 9]], [8, [9, 0]], [16, 0]]).each do |data_type, (bits, offset)|
+          definitions = duplicate_integer_definition(kind, data_type, bits: bits, offset: offset, states: true)
+                        .lines.each_slice(5).map(&:join)
+          [definitions, definitions.reverse].each do |ordered|
+            expect_export_rejection(parse_definition(ordered.join))
+          end
+        end
+      end
+    end
+
+    it 'shares byte-aligned enumerated definitions across byte orders' do
+      %w[TELEMETRY COMMAND ARGUMENT].product(%w[INT UINT]).each do |kind, data_type|
+        config = parse_definition(duplicate_integer_definition(kind, data_type, states: true))
+        Dir.mktmpdir do |directory|
+          XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+          file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+          expect(XtceConverter.schema_errors(file)).to be_empty
+          type = kind == 'ARGUMENT' ? 'EnumeratedArgumentType' : 'EnumeratedParameterType'
+          expect(Nokogiri::XML(File.read(file)).xpath("//*[local-name()='#{type}']").length).to eq(1)
+        end
+      end
+    end
+
+    it 'shares matching byte order across enumerated field alignments' do
+      %w[TELEMETRY COMMAND ARGUMENT].product(%w[INT UINT], %w[BIG_ENDIAN LITTLE_ENDIAN]).each do |kind, data_type, order|
+        definition = duplicate_integer_definition(kind, data_type, offset: [0, 9], states: true)
+                     .gsub(/BIG_ENDIAN|LITTLE_ENDIAN/, order)
+        config = parse_definition(definition)
+        Dir.mktmpdir do |directory|
+          XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+          file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+          expect(XtceConverter.schema_errors(file)).to be_empty
         end
       end
     end

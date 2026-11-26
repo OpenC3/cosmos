@@ -467,6 +467,12 @@ module OpenC3
       builder.doc.xpath('//*[local-name()="LongDescription"]').remove
       if normalize_byte_order
         builder.doc.xpath('//*[local-name()="IntegerDataEncoding"]/@byteOrder').remove
+      elsif [:INT, :UINT].include?(item.data_type) && item.bit_size == 8 && item.endianness == :LITTLE_ENDIAN
+        # Eight-bit enumerations omit byteOrder when emitted. A shared type
+        # containing an unaligned field must still compare the source order.
+        builder.doc.xpath('//*[local-name()="IntegerDataEncoding"]').each do |encoding|
+          encoding['byteOrder'] = 'leastSignificantByteFirst'
+        end
       end
       # Alarm bounds are xs:double. Normalize only the comparison document;
       # to_xtce_type already rejects integer bounds that double cannot preserve.
