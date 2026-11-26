@@ -75,10 +75,11 @@ module OpenC3
 
     def duplicate_integer_definition(kind, data_type, bits: 8, offset: 0)
       %w[BIG_ENDIAN LITTLE_ENDIAN].each_with_index.map do |order, index|
+        bit_offset = offset.is_a?(Array) ? offset[index] : offset
         field = if kind == 'COMMAND'
-                  "ID_PARAMETER VALUE #{offset} #{bits} #{data_type} MIN MAX #{index + 1} \"Value\""
+                  "ID_PARAMETER VALUE #{bit_offset} #{bits} #{data_type} MIN MAX #{index + 1} \"Value\""
                 else
-                  "ITEM VALUE #{offset} #{bits} #{data_type} \"Value\""
+                  "ITEM VALUE #{bit_offset} #{bits} #{data_type} \"Value\""
                 end
         "#{kind} INST PACKET#{index} #{order} \"Packet\"\n  #{field}\n"
       end.join
@@ -404,6 +405,26 @@ module OpenC3
       %w[TELEMETRY COMMAND].product([[8, 9], [16, 0]]).each do |kind, (bits, offset)|
         config = parse_definition(duplicate_integer_definition(kind, 'UINT', bits: bits, offset: offset))
         expect_export_rejection(config)
+      end
+    end
+
+    it 'retains endian conflicts when only one shared field is byte aligned' do
+      %w[TELEMETRY COMMAND].each do |kind|
+        definitions = duplicate_integer_definition(kind, 'UINT', offset: [9, 0]).lines.each_slice(2).map(&:join)
+        [definitions, definitions.reverse].each do |ordered|
+          expect_export_rejection(parse_definition(ordered.join))
+        end
+      end
+    end
+
+    it 'shares matching byte order across aligned and unaligned one-byte fields' do
+      %w[TELEMETRY COMMAND].product(%w[BIG_ENDIAN LITTLE_ENDIAN]).each do |kind, order|
+        definition = duplicate_integer_definition(kind, 'UINT', offset: [9, 0]).gsub(/BIG_ENDIAN|LITTLE_ENDIAN/, order)
+        config = parse_definition(definition)
+        Dir.mktmpdir do |directory|
+          XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+          expect(XtceConverter.schema_errors(File.join(directory, 'INST/cmd_tlm/inst.xtce'))).to be_empty
+        end
       end
     end
 

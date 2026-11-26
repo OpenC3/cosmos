@@ -457,7 +457,7 @@ module OpenC3
       initial_value
     end
 
-    def parameter_signature(item, param_or_arg: 'Parameter', prefix: '')
+    def parameter_signature(item, param_or_arg: 'Parameter', prefix: '', normalize_byte_order: false)
       builder = Nokogiri::XML::Builder.new do |xml|
         xml['xtce'].public_send(param_or_arg + 'TypeSet', 'xmlns:xtce' => XTCE_1_2_NAMESPACE) do
           to_xtce_type(item, param_or_arg, xml, prefix: prefix)
@@ -465,7 +465,7 @@ module OpenC3
       end
       builder.doc.xpath('//@shortDescription').remove
       builder.doc.xpath('//*[local-name()="LongDescription"]').remove
-      if [:INT, :UINT].include?(item.data_type) && item.bit_size == 8 && (item.bit_offset % 8).zero?
+      if normalize_byte_order
         builder.doc.xpath('//*[local-name()="IntegerDataEncoding"]/@byteOrder').remove
       end
       # Alarm bounds are xs:double. Normalize only the comparison document;
@@ -475,6 +475,13 @@ module OpenC3
         attribute.value = (value.zero? ? 0.0 : value).to_s
       end
       builder.doc.root.canonicalize
+    end
+
+    def byte_order_independent?(items)
+      # Normalize together: an unaligned field constrains the shared wire type.
+      items.all? do |item|
+        [:INT, :UINT].include?(item.data_type) && item.bit_size == 8 && (item.bit_offset % 8).zero?
+      end
     end
 
     def command_id_type(item)
@@ -504,8 +511,9 @@ module OpenC3
           unique[item_name] = emitted_items[0] || unique_items[0]
           next
         end
-        signature = parameter_signature(emitted_items[0])
-        if emitted_items.drop(1).any? { |item| parameter_signature(item) != signature }
+        normalize_order = byte_order_independent?(emitted_items)
+        signature = parameter_signature(emitted_items[0], normalize_byte_order: normalize_order)
+        if emitted_items.drop(1).any? { |item| parameter_signature(item, normalize_byte_order: normalize_order) != signature }
           raise "Telemetry item '#{item_name}' has conflicting XTCE definitions in packets #{origins[item_name].join(', ')}. Give these items distinct names before exporting."
         end
         unique[item_name] = emitted_items[0]
@@ -535,8 +543,9 @@ module OpenC3
         end
       end
       unique.each do |item_name, unique_items|
-        signature = parameter_signature(command_id_type(unique_items[0]))
-        if unique_items.drop(1).any? { |item| parameter_signature(command_id_type(item)) != signature }
+        normalize_order = byte_order_independent?(unique_items)
+        signature = parameter_signature(command_id_type(unique_items[0]), normalize_byte_order: normalize_order)
+        if unique_items.drop(1).any? { |item| parameter_signature(command_id_type(item), normalize_byte_order: normalize_order) != signature }
           raise "Command ID '#{item_name}' has conflicting XTCE definitions in commands #{origins[item_name].join(', ')}. Give these ID items distinct names before exporting."
         end
         unique[item_name] = unique_items.length > 1 ? command_id_type(unique_items[0]) : unique_items[0]
@@ -554,7 +563,10 @@ module OpenC3
           name = prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
           if unique.key?(name)
             previous, previous_prefix = unique[name]
-            unless parameter_signature(previous, param_or_arg: 'Argument', prefix: previous_prefix) == parameter_signature(item, param_or_arg: 'Argument', prefix: prefix)
+            normalize_order = byte_order_independent?([previous, item])
+            previous_signature = parameter_signature(previous, param_or_arg: 'Argument', prefix: previous_prefix, normalize_byte_order: normalize_order)
+            signature = parameter_signature(item, param_or_arg: 'Argument', prefix: prefix, normalize_byte_order: normalize_order)
+            if previous_signature != signature
               raise "Command type '#{name}' has conflicting XTCE definitions. Give these items distinct names before exporting."
             end
           else
