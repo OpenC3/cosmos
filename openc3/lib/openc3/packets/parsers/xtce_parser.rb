@@ -354,18 +354,11 @@ module OpenC3
 
       when 'StaticAlarmRanges'
         xtce_recurse_element(element) do |block_element|
-          if block_element.name == 'WarningRange'
-            @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            lower = parse_alarm_bound(block_element, 'min')
-            upper = parse_alarm_bound(block_element, 'max')
-            @current_type.limits[1] = lower if lower
-            @current_type.limits[2] = upper if upper
-          elsif block_element.name == 'CriticalRange'
-            @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            lower = parse_alarm_bound(block_element, 'min')
-            upper = parse_alarm_bound(block_element, 'max')
-            @current_type.limits[0] = lower if lower
-            @current_type.limits[3] = upper if upper
+          case block_element.name
+          when 'WarningRange'
+            set_alarm_range(block_element, 1, 2)
+          when 'CriticalRange'
+            set_alarm_range(block_element, 0, 3)
           end
           true
         end
@@ -662,6 +655,14 @@ module OpenC3
         end
       end
       array_num_items * bit_size
+    end
+
+    def set_alarm_range(element, lower_index, upper_index)
+      @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
+      lower = parse_alarm_bound(element, 'min')
+      upper = parse_alarm_bound(element, 'max')
+      @current_type.limits[lower_index] = lower if lower
+      @current_type.limits[upper_index] = upper if upper
     end
 
     def parse_alarm_bound(element, side)
