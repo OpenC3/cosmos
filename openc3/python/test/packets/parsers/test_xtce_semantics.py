@@ -1,4 +1,5 @@
 import importlib
+import itertools
 import operator
 import tempfile
 import unittest
@@ -28,6 +29,25 @@ class TestXtceSemantics(unittest.TestCase):
         self.assertEqual(
             len(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", namespaces=ns)), expected_refs
         )
+
+    def byte_order_config(self, entries, command=False, data_type="UINT", bits=8):
+        definitions = []
+        command_names = [
+            ("FIRST_PART_MORE_VALUE", "ITEM"),
+            ("FIRST_PART_MORE", "VALUE_ITEM"),
+            ("FIRST_PART", "MORE_VALUE_ITEM"),
+            ("FIRST", "PART_MORE_VALUE_ITEM"),
+        ]
+        for index, (order, offset) in enumerate(entries):
+            packet_name, item_name = command_names[index] if command else (f"PACKET{index}", "VALUE")
+            kind = "COMMAND" if command else "TELEMETRY"
+            declaration = "PARAMETER" if command else "ITEM"
+            bounds = " 0 127 0" if command else ""
+            definitions.append(
+                f'{kind} INST {packet_name} {order} "Packet"\n'
+                f'  {declaration} {item_name} {offset} {bits} {data_type}{bounds} "Value"\n'
+            )
+        return self.parse("".join(definitions))
 
     def test_rejects_conflicting_signedness_without_replacing_an_existing_export(self):
         config = self.parse(
@@ -257,3 +277,77 @@ class TestXtceSemantics(unittest.TestCase):
                 else:
                     with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
                         XtceConverter.convert(config.commands, config.telemetry, directory)
+
+    def test_rejects_unaligned_one_byte_byte_order_conflicts(self):
+        for command, data_type, offsets in itertools.product([False, True], ["INT", "UINT"], [(9, 9), (0, 9), (9, 0)]):
+            entries = [("BIG_ENDIAN", offsets[0]), ("LITTLE_ENDIAN", offsets[1])]
+            for ordered in [entries, entries[::-1]]:
+                with (
+                    self.subTest(command=command, data_type=data_type, entries=ordered),
+                    tempfile.TemporaryDirectory() as directory,
+                    self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
+                ):
+                    config = self.byte_order_config(ordered, command, data_type)
+                    XtceConverter.convert(config.commands, config.telemetry, directory)
+
+    def test_rejects_opposite_byte_orders_when_a_later_shared_field_is_unaligned(self):
+        entries = [("BIG_ENDIAN", 0), ("LITTLE_ENDIAN", 0), ("LITTLE_ENDIAN", 9)]
+        for command, data_type, ordered in itertools.product(
+            [False, True], ["INT", "UINT"], itertools.permutations(entries)
+        ):
+            with (
+                self.subTest(command=command, data_type=data_type, entries=ordered),
+                tempfile.TemporaryDirectory() as directory,
+                self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
+            ):
+                config = self.byte_order_config(ordered, command, data_type)
+                XtceConverter.convert(config.commands, config.telemetry, directory)
+
+    def test_shares_matching_byte_order_across_integer_field_alignments(self):
+        for command, data_type, order, offsets in itertools.product(
+            [False, True], ["INT", "UINT"], ["BIG_ENDIAN", "LITTLE_ENDIAN"], [(0, 9), (9, 0), (9, 9)]
+        ):
+            with (
+                self.subTest(command=command, data_type=data_type, order=order, offsets=offsets),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                config = self.byte_order_config([(order, offset) for offset in offsets], command, data_type)
+                XtceConverter.convert(config.commands, config.telemetry, directory)
+                tree = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
+                ns = {"x": XtceConverter.XTCE_NAMESPACE}
+                type_name = "IntegerArgumentType" if command else "IntegerParameterType"
+                self.assertEqual(len(tree.findall(f".//x:{type_name}", ns)), 1)
+
+    def test_rejects_unaligned_conflicts_between_matching_aligned_group_endpoints(self):
+        entries = [("LITTLE_ENDIAN", 0), ("BIG_ENDIAN", 0), ("LITTLE_ENDIAN", 9), ("LITTLE_ENDIAN", 0)]
+        for command, data_type, ordered in itertools.product(
+            [False, True], ["INT", "UINT"], itertools.permutations(entries)
+        ):
+            with (
+                self.subTest(command=command, data_type=data_type, entries=ordered),
+                tempfile.TemporaryDirectory() as directory,
+                self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
+            ):
+                config = self.byte_order_config(ordered, command, data_type)
+                XtceConverter.convert(config.commands, config.telemetry, directory)
+
+    def test_shares_aligned_one_byte_colliding_command_types_across_byte_orders(self):
+        entries = [("BIG_ENDIAN", 0), ("LITTLE_ENDIAN", 0)]
+        for data_type, ordered in itertools.product(["INT", "UINT"], [entries, entries[::-1]]):
+            with self.subTest(data_type=data_type, entries=ordered), tempfile.TemporaryDirectory() as directory:
+                config = self.byte_order_config(ordered, command=True, data_type=data_type)
+                XtceConverter.convert(config.commands, config.telemetry, directory)
+                tree = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
+                ns = {"x": XtceConverter.XTCE_NAMESPACE}
+                self.assertEqual(len(tree.findall(".//x:IntegerArgumentType", ns)), 1)
+
+    def test_rejects_multibyte_scoped_command_byte_order_conflicts(self):
+        entries = [("BIG_ENDIAN", 0), ("LITTLE_ENDIAN", 0)]
+        for data_type, ordered in itertools.product(["INT", "UINT"], [entries, entries[::-1]]):
+            with (
+                self.subTest(data_type=data_type, entries=ordered),
+                tempfile.TemporaryDirectory() as directory,
+                self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
+            ):
+                config = self.byte_order_config(ordered, command=True, data_type=data_type, bits=16)
+                XtceConverter.convert(config.commands, config.telemetry, directory)

@@ -428,6 +428,21 @@ module OpenC3
       end
     end
 
+    it 'compares every colliding scoped command type when an argument is unaligned' do
+      fields = [['FIRST_PART_MORE_VALUE', 'ITEM', 'LITTLE_ENDIAN', 0],
+                ['FIRST_PART_MORE', 'VALUE_ITEM', 'BIG_ENDIAN', 0],
+                ['FIRST_PART', 'MORE_VALUE_ITEM', 'LITTLE_ENDIAN', 9],
+                ['FIRST', 'PART_MORE_VALUE_ITEM', 'LITTLE_ENDIAN', 0]]
+      %w[INT UINT].each do |data_type|
+        fields.permutation.each do |ordered|
+          definition = ordered.map do |packet_name, item_name, order, offset|
+            "COMMAND INST #{packet_name} #{order} \"Packet\"\n  PARAMETER #{item_name} #{offset} 8 #{data_type} 0 127 0 \"Value\"\n"
+          end.join
+          expect_export_rejection(parse_definition(definition))
+        end
+      end
+    end
+
     it 'shares numerically equal alarm thresholds regardless of literal spelling' do
       [-1, 1].product((0...4).to_a).each do |sign, index|
         first = [0, 4, 8, 12].map { |offset| sign * 2**54 + offset }

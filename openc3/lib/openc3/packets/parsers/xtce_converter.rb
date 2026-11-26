@@ -561,18 +561,19 @@ module OpenC3
         packet.items.each_value do |item|
           next if item.data_type == :DERIVED || ids.key?(item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
           name = prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
-          if unique.key?(name)
-            previous, previous_prefix = unique[name]
-            normalize_order = byte_order_independent?([previous, item])
-            previous_signature = parameter_signature(previous, param_or_arg: 'Argument', prefix: previous_prefix, normalize_byte_order: normalize_order)
-            signature = parameter_signature(item, param_or_arg: 'Argument', prefix: prefix, normalize_byte_order: normalize_order)
-            if previous_signature != signature
-              raise "Command type '#{name}' has conflicting XTCE definitions. Give these items distinct names before exporting."
-            end
-          else
-            unique[name] = [item, prefix]
+          (unique[name] ||= []) << [item, prefix]
+        end
+      end
+      unique.each do |name, definitions|
+        if definitions.length > 1
+          normalize_order = byte_order_independent?(definitions.map(&:first))
+          first, first_prefix = definitions.first
+          signature = parameter_signature(first, param_or_arg: 'Argument', prefix: first_prefix, normalize_byte_order: normalize_order)
+          if definitions.drop(1).any? { |item, prefix| parameter_signature(item, param_or_arg: 'Argument', prefix: prefix, normalize_byte_order: normalize_order) != signature }
+            raise "Command type '#{name}' has conflicting XTCE definitions. Give these items distinct names before exporting."
           end
         end
+        unique[name] = definitions.first
       end
       unique
     end

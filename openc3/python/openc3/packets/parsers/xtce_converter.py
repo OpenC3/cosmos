@@ -244,7 +244,7 @@ class XtceConverter:
             target_name: Target being exported.
 
         Raises:
-            ValueError: If two generated type names have conflicting definitions.
+            ValueError: If generated type names have conflicting definitions or wire byte orders.
         """
         if target_name not in commands:
             return
@@ -254,6 +254,7 @@ class XtceConverter:
         # ArgumentTypeSet
         arg_type_set = etree.SubElement(cmd_meta, f"{{{self.XTCE_NAMESPACE}}}ArgumentTypeSet")
         type_definitions = {}
+        type_items = {}
         for packet_name, packet in commands[target_name].items():
             prefix = f"{packet_name}_"
             for arg in packet.sorted_items:
@@ -267,8 +268,12 @@ class XtceConverter:
                         definition.set("arrayTypeRef", prefix + definition.get("arrayTypeRef"))
                     name = definition.get("name")
                     signature = self._definition_signature(definition)
+                    type_items.setdefault(name, []).append(arg)
                     if name in type_definitions:
-                        if type_definitions[name] != signature:
+                        if (
+                            self._has_unaligned_byte_order_conflict(type_items[name])
+                            or type_definitions[name] != signature
+                        ):
                             raise ValueError(f"Command argument type '{name}' has conflicting XTCE definitions")
                     else:
                         type_definitions[name] = signature
@@ -373,8 +378,23 @@ class XtceConverter:
                 alarm_range.set(name, str(0.0 if value == 0 else value))
         return etree.tostring(root, method="c14n")
 
+    def _has_unaligned_byte_order_conflict(self, items: list[Any]) -> bool:
+        """Check byte order omitted from one-byte integer XML definitions.
+
+        Args:
+            items: All occurrences sharing a generated type name.
+
+        Returns:
+            Whether an unaligned occurrence makes differing byte orders incompatible.
+        """
+        return (
+            all(item.data_type in ("INT", "UINT") and item.bit_size == 8 for item in items)
+            and any(item.bit_offset % 8 for item in items)
+            and len({item.endianness for item in items}) > 1
+        )
+
     def _get_unique(self, packets: dict[str, Any]) -> dict[str, Any]:
-        """Share names only when their emitted parameter types agree.
+        """Share names only when emitted types and significant byte orders agree.
 
         Args:
             packets (dict): Hash of packets
@@ -383,7 +403,7 @@ class XtceConverter:
             A dictionary containing one item for each equivalent definition.
 
         Raises:
-            ValueError: If a name would merge different XTCE definitions.
+            ValueError: If a name would merge different XTCE definitions or wire byte orders.
         """
         unique = {}
         origins = {}
@@ -404,7 +424,9 @@ class XtceConverter:
                 unique[item_name] = unique_items[0] if unique_items else None
             else:
                 signature = self._parameter_signature(unique_items[0])
-                if any(self._parameter_signature(item) != signature for item in unique_items[1:]):
+                if self._has_unaligned_byte_order_conflict(unique_items) or any(
+                    self._parameter_signature(item) != signature for item in unique_items[1:]
+                ):
                     raise ValueError(
                         f"Item '{item_name}' has conflicting XTCE definitions in packets "
                         f"{', '.join(origins[item_name])}. Give these items distinct names before exporting."
