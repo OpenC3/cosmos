@@ -73,6 +73,17 @@ module OpenC3
       packet.get_item('TEMP').limits.state
     end
 
+    def expect_export_rejection(config, message = /conflicting XTCE definitions/)
+      Dir.mktmpdir do |directory|
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        FileUtils.mkdir_p(File.dirname(file))
+        File.write(file, 'previous export')
+        expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
+          .to raise_error(message)
+        expect(File.read(file)).to eq('previous export')
+      end
+    end
+
     it 'rejects conflicting signedness before replacing an existing export' do
       config = parse_definition(<<~TXT)
         TELEMETRY INST UNSIGNED BIG_ENDIAN "Unsigned channel"
@@ -80,14 +91,7 @@ module OpenC3
         TELEMETRY INST SIGNED BIG_ENDIAN "Signed channel"
           APPEND_ITEM VALUE 16 INT "Signed reading"
       TXT
-      Dir.mktmpdir do |directory|
-        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
-        FileUtils.mkdir_p(File.dirname(file))
-        File.write(file, 'previous export')
-        expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
-          .to raise_error(/conflicting XTCE definitions/)
-        expect(File.read(file)).to eq('previous export')
-      end
+      expect_export_rejection(config)
     end
 
     it 'rejects conflicting limits on an otherwise identical binary type' do
@@ -245,14 +249,7 @@ module OpenC3
         COMMAND INST SECOND BIG_ENDIAN "Second"
           APPEND_ID_PARAMETER OPCODE 16 UINT 2 2 2 "Opcode"
       TXT
-      Dir.mktmpdir do |directory|
-        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
-        FileUtils.mkdir_p(File.dirname(file))
-        File.write(file, 'previous export')
-        expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
-          .to raise_error(/Command ID 'OPCODE' has conflicting XTCE definitions/)
-        expect(File.read(file)).to eq('previous export')
-      end
+      expect_export_rejection(config, /Command ID 'OPCODE' has conflicting XTCE definitions/)
     end
 
     it 'preserves different command ID constants and command-scoped argument types' do
@@ -328,14 +325,7 @@ module OpenC3
           limits = [0, 4, 8, 12].map { |offset| sign * 2**54 + offset }
           limits[index] += 1
           config = parse_definition("TELEMETRY INST STATUS BIG_ENDIAN \"Counter\"\n  APPEND_ITEM COUNT 64 INT \"Counter\"\n    LIMITS DEFAULT 1 ENABLED #{limits.join(' ')}\n")
-          Dir.mktmpdir do |directory|
-            file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
-            FileUtils.mkdir_p(File.dirname(file))
-            File.write(file, 'previous export')
-            expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
-              .to raise_error(/cannot be represented exactly as (?:an )?XTCE xs:double/)
-            expect(File.read(file)).to eq('previous export')
-          end
+          expect_export_rejection(config, /cannot be represented exactly as (?:an )?XTCE xs:double/)
         end
       end
     end
@@ -361,14 +351,7 @@ module OpenC3
         COMMAND INST FIRST BIG_ENDIAN "Second command"
           APPEND_PARAMETER PART_VALUE 16 UINT 0 20 0 "Second argument"
       TXT
-      Dir.mktmpdir do |directory|
-        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
-        FileUtils.mkdir_p(File.dirname(file))
-        File.write(file, 'previous export')
-        expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
-          .to raise_error(/conflicting XTCE definitions/)
-        expect(File.read(file)).to eq('previous export')
-      end
+      expect_export_rejection(config)
     end
 
     it 'shares equivalent colliding scoped command types' do
