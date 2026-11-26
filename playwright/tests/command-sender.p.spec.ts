@@ -1533,3 +1533,25 @@ test('sends manually entered state values', async ({ page, utils }) => {
   // Close the dropdown by pressing Escape
   await page.keyboard.press('Escape')
 })
+
+// The navigation and the tool are separate Vue apps, and Vue numbers useId()
+// per app. Duplicate ids point a field's aria-labelledby at the other app's
+// label, so the field gets the wrong accessible name.
+test('navigation ids do not collide with the tool', async ({ page }) => {
+  await expect(commandLine(page)).toBeVisible()
+  // Opening a navigation menu renders it with a generated id
+  await page.locator('[data-test="user-menu"]').click()
+  const menu = page.locator('.v-menu.v-overlay--active')
+  await expect(menu).toBeVisible()
+  await expect(menu).toHaveAttribute('id', /^v-menu-nav-/)
+
+  // Only the ids Vue generates (e.g. input-v-23, v-menu-nav-5)
+  const duplicates = await page.evaluate(() => {
+    const ids = [...document.querySelectorAll('[id]')]
+      .map((el) => el.id)
+      .filter((id) => /(^|-)(v|nav)-\d/.test(id))
+    return [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))]
+  })
+  expect(duplicates).toEqual([])
+  await page.keyboard.press('Escape')
+})
