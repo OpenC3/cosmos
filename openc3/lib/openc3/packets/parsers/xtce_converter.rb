@@ -484,15 +484,18 @@ module OpenC3
         end
       end
       unique.each do |item_name, unique_items|
-        if unique_items.length <= 1
-          unique[item_name] = unique_items[0]
+        # Keep legacy placeholders and time associations when every item is derived,
+        # but only compare definitions that emit a real parameter type.
+        emitted_items = unique_items.reject { |item| item.data_type == :DERIVED }
+        if emitted_items.length <= 1
+          unique[item_name] = emitted_items[0] || unique_items[0]
           next
         end
-        signature = parameter_signature(unique_items[0])
-        if unique_items.drop(1).any? { |item| parameter_signature(item) != signature }
+        signature = parameter_signature(emitted_items[0])
+        if emitted_items.drop(1).any? { |item| parameter_signature(item) != signature }
           raise "Telemetry item '#{item_name}' has conflicting XTCE definitions in packets #{origins[item_name].join(', ')}. Give these items distinct names before exporting."
         end
-        unique[item_name] = unique_items[0]
+        unique[item_name] = emitted_items[0]
       end
       unique
     end

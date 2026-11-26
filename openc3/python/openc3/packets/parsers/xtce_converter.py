@@ -55,7 +55,7 @@ class XtceConverter:
         telemetry: dict[str, Any],
         output_dir: str | os.PathLike[str],
     ) -> None:
-        """Export definitions after checking for incompatible telemetry names.
+        """Export definitions after checking for incompatible shared names.
 
         Args:
             commands: Command packets keyed by target name.
@@ -79,9 +79,11 @@ class XtceConverter:
             if target_name == "UNKNOWN":
                 continue
 
-            # Reject ambiguous telemetry definitions before replacing an existing export.
+            # Reject ambiguous definitions before replacing an existing export.
             if target_name in telemetry:
                 self._get_unique(telemetry[target_name])
+            if target_name in commands:
+                self._get_unique(commands[target_name])
 
             # Reverse order of packets for the target so things are in expected order for XTCE
             self._reverse_packet_order(target_name, commands)
@@ -371,7 +373,7 @@ class XtceConverter:
                 signature = self._parameter_signature(unique_items[0])
                 if any(self._parameter_signature(item) != signature for item in unique_items[1:]):
                     raise ValueError(
-                        f"Telemetry item '{item_name}' has conflicting XTCE definitions in packets "
+                        f"Item '{item_name}' has conflicting XTCE definitions in packets "
                         f"{', '.join(origins[item_name])}. Give these items distinct names before exporting."
                     )
                 unique[item_name] = unique_items[0]

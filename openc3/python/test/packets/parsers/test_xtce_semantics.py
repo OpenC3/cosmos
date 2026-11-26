@@ -64,6 +64,38 @@ class TestXtceSemantics(unittest.TestCase):
             self.assertEqual(len(document.xpath("//x:Parameter[@name='VALUE']", namespaces=ns)), 1)
             self.assertEqual(len(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", namespaces=ns)), 2)
 
+    def test_ignores_derived_items_when_a_numeric_item_has_the_same_name(self):
+        definitions = [
+            'TELEMETRY INST NUMERIC BIG_ENDIAN "Numeric"\n  APPEND_ITEM VALUE 16 UINT "Reading"\n',
+            'TELEMETRY INST COMPUTED BIG_ENDIAN "Computed"\n'
+            '  APPEND_ITEM OTHER 16 UINT "Wire field"\n'
+            '  APPEND_ITEM VALUE 0 DERIVED "Computed field"\n',
+        ]
+        for ordered in [definitions, definitions[::-1]]:
+            with self.subTest(order=ordered), tempfile.TemporaryDirectory() as directory:
+                config = self.parse("".join(ordered))
+                XtceConverter.convert(config.commands, config.telemetry, directory)
+                document = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
+                ns = {"x": XtceConverter.XTCE_NAMESPACE}
+                self.assertEqual(len(document.xpath("//x:Parameter[@name='VALUE']", namespaces=ns)), 1)
+                self.assertEqual(len(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", namespaces=ns)), 1)
+
+    def test_rejects_command_conflicts_before_replacing_an_existing_export(self):
+        for size, maximum in [(16, 10), (8, 20)]:
+            with self.subTest(size=size, maximum=maximum), tempfile.TemporaryDirectory() as directory:
+                config = self.parse(
+                    'COMMAND INST FIRST BIG_ENDIAN "First command"\n'
+                    '  APPEND_PARAMETER VALUE 8 UINT 0 10 0 "First argument"\n'
+                    'COMMAND INST SECOND BIG_ENDIAN "Second command"\n'
+                    f'  APPEND_PARAMETER VALUE {size} UINT 0 {maximum} 0 "Second argument"\n'
+                )
+                path = Path(directory) / "INST/cmd_tlm/inst.xtce"
+                path.parent.mkdir(parents=True)
+                path.write_text("previous export")
+                with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
+                    XtceConverter.convert(config.commands, config.telemetry, directory)
+                self.assertEqual(path.read_text(), "previous export")
+
     def test_exported_alarm_intervals_preserve_native_boundary_severity(self):
         config = self.parse(
             'TELEMETRY INST STATUS BIG_ENDIAN "Temperature"\n'

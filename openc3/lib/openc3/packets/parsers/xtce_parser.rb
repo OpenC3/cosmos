@@ -356,16 +356,16 @@ module OpenC3
         xtce_recurse_element(element) do |block_element|
           if block_element.name == 'WarningRange'
             @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            lower = block_element['minExclusive'] || block_element['minInclusive']
-            upper = block_element['maxExclusive'] || block_element['maxInclusive']
-            @current_type.limits[1] = Float(lower) if lower
-            @current_type.limits[2] = Float(upper) if upper
+            lower = parse_alarm_bound(block_element, 'min')
+            upper = parse_alarm_bound(block_element, 'max')
+            @current_type.limits[1] = lower if lower
+            @current_type.limits[2] = upper if upper
           elsif block_element.name == 'CriticalRange'
             @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            lower = block_element['minExclusive'] || block_element['minInclusive']
-            upper = block_element['maxExclusive'] || block_element['maxInclusive']
-            @current_type.limits[0] = Float(lower) if lower
-            @current_type.limits[3] = Float(upper) if upper
+            lower = parse_alarm_bound(block_element, 'min')
+            upper = parse_alarm_bound(block_element, 'max')
+            @current_type.limits[0] = lower if lower
+            @current_type.limits[3] = upper if upper
           end
           true
         end
@@ -662,6 +662,29 @@ module OpenC3
         end
       end
       array_num_items * bit_size
+    end
+
+    def parse_alarm_bound(element, side)
+      exclusive = element["#{side}Exclusive"]
+      inclusive = element["#{side}Inclusive"]
+      return nil unless exclusive || inclusive
+
+      # XTCE FloatRangeType attributes are xs:double, even on integer parameters.
+      value = Float(exclusive || inclusive)
+      return value if exclusive
+      raise 'Non-finite inclusive XTCE alarm bounds are not supported' unless value.finite?
+
+      # Packet readings are Integers or binary64 Floats. Choose the nearest
+      # reading outside the inclusive range across both domains; next_float
+      # alone would skip integer readings when the Float spacing exceeds one.
+      float_value = value.to_f
+      if side == 'min'
+        float_value = float_value.prev_float if float_value >= value
+        [value.ceil - 1, float_value].max
+      else
+        float_value = float_value.next_float if float_value <= value
+        [value.floor + 1, float_value].min
+      end
     end
 
     def get_data_type(type)
