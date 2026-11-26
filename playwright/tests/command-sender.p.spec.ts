@@ -1537,7 +1537,10 @@ test('sends manually entered state values', async ({ page, utils }) => {
 // The navigation and the tool are separate Vue apps, and Vue numbers useId()
 // per app. Duplicate ids point a field's aria-labelledby at the other app's
 // label, so the field gets the wrong accessible name.
-test('navigation ids do not collide with the tool', async ({ page }) => {
+test('navigation ids do not collide with the tool', async ({
+  page,
+  utils, // Logs in and opens Command Sender
+}) => {
   await expect(commandLine(page)).toBeVisible()
   // Opening a navigation menu renders it with a generated id
   await page.locator('[data-test="user-menu"]').click()
