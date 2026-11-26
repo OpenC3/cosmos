@@ -362,6 +362,8 @@ module OpenC3
             set_alarm_range(block_element, 1, 2)
           when 'CriticalRange'
             set_alarm_range(block_element, 0, 3)
+          else
+            # Continue traversing elements that do not define supported limits.
           end
           true
         end
