@@ -18,6 +18,170 @@ from openc3.topics.topic import Topic
 from test.test_helper import *
 
 
+class TestLimitsEventTopicLimitsGroupItems(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+
+    def test_returns_none_for_an_undefined_group(self):
+        self.assertIsNone(LimitsEventTopic.limits_group_items("NOPE", scope="DEFAULT"))
+
+    def test_expands_nested_groups_of_any_target_into_their_items(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "SYS__SPACECRAFT",
+            json.dumps(
+                [
+                    ["INST", "LIMITS_GROUP", "THERMAL"],
+                    ["INST", "HEALTH_STATUS", "VOLTS"],
+                    ["SYS", "LIMITS_GROUP", "UNDEFINED"],
+                ]
+            ),
+        )
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "INST__THERMAL",
+            json.dumps(
+                [
+                    ["INST", "HEALTH_STATUS", "TEMP1"],
+                    ["INST2", "HEALTH_STATUS", "TEMP2"],
+                    ["INST", "HEALTH_STATUS", "VOLTS"],
+                ]
+            ),
+        )
+        # Same group name in another target isn't the child
+        Store.hset("DEFAULT__limits_groups", "INST2__THERMAL", json.dumps([["INST2", "HEALTH_STATUS", "TEMP4"]]))
+        self.assertEqual(
+            LimitsEventTopic.limits_group_items("SYS__SPACECRAFT", scope="DEFAULT"),
+            {"INST": {"HEALTH_STATUS": ["TEMP1", "VOLTS"]}, "INST2": {"HEALTH_STATUS": ["TEMP2"]}},
+        )
+
+    def test_stops_at_cycles(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "INST__A",
+            json.dumps([["INST", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]),
+        )
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "INST__B",
+            json.dumps([["INST", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
+        )
+        self.assertEqual(
+            LimitsEventTopic.limits_group_items("INST__A", scope="DEFAULT"),
+            {"INST": {"HEALTH_STATUS": ["TEMP2", "TEMP1"]}},
+        )
+
+    def test_skips_nested_groups_without_cascade(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "SYS__SPACECRAFT",
+            json.dumps([["INST", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "VOLTS"]]),
+        )
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
+        self.assertEqual(
+            LimitsEventTopic.limits_group_items("SYS__SPACECRAFT", scope="DEFAULT", cascade=False),
+            {"INST": {"HEALTH_STATUS": ["VOLTS"]}},
+        )
+        # A group of only nested groups has no items of its own
+        Store.hset("DEFAULT__limits_groups", "SYS__ALL", json.dumps([["SYS", "LIMITS_GROUP", "SPACECRAFT"]]))
+        self.assertEqual(LimitsEventTopic.limits_group_items("SYS__ALL", scope="DEFAULT", cascade=False), {})
+
+
+class TestLimitsEventTopicLimitsGroupKeys(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+
+    def test_returns_the_group_and_every_defined_group_below_it_with_cascade(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "SYS__ALL",
+            json.dumps(
+                [
+                    ["INST", "LIMITS_GROUP", "THERMAL"],
+                    ["SYS", "LIMITS_GROUP", "UNDEFINED"],
+                    ["INST", "HEALTH_STATUS", "TEMP1"],
+                ]
+            ),
+        )
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", json.dumps([["INST", "LIMITS_GROUP", "INNER"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__INNER", json.dumps([["INST", "HEALTH_STATUS", "TEMP2"]]))
+        self.assertEqual(
+            sorted(LimitsEventTopic.limits_group_keys("SYS__ALL", scope="DEFAULT")),
+            ["INST__INNER", "INST__THERMAL", "SYS__ALL"],
+        )
+        self.assertEqual(LimitsEventTopic.limits_group_keys("SYS__ALL", scope="DEFAULT", cascade=False), ["SYS__ALL"])
+        self.assertEqual(LimitsEventTopic.limits_group_keys("NOPE", scope="DEFAULT"), [])
+        self.assertEqual(LimitsEventTopic.limits_group_keys(None, scope="DEFAULT"), [])
+
+    def test_write_only_disables_the_group_itself_without_cascade_and_otherwise_clears_the_flags(self):
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__ALL", json.dumps([["INST", "LIMITS_GROUP", "THERMAL"]]))
+        event = {
+            "type": "LIMITS_GROUP_ENABLE_STATE",
+            "target_name": "INST",
+            "group_name": "ALL",
+            "enabled": False,
+            "cascade": False,
+            "message": "TEST1",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {"INST__ALL": {"enabled": False}})
+        # ALL has no items of its own
+        self.assertEqual(Store.hgetall("DEFAULT__current_limits_settings"), {})
+        LimitsEventTopic.write({**event, "enabled": True}, scope="DEFAULT")
+        self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {})
+
+        # With cascade every item below is disabled so the groups follow their
+        # members, and enabling one of them later shows in the groups
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        LimitsEventTopic.write({**event, "group_name": "THERMAL"}, scope="DEFAULT")
+        self.assertEqual(sorted(LimitsEventTopic.limits_group_settings("DEFAULT")), ["INST__ALL", "INST__THERMAL"])
+        LimitsEventTopic.write({**event, "cascade": True}, scope="DEFAULT")
+        self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {})
+        settings = json.loads(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1"))
+        self.assertFalse(settings["enabled"])
+
+    def test_delete_removes_a_deleted_targets_group_flags(self):
+        Store.hset("DEFAULT__limits_group_settings", "INST__ALL", json.dumps({"enabled": False}))
+        Store.hset("DEFAULT__limits_group_settings", "INST2__ALL", json.dumps({"enabled": False}))
+        LimitsEventTopic.delete("INST", "HEALTH_STATUS", scope="DEFAULT")
+        self.assertEqual(sorted(LimitsEventTopic.limits_group_settings("DEFAULT")), ["INST2__ALL", "INST__ALL"])
+        LimitsEventTopic.delete("INST", scope="DEFAULT")
+        self.assertEqual(list(LimitsEventTopic.limits_group_settings("DEFAULT")), ["INST2__ALL"])
+
+
+class TestLimitsEventTopicFindLimitsGroup(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        for key in ["INST__TEMPS", "INST2__TEMPS", "INST__POWER", "LEGACY"]:
+            Store.hset("DEFAULT__limits_groups", key, "[]")
+
+    def test_finds_a_group_by_target_and_name(self):
+        self.assertEqual(LimitsEventTopic.find_limits_group("inst2", "temps", "DEFAULT"), "INST2__TEMPS")
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP INST2 POWER undefined"):
+            LimitsEventTopic.find_limits_group("INST2", "POWER", "DEFAULT")
+
+    def test_finds_a_group_by_a_name_only_one_target_defines(self):
+        self.assertEqual(LimitsEventTopic.find_limits_group(None, "power", "DEFAULT"), "INST__POWER")
+        self.assertEqual(LimitsEventTopic.find_limits_group(None, "LEGACY", "DEFAULT"), "LEGACY")
+        self.assertEqual(LimitsEventTopic.find_limits_group(None, "INST2__TEMPS", "DEFAULT"), "INST2__TEMPS")
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP NOPE undefined"):
+            LimitsEventTopic.find_limits_group(None, "NOPE", "DEFAULT")
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP TEMPS is defined by targets INST, INST2"):
+            LimitsEventTopic.find_limits_group(None, "TEMPS", "DEFAULT")
+
+    def test_splits_keys(self):
+        self.assertEqual(LimitsEventTopic.split_limits_group_key("INST__TEMPS"), ("INST", "TEMPS"))
+        self.assertEqual(LimitsEventTopic.split_limits_group_key("LEGACY"), (None, "LEGACY"))
+
+    def test_finds_the_group_of_an_event(self):
+        event = {"target_name": "INST2", "group_name": "TEMPS"}
+        self.assertEqual(LimitsEventTopic.limits_group_event_key(event, "DEFAULT"), "INST2__TEMPS")
+        self.assertEqual(LimitsEventTopic.limits_group_event_key({"group_name": "POWER"}, "DEFAULT"), "INST__POWER")
+        # Without a target the name is ambiguous
+        self.assertIsNone(LimitsEventTopic.limits_group_event_key({"group_name": "TEMPS"}, "DEFAULT"))
+
+
 class TestLimitsEventTopic(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
@@ -612,6 +776,29 @@ class TestLimitsEventTopic(unittest.TestCase):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
+    def test_applies_a_limits_group_enable_state_event_without_cascade_to_the_groups_own_items(self):
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "INST__ALL",
+            json.dumps([["INST", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "TEMP3"]]),
+        )
+        event = {
+            "type": "LIMITS_GROUP_ENABLE_STATE",
+            "target_name": "INST",
+            "group_name": "ALL",
+            "enabled": False,
+            "cascade": False,
+            "message": "TEST1",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(
+            list(Store.hgetall("DEFAULT__current_limits_settings").keys()), [b"INST__HEALTH_STATUS__TEMP3"]
+        )
+        LimitsEventTopic.process_event(json.loads(json.dumps(event)), scope="DEFAULT")
+        self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
     def test_process_event_applies_the_rest_of_a_group_when_one_item_fails(self):
         original_disable = System.limits.disable
 
@@ -772,6 +959,44 @@ class TestLimitsEventTopic(unittest.TestCase):
             getattr(LimitsEventTopic, method)(scope="DEFAULT")
             self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
             self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
+    def test_sync_limits_group_enable_state_with_and_without_cascade(self):
+        for method in ["sync_system", "sync_system_thread_body"]:
+            with self.subTest(method=method):
+                # Make initial call to set the stream offset so we don't miss anything
+                getattr(LimitsEventTopic, method)(scope="DEFAULT")
+                Store.hset("DEFAULT__limits_groups", "INST__THERMAL", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
+                Store.hset(
+                    "DEFAULT__limits_groups",
+                    "INST__ALL",
+                    json.dumps([["INST", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "TEMP3"]]),
+                )
+                event = {
+                    "type": "LIMITS_GROUP_ENABLE_STATE",
+                    "target_name": "INST",
+                    "group_name": "ALL",
+                    "enabled": False,
+                    "message": "TEST1",
+                }
+                LimitsEventTopic.write(event, scope="DEFAULT")
+                getattr(LimitsEventTopic, method)(scope="DEFAULT")
+                self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+                self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
+                LimitsEventTopic.write({**event, "enabled": True, "cascade": False}, scope="DEFAULT")
+                getattr(LimitsEventTopic, method)(scope="DEFAULT")
+                self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+                self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+                settings = {
+                    key.decode(): json.loads(value)["enabled"]
+                    for key, value in Store.hgetall("DEFAULT__current_limits_settings").items()
+                }
+                self.assertEqual(settings["INST__HEALTH_STATUS__TEMP1"], False)
+                self.assertEqual(settings["INST__HEALTH_STATUS__TEMP3"], True)
+
+                LimitsEventTopic.write({**event, "enabled": True, "cascade": True}, scope="DEFAULT")
+                getattr(LimitsEventTopic, method)(scope="DEFAULT")
+                self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
 
 class TestLimitsEventTopicMultipleDbShards(unittest.TestCase):

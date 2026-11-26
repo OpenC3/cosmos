@@ -22,18 +22,38 @@
 require 'fileutils'
 require 'optparse'
 
+# Limits groups are nested rollups. Each level lists how many of it are in
+# one of the level above, e.g. 10 payloads per vehicle. Only boards contain
+# telemetry items, every other level contains the groups of the level below.
+# One vehicle is about 1000 groups and 840 boards (~30 items each by default).
+LIMITS_GROUP_LEVELS = [
+  ['VEHICLE', 1],
+  ['PAYLOAD', 10],
+  ['SUBSYSTEM', 3],
+  ['BOX', 4],
+  ['BOARD', 7],
+].freeze
+# 1 + 10 + 10*3 + 10*3*4 + 10*3*4*7 = 1 + 10 + 30 + 120 + 840 = 1001
+LIMITS_GROUPS_PER_VEHICLE = LIMITS_GROUP_LEVELS.each_index.sum { |i| LIMITS_GROUP_LEVELS[1..i].map(&:last).inject(1, :*) }
+BOARDS_PER_VEHICLE = LIMITS_GROUP_LEVELS[1..].map(&:last).inject(1, :*)
+
 options = {
   output: File.join(__dir__, 'generated'),
   target: 'BIG',
   language: 'ruby',
-  tlm_packets: 2_000,
-  tlm_items: 500_000,
-  tlm_states: 2_000_000,
+  # Sized so the installed target and QuestDB fit in a 16 GB Docker VM. Each
+  # BIG microservice loads the whole definition and QuestDB keeps a writer
+  # (~2.6 MB for a 532 column table) open for 10 minutes after each write.
+  tlm_packets: 500,
+  tlm_items: 125_000,
+  tlm_states: 500_000,
   tlm_item1_states: 1000,
-  cmd_packets: 2_000,
-  cmd_params: 500_000,
-  cmd_states: 2_000_000,
+  cmd_packets: 500,
+  cmd_params: 125_000,
+  cmd_states: 500_000,
   cmd_param1_states: 1000,
+  vehicles: 1,
+  limits_group_items: 25_000,
   desc_min: 50,
   desc_max: 250,
   seed: 1234,
@@ -52,6 +72,8 @@ OptionParser.new do |opts|
   opts.on('--cmd-params N', Integer, "Total command parameters (default: #{options[:cmd_params]})") { |v| options[:cmd_params] = v }
   opts.on('--cmd-states N', Integer, "Total command states (default: #{options[:cmd_states]})") { |v| options[:cmd_states] = v }
   opts.on('--cmd-param1-states N', Integer, "States on the first command's PARAM1, replacing its share of --cmd-states (default: #{options[:cmd_param1_states]})") { |v| options[:cmd_param1_states] = v }
+  opts.on('--vehicles N', Integer, "Vehicles of #{LIMITS_GROUPS_PER_VEHICLE} nested limits groups, 0 for none (default: #{options[:vehicles]})") { |v| options[:vehicles] = v }
+  opts.on('--limits-group-items N', Integer, "Telemetry items spread over the board limits groups (default: #{options[:limits_group_items]})") { |v| options[:limits_group_items] = v }
   opts.on('--desc-min N', Integer, "Min description length (default: #{options[:desc_min]})") { |v| options[:desc_min] = v }
   opts.on('--desc-max N', Integer, "Max description length (default: #{options[:desc_max]})") { |v| options[:desc_max] = v }
   opts.on('--seed N', Integer, "Random seed (default: #{options[:seed]})") { |v| options[:seed] = v }
@@ -59,6 +81,19 @@ end.parse!
 
 if options[:tlm_items] < options[:tlm_packets] or options[:cmd_params] < options[:cmd_packets]
   abort "Every packet needs at least one item/parameter for its ID field"
+end
+vehicles = options[:vehicles]
+options[:limits_group_items] = 0 if vehicles <= 0
+if options[:limits_group_items] > options[:tlm_items]
+  abort "--limits-group-items must be <= --tlm-items"
+end
+# Every other limits group item gets LIMITS, the rest get colored states
+limits_value_items = (options[:limits_group_items] + 1) / 2
+if limits_value_items == options[:tlm_items] and options[:tlm_states] > 0
+  abort "--tlm-items must leave items for the states"
+end
+if vehicles > 0 and options[:limits_group_items] < vehicles * BOARDS_PER_VEHICLE
+  abort "--limits-group-items must be at least one per board (#{vehicles * BOARDS_PER_VEHICLE} boards)"
 end
 if options[:desc_min] > options[:desc_max]
   abort "--desc-min must be <= --desc-max"
@@ -101,24 +136,43 @@ File.write(File.join(target_dir, 'target.txt'), "LANGUAGE #{options[:language]}\
 
 start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-# Telemetry: every packet starts with an ID item. States are spread evenly
-# over every item (ID items included), except the first packet's ITEM1 which
-# gets exactly --tlm-item1-states states. tlm_total_states is the real total.
+# Telemetry: every packet starts with an ID item. The limits group items are
+# spread evenly over every item (ID items included). Every other one gets
+# LIMITS and the rest get GREEN, YELLOW and RED states. Items with STATE
+# can't have LIMITS, so the states are spread evenly over every item without
+# LIMITS, except the first packet's ITEM1 which gets exactly
+# --tlm-item1-states states (unless it has LIMITS). tlm_total_states is the
+# real total.
 tlm_file = File.join(cmd_tlm_dir, 'tlm.txt')
 items_per_packet = distribute(options[:tlm_items], options[:tlm_packets])
-states_per_item = distribute(options[:tlm_states], options[:tlm_items])
-if items_per_packet[0] > 1
-  # Item index 1 is PKT0 ITEM1 (index 0 is PKT0's PKT_ID)
-  states_per_item[1] = options[:tlm_item1_states]
-end
-tlm_total_states = states_per_item.sum
+states_per_item = distribute(options[:tlm_states], options[:tlm_items] - limits_value_items)
+STATE_COLORS = %w(GREEN YELLOW RED).freeze
+tlm_total_states = 0
+item1_states = 0
 item_index = 0
+state_item_index = 0
+limits_group_items = []
 File.open(tlm_file, 'w') do |file|
   items_per_packet.each_with_index do |num_items, packet_index|
     file.puts "TELEMETRY #{target} PKT#{packet_index} BIG_ENDIAN \"#{description(options[:desc_min], options[:desc_max])}\""
     num_items.times do |i|
-      num_states = states_per_item[item_index]
+      grouped = ((item_index + 1) * options[:limits_group_items]) / options[:tlm_items] > (item_index * options[:limits_group_items]) / options[:tlm_items]
       item_index += 1
+      limits = (grouped and limits_group_items.length.even?)
+      limits_group_items << "PKT#{packet_index} #{i == 0 ? 'PKT_ID' : "ITEM#{i}"}" if grouped
+      if limits
+        num_states = 0
+      else
+        num_states = states_per_item[state_item_index]
+        state_item_index += 1
+        num_states = options[:tlm_item1_states] if packet_index == 0 and i == 1
+        # With too few states to go around a grouped item without states
+        # gets LIMITS instead so every grouped item is checked
+        limits = (grouped and num_states == 0)
+      end
+      colors = (grouped and !limits)
+      tlm_total_states += num_states
+      item1_states = num_states if packet_index == 0 and i == 1
       # Enough bits to hold a unique value for every state (and the packet ID)
       max_value = [num_states - 1, i == 0 ? packet_index : 0, 1].max
       bit_size = [16, max_value.bit_length].max
@@ -129,8 +183,18 @@ File.open(tlm_file, 'w') do |file|
       else
         file.puts "  APPEND_ITEM ITEM#{i} #{bit_size} UINT \"#{desc}\""
       end
+      if limits
+        # Values from 0 up to half the range (including the packet ID) are
+        # green, so a zero filled packet is green and rollups start green
+        max = (1 << bit_size) - 1
+        file.puts "    LIMITS DEFAULT 1 ENABLED -2 -1 #{max / 2} #{max * 3 / 4}"
+      end
       num_states.times do |state|
-        file.puts "    STATE S#{state} #{state}"
+        if colors
+          file.puts "    STATE S#{state} #{state} #{STATE_COLORS[state % STATE_COLORS.length]}"
+        else
+          file.puts "    STATE S#{state} #{state}"
+        end
       end
     end
     file.puts
@@ -172,6 +236,47 @@ File.open(cmd_file, 'w') do |file|
     end
     file.puts
   end
+end
+
+# Limits groups: every vehicle is a tree of nested groups with the telemetry
+# items in the boards at the bottom. Groups are written before the groups
+# which contain them.
+limits_groups_file = File.join(cmd_tlm_dir, 'limits_groups.txt')
+num_limits_groups = 0
+if vehicles > 0
+  items_per_board = distribute(limits_group_items.length, vehicles * BOARDS_PER_VEHICLE)
+  board_index = 0
+  item_offset = 0
+  File.open(limits_groups_file, 'w') do |file|
+    write_group = lambda do |name, level|
+      if level == LIMITS_GROUP_LEVELS.length - 1
+        num_items = items_per_board[board_index]
+        board_index += 1
+        file.puts "LIMITS_GROUP #{name}"
+        limits_group_items[item_offset, num_items].each { |item| file.puts "  LIMITS_GROUP_ITEM #{target} #{item}" }
+        item_offset += num_items
+      else
+        child_name, count = LIMITS_GROUP_LEVELS[level + 1]
+        children = Array.new(count) { |i| "#{name}_#{child_name}#{i}" }
+        children.each { |child| write_group.call(child, level + 1) }
+        file.puts "LIMITS_GROUP #{name}"
+        children.each { |child| file.puts "  NESTED_LIMITS_GROUP #{child}" }
+      end
+      num_limits_groups += 1
+      file.puts
+    end
+    vehicles.times { |i| write_group.call("#{LIMITS_GROUP_LEVELS[0][0]}#{i}", 0) }
+  end
+end
+# The benchmark runs from Script Runner once the plugin is installed
+benchmark_file = File.join(target_dir, 'procedures', 'limits_group_benchmark.rb')
+if num_limits_groups > 0
+  FileUtils.mkdir_p(File.dirname(benchmark_file))
+  benchmark = File.read(File.join(__dir__, 'limits_group_benchmark.rb'))
+  File.write(benchmark_file, benchmark.sub("TARGET = 'BIG'", "TARGET = '#{target}'"))
+else
+  FileUtils.rm_f(limits_groups_file)
+  FileUtils.rm_f(benchmark_file)
 end
 
 # Plugin files so the output directory can be built into a gem and installed
@@ -228,17 +333,28 @@ File.write(File.join(plugin_dir, "#{plugin_name}.gemspec"), <<~GEMSPEC)
     s.files = Dir.glob("targets/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt#{extra_files})
   end
 GEMSPEC
+# The benchmark procedure is only generated with limits groups
+limits_group_readme = "\n"
+if num_limits_groups > 0
+  limits_group_readme = <<~LIMITS_GROUPS
+    #{num_limits_groups} limits groups nested #{LIMITS_GROUP_LEVELS.map(&:first).reverse.join(' > ').downcase}
+    contain #{limits_group_items.length} telemetry items.
+
+    Run `targets/#{target}/procedures/limits_group_benchmark.rb` in Script Runner
+    to benchmark the limits group microservice.
+
+  LIMITS_GROUPS
+end
 File.write(File.join(plugin_dir, 'README.md'), <<~README)
   # #{plugin_name}
 
   Generated by `openc3/test/integration/cmd_tlm/#{File.basename(__FILE__)}`.
   Contains the #{options[:language]} target #{target} with #{options[:tlm_packets]} telemetry
   packets (#{options[:tlm_items]} items, #{tlm_total_states} states,
-  #{states_per_item[1]} on the first packet's ITEM1) and
+  #{item1_states} on the first packet's ITEM1) and
   #{options[:cmd_packets]} command packets (#{options[:cmd_params]} parameters, #{cmd_total_states} states,
   #{states_per_param[1]} on the first command's PARAM1).
-
-  Build from this directory with `rake build VERSION=1.0.0` (or
+  #{limits_group_readme}Build from this directory with `rake build VERSION=1.0.0` (or
   `gem build #{plugin_name}.gemspec`) and install the resulting gem in COSMOS.
 README
 
@@ -246,7 +362,11 @@ elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
 puts "Generated #{options[:language]} plugin #{plugin_name} in #{elapsed.round(2)}s"
 puts "  #{tlm_file} (#{(File.size(tlm_file) / 1_048_576.0).round(1)} MB): " \
      "#{options[:tlm_packets]} packets, #{options[:tlm_items]} items, #{tlm_total_states} states " \
-     "(#{states_per_item[1]} on PKT0 ITEM1)"
+     "(#{item1_states} on PKT0 ITEM1)"
 puts "  #{cmd_file} (#{(File.size(cmd_file) / 1_048_576.0).round(1)} MB): " \
      "#{options[:cmd_packets]} packets, #{options[:cmd_params]} parameters, #{cmd_total_states} states " \
      "(#{states_per_param[1]} on CMD0 PARAM1)"
+if num_limits_groups > 0
+  puts "  #{limits_groups_file} (#{(File.size(limits_groups_file) / 1_048_576.0).round(1)} MB): " \
+       "#{num_limits_groups} groups (#{vehicles} #{vehicles == 1 ? "vehicle" : "vehicles"}), #{limits_group_items.length} items"
+end

@@ -1268,6 +1268,111 @@ module OpenC3
       end
     end
 
+    describe "limits groups" do
+      before(:each) do
+        @target_dir = File.join(SPEC_DIR, "install", "config", "targets")
+      end
+
+      it "stores the groups and the LIMITS_GROUP packet of the target which defines them" do
+        model = TargetModel.new(folder_name: "SYSTEM", name: "SYSTEM", scope: "DEFAULT", db_shard: 1)
+        model.create
+        model.update_store(System.new(["SYSTEM"], @target_dir))
+        expect(TargetModel.get(name: "SYSTEM", scope: "DEFAULT")["limits_groups"]).to eql %w(FIRST SECOND)
+        expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__FIRST SYSTEM__SECOND)
+
+        db_shard1 = Store.instance(db_shard: 1)
+        packet = JSON.parse(db_shard1.hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))
+        expect(packet["virtual"]).to be true
+        expect(packet["hidden"]).to be_falsey
+        items = packet["items"].map { |item| item["name"] }
+        expect(items).to include("FIRST", "FIRST_ENABLED", "SECOND", "SECOND_ENABLED")
+        # The CVT is seeded like any packet so it can be read before it's published
+        expect(db_shard1.hexists("DEFAULT__tlm__SYSTEM", "LIMITS_GROUP")).to be true
+        # LATEST never resolves to LIMITS_GROUP
+        expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).to_not have_key("FIRST")
+      end
+
+      it "fails for a target with a telemetry packet of its own named LIMITS_GROUP" do
+        Dir.mktmpdir do |dir|
+          FileUtils.cp_r(File.join(@target_dir, "SYSTEM"), dir)
+          File.write(File.join(dir, "SYSTEM", "cmd_tlm", "own_tlm.txt"), "TELEMETRY SYSTEM LIMITS_GROUP BIG_ENDIAN \"Mine\"\n  APPEND_ITEM MINE 8 UINT\n")
+          expect { System.new(["SYSTEM"], dir) }.to raise_error(/Telemetry packet name LIMITS_GROUP is reserved/)
+        end
+      end
+    end
+
+    describe "check_limits_groups" do
+      def build_system(groups, name = "INST")
+        double("System", limits: double("Limits", groups: { name => groups }))
+      end
+
+      def model(name = "INST")
+        TargetModel.new(folder_name: name, name: name, scope: "DEFAULT", plugin: 'PLUGIN')
+      end
+
+      def install_groups(target_name, groups)
+        TargetModel.new(folder_name: target_name, name: target_name, scope: "DEFAULT", plugin: 'OTHER', limits_groups: groups.keys).create
+        groups.each { |group, items| Store.hset("DEFAULT__limits_groups", "#{target_name}__#{group}", JSON.generate(items)) }
+      end
+
+      it "allows the same group name in different targets" do
+        install_groups("INST2", { "TEMPS" => [%w(INST2 HEALTH_STATUS TEMP1)] })
+        expect(Logger).not_to receive(:warn)
+        model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] }))
+      end
+
+      it "skips the member of a group which contains itself" do
+        groups = { "TEMPS" => [%w(INST HEALTH_STATUS TEMP1), %w(INST LIMITS_GROUP TEMPS)] }
+        expect(Logger).to receive(:warn).with("LIMITS_GROUP INST TEMPS contains itself: INST TEMPS -> INST TEMPS. Skipping its member INST LIMITS_GROUP TEMPS since nested limits groups can't form a loop.")
+        model.check_limits_groups(build_system(groups))
+        expect(groups).to eql({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })
+      end
+
+      it "skips the member of the target which closes a loop through groups of other targets" do
+        install_groups("INST2", { "B" => [%w(INST2 LIMITS_GROUP C)], "C" => [%w(INST LIMITS_GROUP A)] })
+        groups = { "A" => [%w(INST2 LIMITS_GROUP B), %w(INST HEALTH_STATUS TEMP1)] }
+        expect(Logger).to receive(:warn).with("LIMITS_GROUP INST A contains itself: INST A -> INST2 B -> INST2 C -> INST A. Skipping its member INST2 LIMITS_GROUP B since nested limits groups can't form a loop.")
+        model.check_limits_groups(build_system(groups))
+        expect(groups).to eql({ "A" => [%w(INST HEALTH_STATUS TEMP1)] })
+      end
+
+      it "skips one member per loop" do
+        # A -> B -> A and A -> C -> A each lose their last member of INST
+        groups = { "A" => [%w(INST LIMITS_GROUP B), %w(INST LIMITS_GROUP C)], "B" => [%w(INST LIMITS_GROUP A)], "C" => [%w(INST LIMITS_GROUP A)] }
+        warnings = []
+        allow(Logger).to receive(:warn) { |message| warnings << message }
+        model.check_limits_groups(build_system(groups))
+        expect(warnings.length).to eql 2
+        expect(groups).to eql({ "A" => [%w(INST LIMITS_GROUP B), %w(INST LIMITS_GROUP C)], "B" => [], "C" => [] })
+      end
+
+      it "only warns about a loop between groups of other targets" do
+        # Install never stores one but leave the other targets' groups alone if it's there
+        install_groups("INST2", { "B" => [%w(INST2 LIMITS_GROUP C)], "C" => [%w(INST2 LIMITS_GROUP B)] })
+        groups = { "A" => [%w(INST2 LIMITS_GROUP B)] }
+        expect(Logger).to receive(:warn).with(/LIMITS_GROUP INST2 C contains itself: INST2 B -> INST2 C -> INST2 B\. Nested limits groups can't form a loop\./)
+        model.check_limits_groups(build_system(groups))
+        expect(groups).to eql({ "A" => [%w(INST2 LIMITS_GROUP B)] })
+      end
+
+      it "replaces the target's own installed groups" do
+        # The old definition loops but the new one doesn't
+        install_groups("INST", { "A" => [%w(INST LIMITS_GROUP A)] })
+        expect(Logger).not_to receive(:warn)
+        model.check_limits_groups(build_system({ "A" => [%w(INST HEALTH_STATUS TEMP1)] }))
+      end
+
+      it "allows nesting, shared children and children which aren't installed yet" do
+        install_groups("INST2", { "THERMAL" => [%w(INST2 HEALTH_STATUS TEMP1)] })
+        groups = {
+          "SPACECRAFT" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST LIMITS_GROUP POWER), %w(INST LIMITS_GROUP LATER)],
+          "POWER" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)],
+        }
+        expect(Logger).not_to receive(:warn)
+        model.check_limits_groups(build_system(groups))
+      end
+    end
+
     describe "check_command_default_sizes" do
       def build_system(packet)
         packet_config = double("PacketConfig", telemetry: {}, commands: { "INST" => { "PKT" => packet } })
@@ -1735,7 +1840,7 @@ module OpenC3
         expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to include("ABORT")
         expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to_not include("STALE")
         # SYSTEM is still read from db_shard 0
-        expect(TargetModel.packet_names("SYSTEM", scope: "DEFAULT")).to eql %w(LIMITS_CHANGE META)
+        expect(TargetModel.packet_names("SYSTEM", scope: "DEFAULT")).to eql %w(LIMITS_CHANGE LIMITS_GROUP META)
       end
 
       it "set_packet writes to the target's db_shard" do

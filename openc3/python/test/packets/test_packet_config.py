@@ -13,9 +13,11 @@
 # See https://github.com/OpenC3/cosmos/pull/1953
 
 import os
+import re
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from cbor2 import dump, loads
 
@@ -144,6 +146,7 @@ class TestPacketConfig(unittest.TestCase):
         "SELECT_TELEMETRY",
         "LIMITS_GROUP",
         "LIMITS_GROUP_ITEM",
+        "NESTED_LIMITS_GROUP",
     ]
     # Keywords that require a current TELEMETRY packet (telemetry-specific ITEM keywords)
     tlm_keywords = [
@@ -311,6 +314,8 @@ class TestPacketConfig(unittest.TestCase):
                         tf.write("LIMITS_GROUP name extra")
                     case "LIMITS_GROUP_ITEM":
                         tf.write("LIMITS_GROUP_ITEM target packet item extra")
+                    case "NESTED_LIMITS_GROUP":
+                        tf.write("NESTED_LIMITS_GROUP target group extra")
                 tf.seek(0)
                 with self.assertRaisesRegex(ConfigParser.Error, f"Too many parameters for {keyword}"):
                     self.pc.process_file(tf.name, "TGT1")
@@ -529,7 +534,180 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.assertEqual(len(self.pc.limits_groups), 0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(list(self.pc.limits_groups.keys()), ["TVAC", "VIBE"])
+            self.assertEqual(list(self.pc.limits_groups["TGT1"].keys()), ["TVAC", "VIBE"])
+
+    def test_keeps_the_limits_groups_of_each_target_separate(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP TEMPS\n")
+            tf.write("  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.pc.process_file(tf.name, "TGT2")
+            self.assertEqual(
+                self.pc.limits_groups,
+                {"TGT1": {"TEMPS": [["TGT1", "PKT1", "ITEM1"]]}, "TGT2": {"TEMPS": [["TGT1", "PKT1", "ITEM1"]]}},
+            )
+
+    def test_skips_with_a_warning_group_names_which_cant_be_limits_group_items(self):
+        bad_names = {
+            "TEMP__A": "cannot contain a double underscore",
+            "TEMP_": "cannot end with an underscore",
+            "FOO_ENABLED": "LIMITS_GROUP FOO_ENABLED cannot end with _ENABLED",
+            "received_count": "LIMITS_GROUP RECEIVED_COUNT is a reserved item name",
+            "packet_time": "LIMITS_GROUP PACKET_TIME would replace the packet time of LIMITS_GROUP",
+            "A" * 120: "must be 119 characters or less",
+            # These would share a column with TEMP_A
+            "TEMP.A": "cannot contain '\\.' since the time-series database replaces it with an underscore",
+            "TEMP-A": "cannot contain '-' since the time-series database replaces it with an underscore",
+        }
+        for name, error in bad_names.items():
+            with (
+                self.subTest(name=name),
+                tempfile.NamedTemporaryFile(mode="w") as tf,
+                patch("openc3.packets.packet_config.Logger") as logger,
+            ):
+                tf.write(f"LIMITS_GROUP {name}\n")
+                # The group's members are skipped too
+                tf.write("  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
+                tf.seek(0)
+                self.pc.process_file(tf.name, "TGT1")
+                message = logger.warn.call_args[0][0]
+                self.assertRegex(message, error)
+                self.assertIn(f"Skipping the group. ({tf.name}:1)", message)
+                self.assertEqual(self.pc.warnings[-1], message)
+                self.assertNotIn("TGT1", self.pc.limits_groups)
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write(f"LIMITS_GROUP {'A' * 119}\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertIn("A" * 119, self.pc.limits_groups["TGT1"])
+
+    def test_rejects_exactly_the_group_name_characters_the_time_series_database_replaces(self):
+        from openc3.utilities.questdb_client import QuestDBClient
+
+        chars = [chr(code) for code in range(32, 127)]
+        replaced = [char for char in chars if QuestDBClient.sanitize_column_name(f"A{char}B") != f"A{char}B"]
+        rejected = [char for char in chars if re.search(PacketConfig.LIMITS_GROUP_COLUMN_INVALID_CHARS, char)]
+        self.assertEqual(rejected, replaced)
+
+    def test_adds_a_nested_group_with_nested_limits_group_as_its_limits_group_item(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP SPACECRAFT\n")
+            tf.write("NESTED_LIMITS_GROUP thermal\n")
+            tf.write("NESTED_LIMITS_GROUP tgt2 POWER\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertEqual(
+                self.pc.limits_groups["TGT1"]["SPACECRAFT"],
+                [["TGT1", "LIMITS_GROUP", "THERMAL"], ["TGT2", "LIMITS_GROUP", "POWER"]],
+            )
+
+    def test_skips_with_a_warning_a_limits_group_item_in_a_limits_group_packet(self):
+        with (
+            tempfile.NamedTemporaryFile(mode="w") as tf,
+            patch("openc3.packets.packet_config.Logger") as logger,
+        ):
+            tf.write("LIMITS_GROUP SPACECRAFT\n")
+            tf.write("LIMITS_GROUP_ITEM TGT2 LIMITS_GROUP POWER\n")
+            tf.write("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertRegex(
+                logger.warn.call_args[0][0],
+                "LIMITS_GROUP SPACECRAFT member TGT2 LIMITS_GROUP POWER: use NESTED_LIMITS_GROUP TGT2 POWER to nest a limits group. Skipping the member",
+            )
+            self.assertEqual(self.pc.limits_groups["TGT1"]["SPACECRAFT"], [["TGT1", "PKT1", "ITEM1"]])
+
+    def test_complains_about_a_limits_group_item_with_one_parameter(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP SPACECRAFT\n")
+            tf.write("LIMITS_GROUP_ITEM THERMAL\n")
+            tf.seek(0)
+            with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for LIMITS_GROUP_ITEM"):
+                self.pc.process_file(tf.name, "TGT1")
+
+    def test_skips_with_a_warning_a_nested_group_name_limits_group_does_not_accept(self):
+        for member in [
+            '"CHILD GROUP"',
+            'TGT2 "CHILD GROUP"',
+            "CHILD__GROUP",
+            "TGT2 CHILD_ENABLED",
+            "RECEIVED_COUNT",
+        ]:
+            pc = PacketConfig()
+            with (
+                self.subTest(member=member),
+                tempfile.NamedTemporaryFile(mode="w") as tf,
+                patch("openc3.packets.packet_config.Logger") as logger,
+            ):
+                tf.write("LIMITS_GROUP SPACECRAFT\n")
+                tf.write(f"NESTED_LIMITS_GROUP {member}\n")
+                tf.write("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
+                tf.seek(0)
+                pc.process_file(tf.name, "TGT1")
+                self.assertRegex(
+                    logger.warn.call_args[0][0],
+                    "LIMITS_GROUP SPACECRAFT member NESTED_LIMITS_GROUP .* Skipping the member",
+                )
+                self.assertEqual(pc.limits_groups["TGT1"]["SPACECRAFT"], [["TGT1", "PKT1", "ITEM1"]])
+        # Items of other packets aren't group names
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP SPACECRAFT\n")
+            tf.write('LIMITS_GROUP_ITEM TGT2 PKT "ITEM NAME"\n')
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertEqual(self.pc.limits_groups["TGT1"]["SPACECRAFT"], [["TGT2", "PKT", "ITEM NAME"]])
+
+    def test_build_limits_group_packet_adds_nothing_without_limits_groups(self):
+        self.pc.build_limits_group_packet("TGT1")
+        self.assertNotIn("TGT1", self.pc.telemetry)
+
+    def test_build_limits_group_packet_adds_a_visible_packet_which_is_never_identified(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY TGT1 PKT1 BIG_ENDIAN "Packet"\n')
+            tf.write("  ITEM ITEM1 0 8 UINT\n")
+            tf.write("LIMITS_GROUP VIBE\n")
+            tf.write("LIMITS_GROUP TVAC\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+        self.pc.build_limits_group_packet("TGT1")
+        packet = self.pc.telemetry["TGT1"]["LIMITS_GROUP"]
+        self.assertEqual(packet.target_name, "TGT1")
+        self.assertTrue(packet.virtual)
+        self.assertFalse(packet.hidden)
+        self.assertFalse(packet.disabled)
+        self.assertFalse(packet.identify(b"\x00"))
+        names = [item.name for item in packet.sorted_items]
+        for name in ["TVAC", "TVAC_ENABLED", "VIBE", "VIBE_ENABLED", "RECEIVED_COUNT"]:
+            self.assertIn(name, names)
+        self.assertEqual(packet.get_item("TVAC").states, {"GREEN": 0, "YELLOW": 1, "RED": 2, "BLUE": 3, "DISABLED": 4})
+        self.assertEqual(packet.get_item("TVAC_ENABLED").states, {"FALSE": 0, "TRUE": 1, "PARTIAL": 2})
+
+    def test_rejects_a_telemetry_packet_named_limits_group(self):
+        # With or without limits groups, and in any case
+        for groups in ["", "LIMITS_GROUP TVAC\n"]:
+            with tempfile.NamedTemporaryFile(mode="w") as tf:
+                tf.write('TELEMETRY TGT1 limits_group BIG_ENDIAN "Packet"\n')
+                tf.write("  ITEM ITEM1 0 8 UINT\n")
+                tf.write(groups)
+                tf.seek(0)
+                with self.assertRaisesRegex(ConfigParser.Error, "Telemetry packet name LIMITS_GROUP is reserved"):
+                    self.pc.process_file(tf.name, "TGT1")
+
+    def test_allows_a_command_packet_named_limits_group(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('COMMAND TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"\n')
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+        self.assertIsNotNone(self.pc.commands["TGT1"]["LIMITS_GROUP"])
+
+    def test_limits_group_item_complains_about_two_parameters(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP TVAC\n")
+            tf.write("LIMITS_GROUP_ITEM TGT1 PKT1\n")
+            tf.seek(0)
+            with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for LIMITS_GROUP_ITEM"):
+                self.pc.process_file(tf.name, "TGT1")
 
     def test_adds_a_new_limits_item_to_the_group(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -538,7 +716,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.assertEqual(len(self.pc.limits_groups), 0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(self.pc.limits_groups["TVAC"], [["TGT1", "PKT1", "ITEM1"]])
+            self.assertEqual(self.pc.limits_groups["TGT1"]["TVAC"], [["TGT1", "PKT1", "ITEM1"]])
 
         # Show we can 're-open' the group and add items
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -547,7 +725,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
             self.assertEqual(
-                self.pc.limits_groups["TVAC"],
+                self.pc.limits_groups["TGT1"]["TVAC"],
                 [["TGT1", "PKT1", "ITEM1"], ["TGT1", "PKT1", "ITEM2"]],
             )
 
@@ -1755,12 +1933,17 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
             tf.write("LIMITS_GROUP GROUP2\n")
             tf.write("  LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2\n")
+            tf.write("  NESTED_LIMITS_GROUP GROUP1\n")
+            tf.write("  NESTED_LIMITS_GROUP TGT2 GROUP3\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
+        self.pc.build_limits_group_packet("SYSTEM")
 
         # Export to a temporary directory
         with tempfile.TemporaryDirectory() as output_dir:
             self.pc.to_config(output_dir)
+            # The generated LIMITS_GROUP packet isn't written since the limits groups recreate it
+            self.assertFalse(os.path.exists(os.path.join(output_dir, "SYSTEM", "cmd_tlm", "system_tlm.txt")))
 
             # Verify limits groups file was created
             limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
@@ -1773,6 +1956,8 @@ class TestPacketConfig(unittest.TestCase):
                 self.assertIn("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1", content)
                 self.assertIn("LIMITS_GROUP GROUP2", content)
                 self.assertIn("LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2", content)
+                self.assertIn("  NESTED_LIMITS_GROUP GROUP1\n", content)
+                self.assertIn("  NESTED_LIMITS_GROUP TGT2 GROUP3\n", content)
 
         os.unlink(tf.name)
 
@@ -1838,8 +2023,10 @@ class TestPacketConfig(unittest.TestCase):
     def test_to_config_quotes_names_with_spaces(self):
         """Test that to_config quotes names with spaces"""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
-            tf.write('LIMITS_GROUP "GROUP WITH SPACES"\n')
+            # Group names can't contain spaces but their members can
+            tf.write("LIMITS_GROUP GROUP\n")
             tf.write('  LIMITS_GROUP_ITEM "TARGET NAME" "PACKET NAME" "ITEM NAME"\n')
+            tf.write("  NESTED_LIMITS_GROUP CHILD_GROUP\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
 
@@ -1851,7 +2038,7 @@ class TestPacketConfig(unittest.TestCase):
             limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
             with open(limits_file) as f:
                 content = f.read()
-                self.assertIn('"GROUP WITH SPACES"', content)
+                self.assertIn("  NESTED_LIMITS_GROUP CHILD_GROUP\n", content)
                 self.assertIn('"TARGET NAME"', content)
                 self.assertIn('"PACKET NAME"', content)
                 self.assertIn('"ITEM NAME"', content)

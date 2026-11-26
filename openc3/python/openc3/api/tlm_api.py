@@ -203,6 +203,7 @@ def inject_tlm(
         RuntimeError: If the type is unknown or a CONVERTED value is not a valid state.
     """
     _tlm_reject_latest(str(packet_name).upper(), "inject_tlm")
+    _tlm_reject_read_only(str(target_name).upper(), str(packet_name).upper(), "inject_tlm")
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -868,6 +869,21 @@ def _tlm_reject_latest(packet_name: str, method_name: str):
         raise RuntimeError(f"ERROR: LATEST is not supported by {method_name}(), specify a packet name")
 
 
+def _tlm_reject_read_only(target_name: str, packet_name: str, method_name: str) -> None:
+    """Reject writes to <TARGET> LIMITS_GROUP, which the limits group microservice computes.
+
+    Args:
+        target_name: Upper case target name.
+        packet_name: Upper case packet name.
+        method_name: Name of the API method, for the error message.
+
+    Raises:
+        RuntimeError: If the packet is LIMITS_GROUP.
+    """
+    if packet_name == "LIMITS_GROUP":
+        raise RuntimeError(f"ERROR: {target_name} {packet_name} is read-only and is not supported by {method_name}()")
+
+
 def _extract_target_packet_item_names(method_name: str, *args: str):
     target_name = None
     packet_name = None
@@ -912,6 +928,7 @@ def _set_tlm_process_args(
     args: tuple[Any, ...], method_name: str, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE
 ):
     target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+    _tlm_reject_read_only(target_name, packet_name, method_name)
     packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout, scope)
     return target_name, packet_name, item_name, value
 
@@ -926,6 +943,7 @@ def _tlm_process_args_all_packets(args: tuple[str, ...], method_name: str, scope
 
 def _set_tlm_process_args_all_packets(args: tuple[Any, ...], method_name: str, scope: str = OPENC3_SCOPE):
     target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+    _tlm_reject_read_only(target_name, packet_name, method_name)
     return target_name, _tlm_packet_names(target_name, packet_name, item_name, scope), item_name, value
 
 

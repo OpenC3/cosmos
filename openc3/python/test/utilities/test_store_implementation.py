@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import unittest
 from unittest.mock import patch
 
@@ -94,6 +95,27 @@ class TestDbShardForTarget(unittest.TestCase):
         self.assertEqual(Store.db_shard_for_target("INST", scope="DEFAULT"), 1)
         with patch("time.time", return_value=Store._db_shard_cache["DEFAULT__INST"][1] + Store.DB_SHARD_CACHE_TIMEOUT):
             self.assertEqual(Store.db_shard_for_target("INST", scope="DEFAULT"), 2)
+
+    def test_rereads_a_target_whose_cached_db_shard_was_cleared(self):
+        set_target_db_shard("INST", 1)
+        set_target_db_shard("INST2", 1)
+        self.assertEqual(Store.db_shard_for_target("INST", scope="DEFAULT"), 1)
+        self.assertEqual(Store.db_shard_for_target("INST2", scope="DEFAULT"), 1)
+        for target_name in ["INST", "INST2"]:
+            Store.instance(db_shard=0).hset(
+                "DEFAULT__openc3_targets", target_name, json.dumps({"name": target_name, "db_shard": 2})
+            )
+        Store.clear_db_shard_for_target("INST", scope="DEFAULT")
+        self.assertEqual(Store.db_shard_for_target("INST", scope="DEFAULT"), 2)
+        # Other targets stay cached
+        self.assertEqual(Store.db_shard_for_target("INST2", scope="DEFAULT"), 1)
+
+    def test_clearing_a_cached_db_shard_does_not_build_a_store(self):
+        # It only touches the class-level cache, so StoreMeta must not route it
+        # through Store.instance(), which would open a db_shard 0 connection pool
+        with patch.object(Store, "instance") as instance:
+            Store.clear_db_shard_for_target("INST", scope="DEFAULT")
+        instance.assert_not_called()
 
 
 class TestStoreReadTopics(unittest.TestCase):

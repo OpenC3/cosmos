@@ -11,19 +11,31 @@ From the `openc3` directory:
 ruby test/integration/cmd_tlm/generate_cmd_tlm.rb
 ```
 
-By default this writes `generated/targets/BIG/cmd_tlm/{tlm.txt,cmd.txt}`
-(about 215 MB, gitignored) containing:
+By default this writes `generated/targets/BIG/cmd_tlm/{tlm.txt,cmd.txt,limits_groups.txt}`
+(about 62 MB, gitignored) containing:
 
-- 2,000 telemetry packets with 500,000 items and about 2,000,000 states
+- 500 telemetry packets with 125,000 items and about 500,000 states
   (4 states per item, except `PKT0 ITEM1`, which has 1,000). Packet and item
   descriptions are 50 to 250 characters.
-- 2,000 command packets with 500,000 parameters and about 2,000,000 states
+- 500 command packets with 125,000 parameters and about 500,000 states
   (4 states per parameter, except `CMD0 PARAM1`, which has 1,000), also with
   50 to 250 character packet and parameter descriptions.
+- 1,001 limits groups nested vehicle > payload > subsystem > box > board
+  containing 25,000 telemetry items, half with LIMITS and half with GREEN,
+  YELLOW and RED states.
 
 States are named `S0`, `S1`, and so on, with values counting up from 0.
 `--tlm-item1-states` and `--cmd-param1-states` change the size of the one
 large state list.
+
+The defaults are sized so the installed plugin fits in a 16 GB Docker VM. Each
+of the target's microservices loads the whole definition (about 1.1 KB per
+telemetry item) and QuestDB keeps a writer open for 10 minutes after each write
+to a table, about 2.6 MB for a 250 item packet. The earlier 4x larger
+definition (`--tlm-packets 2000 --tlm-items 500000 --tlm-states 2000000
+--cmd-packets 2000 --cmd-params 500000 --cmd-states 2000000
+--limits-group-items 100000`) is fine for benchmarking `PacketConfig` but made
+QuestDB run out of memory when installed.
 
 Each packet starts with an ID item/parameter, which counts toward the totals.
 Output is deterministic for a given `--seed`. Run with `--help` to change any
@@ -31,7 +43,8 @@ of the counts, e.g. for a quick smoke test:
 
 ```bash
 ruby test/integration/cmd_tlm/generate_cmd_tlm.rb --tlm-packets 20 --tlm-items 5000 \
-  --tlm-states 20000 --cmd-packets 20 --cmd-params 1500 --cmd-states 6000
+  --tlm-states 20000 --cmd-packets 20 --cmd-params 1500 --cmd-states 6000 \
+  --limits-group-items 1000
 ```
 
 ## Install as a plugin

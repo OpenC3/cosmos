@@ -36,7 +36,7 @@ from openc3.utilities.store import Store
 # in the target are stored under the <SCOPE>__openc3cmd__<TARGET NAME> key and the
 # telemetry under the <SCOPE>__openc3tlm__<TARGET NAME> key. Any new limits sets
 # are merged into the <SCOPE>__limits_sets key as fields. Any new limits groups are
-# created under <SCOPE>__limits_groups with field name. These Redis key/fields are
+# created under <SCOPE>__limits_groups with field <TARGET NAME>__<GROUP NAME>. These Redis key/fields are
 # all removed when the undeploy method is called.
 class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"
@@ -291,7 +291,11 @@ class TargetModel(Model):
     @classmethod
     def build_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
         item_map = {}
+        # LATEST never resolves to the generated LIMITS_GROUP packet. Its items are
+        # limits groups which can share a name with an item in another packet.
         for packet in cls.packets(target_name, scope=scope):
+            if packet["packet_name"] == "LIMITS_GROUP":
+                continue
             items = packet["items"]
             for item in items:
                 item_name = item["name"]

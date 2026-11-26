@@ -14,6 +14,7 @@
 
 import base64
 import os
+import re
 import tempfile
 import traceback
 
@@ -33,14 +34,29 @@ from openc3.packets.parsers.processor_parser import ProcessorParser
 from openc3.packets.parsers.state_parser import StateParser
 from openc3.top_level import get_class_from_module
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
     class_name_to_filename,
     filename_to_class_name,
     filename_to_module,
+    quote_if_necessary,
 )
 
 
 class PacketConfig:
+    # Limits groups become items in the <TARGET> LIMITS_GROUP packet of the target
+    # which defines them, named <GROUP> and <GROUP>_ENABLED
+    LIMITS_GROUP_PACKET = "LIMITS_GROUP"
+    LIMITS_GROUP_ENABLED_SUFFIX = "_ENABLED"
+    # BLUE when every member is BLUE, DISABLED when limits are disabled on every member
+    LIMITS_GROUP_STATES = {"GREEN": 0, "YELLOW": 1, "RED": 2, "BLUE": 3, "DISABLED": 4}
+    # PARTIAL when limits are enabled on some members but not all
+    LIMITS_GROUP_ENABLED_STATES = {"FALSE": 0, "TRUE": 1, "PARTIAL": 2}
+    # QuestDB column name limit (TargetModel MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
+    MAX_LIMITS_GROUP_NAME_LENGTH = 127 - len(LIMITS_GROUP_ENABLED_SUFFIX)
+    # Characters QuestDBClient.sanitize_column_name replaces with '_'. Group names
+    # can't contain them so every group has its own column (TEMP.A and TEMP_A would share one).
+    LIMITS_GROUP_COLUMN_INVALID_CHARS = r'[?\.,\'"\\/:)(+=\-*%~;!@#$^&]'
     COMMAND_STRING = "Command"
     TELEMETRY_STRING = "Telemetry"
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
@@ -65,6 +81,9 @@ class PacketConfig:
         self.name = None
         self.telemetry = {}
         self.commands = {}
+        # Limits groups keyed by the name of the target which defines them and then by
+        # the group name. Each member is [target_name, packet_name, item_name] and a
+        # nested group is the member [<TARGET>, "LIMITS_GROUP", <GROUP>].
         self.limits_groups = {}
         self.limits_sets = ["DEFAULT"]
         self.converted_type = None
@@ -171,6 +190,11 @@ class PacketConfig:
 
                     case "TELEMETRY":
                         self.finish_packet()
+                        # LIMITS_GROUP is generated from the target's limits groups (see build_limits_group_packet)
+                        if len(params) > 1 and params[1].upper() == self.LIMITS_GROUP_PACKET:
+                            raise parser.error(
+                                f"Telemetry packet name {self.LIMITS_GROUP_PACKET} is reserved for the limits groups a target defines. Rename the packet."
+                            )
                         self.current_packet = PacketParser.parse_telemetry(
                             parser,
                             process_target_name,
@@ -208,21 +232,54 @@ class PacketConfig:
                         usage = "LIMITS_GROUP <GROUP NAME>"
                         parser.verify_num_parameters(1, 1, usage)
                         self.current_limits_group = params[0].upper()
-                        if self.current_limits_group not in self.limits_groups:
-                            self.limits_groups[self.current_limits_group] = []
+                        # The group becomes items in <TARGET> LIMITS_GROUP so a name which can't
+                        # is skipped, along with its LIMITS_GROUP_ITEM and NESTED_LIMITS_GROUP lines
+                        error = PacketConfig.limits_group_name_error(self.current_limits_group)
+                        if error:
+                            self._limits_group_warning(
+                                parser, f"LIMITS_GROUP {self.current_limits_group} {error}. Skipping the group."
+                            )
+                            self.current_limits_group = None
+                        else:
+                            self.limits_groups.setdefault(process_target_name, {}).setdefault(
+                                self.current_limits_group, []
+                            )
 
                     # Add a telemetry item to the limits group
                     case "LIMITS_GROUP_ITEM":
                         usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
                         parser.verify_num_parameters(3, 3, usage)
                         if self.current_limits_group:
-                            self.limits_groups[self.current_limits_group].append(
-                                [
-                                    params[0].upper(),
-                                    params[1].upper(),
-                                    params[2].upper(),
-                                ]
-                            )
+                            item = [params[0].upper(), params[1].upper(), params[2].upper()]
+                            # Members in a LIMITS_GROUP packet are nested groups, added with NESTED_LIMITS_GROUP
+                            if item[1] == self.LIMITS_GROUP_PACKET:
+                                self._limits_group_warning(
+                                    parser,
+                                    f"LIMITS_GROUP {self.current_limits_group} member {' '.join(item)}: use NESTED_LIMITS_GROUP {item[0]} {item[2]} to nest a limits group. Skipping the member.",
+                                )
+                            else:
+                                self.limits_groups[process_target_name][self.current_limits_group].append(item)
+
+                    # Add a nested limits group to the limits group
+                    case "NESTED_LIMITS_GROUP":
+                        usage = "NESTED_LIMITS_GROUP <GROUP NAME> or NESTED_LIMITS_GROUP <TARGET NAME> <GROUP NAME>"
+                        parser.verify_num_parameters(1, 2, usage)
+                        if self.current_limits_group:
+                            # A nested group is stored as the item which carries its rollup. A
+                            # group name alone is a group of this target.
+                            if len(params) == 1:
+                                item = [process_target_name, self.LIMITS_GROUP_PACKET, params[0].upper()]
+                            else:
+                                item = [params[0].upper(), self.LIMITS_GROUP_PACKET, params[1].upper()]
+                            # The name must be one LIMITS_GROUP accepts (the child can be installed later)
+                            error = PacketConfig.limits_group_name_error(item[2])
+                            if error:
+                                self._limits_group_warning(
+                                    parser,
+                                    f"LIMITS_GROUP {self.current_limits_group} member NESTED_LIMITS_GROUP {item[0]} {item[2]}: LIMITS_GROUP {item[2]} {error}. Skipping the member.",
+                                )
+                            else:
+                                self.limits_groups[process_target_name][self.current_limits_group].append(item)
 
                     #######################################################################
                     # All the following keywords must have a current packet defined
@@ -336,7 +393,10 @@ class PacketConfig:
                 os.remove(filename)
 
             # Write all telemetry packets for this target
-            for _packet_name, packet in packets.items():
+            for packet_name, packet in packets.items():
+                # The limits group packet is generated from the limits groups written below
+                if packet_name == self.LIMITS_GROUP_PACKET:
+                    continue
                 if "../" in filename or "..\\" in filename:
                     raise ValueError(f"Path traversal detected in filename: {filename}")
 
@@ -363,43 +423,33 @@ class PacketConfig:
                     f.write(packet.to_config("COMMAND"))
                     f.write("\n")
 
-        # Export limits groups if any exist
-        if len(self.limits_groups) > 0:
-            system_cmd_tlm_dir = os.path.join(output_dir, "SYSTEM", "cmd_tlm")
-            os.makedirs(system_cmd_tlm_dir, exist_ok=True)
-            filename = os.path.join(system_cmd_tlm_dir, "limits_groups.txt")
+        # Export limits groups into the target which defines them
+        for target_name, groups in self.limits_groups.items():
+            if not groups:
+                continue
+            target_cmd_tlm_dir = os.path.join(output_dir, target_name, "cmd_tlm")
+            os.makedirs(target_cmd_tlm_dir, exist_ok=True)
+            filename = os.path.join(target_cmd_tlm_dir, "limits_groups.txt")
 
             if "../" in filename or "..\\" in filename:
                 raise ValueError(f"Path traversal detected in filename: {filename}")
 
             with open(filename, "w") as f:
-                for limits_group_name, limits_group_items in self.limits_groups.items():
-                    # Quote if necessary (contains spaces or special chars)
-                    group_name = (
-                        f'"{limits_group_name}"'
-                        if " " in limits_group_name or any(c in limits_group_name for c in ["\\", '"'])
-                        else limits_group_name
-                    )
-                    f.write(f"LIMITS_GROUP {group_name}\n")
-
-                    for target_name, packet_name, item_name in limits_group_items:
-                        # Quote each component if necessary
-                        target = (
-                            f'"{target_name}"'
-                            if " " in target_name or any(c in target_name for c in ["\\", '"'])
-                            else target_name
-                        )
-                        packet = (
-                            f'"{packet_name}"'
-                            if " " in packet_name or any(c in packet_name for c in ["\\", '"'])
-                            else packet_name
-                        )
-                        item = (
-                            f'"{item_name}"'
-                            if " " in item_name or any(c in item_name for c in ["\\", '"'])
-                            else item_name
-                        )
-                        f.write(f"  LIMITS_GROUP_ITEM {target} {packet} {item}\n")
+                for limits_group_name, limits_group_items in groups.items():
+                    f.write(f"LIMITS_GROUP {quote_if_necessary(limits_group_name)}\n")
+                    for item_target_name, packet_name, item_name in limits_group_items:
+                        if packet_name == self.LIMITS_GROUP_PACKET:
+                            if item_target_name == target_name:
+                                f.write(f"  NESTED_LIMITS_GROUP {quote_if_necessary(item_name)}\n")
+                            else:
+                                f.write(
+                                    f"  NESTED_LIMITS_GROUP {quote_if_necessary(item_target_name)} {quote_if_necessary(item_name)}\n"
+                                )
+                        else:
+                            f.write(
+                                f"  LIMITS_GROUP_ITEM {quote_if_necessary(item_target_name)} "
+                                f"{quote_if_necessary(packet_name)} {quote_if_necessary(item_name)}\n"
+                            )
                     f.write("\n")
 
     def to_xtce(self, output_dir):
@@ -1088,6 +1138,82 @@ class PacketConfig:
         )
 
     # Finish updating packet item
+    # Adds the <TARGET> LIMITS_GROUP packet for the limits groups the target defines.
+    # Call once all of the target's configuration files are processed.
+    def build_limits_group_packet(self, target_name):
+        target_name = target_name.upper()
+        groups = self.limits_groups.get(target_name)
+        if not groups:
+            return
+        self.telemetry.setdefault(target_name, {})[self.LIMITS_GROUP_PACKET] = (
+            PacketConfig.generate_limits_group_packet(target_name, groups.keys())
+        )
+
+    # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.
+    # They follow the naming rules of LIMITS_GROUP parameters (see
+    # ConfigParser.verify_parameter_naming) plus the rules of the generated items.
+    # Returns why the upper case name can't be a limits group, None if it can.
+    @classmethod
+    def limits_group_name_error(cls, group_name):
+        if group_name.endswith("_"):
+            return "cannot end with an underscore ('_')"
+        if "__" in group_name:
+            return "cannot contain a double underscore ('__')"
+        if "[[" in group_name or "]]" in group_name:
+            return "cannot contain double brackets ('[[' or ']]')"
+        if " " in group_name:
+            return "cannot contain a space (' ')"
+        if '"' in group_name or "'" in group_name:
+            return "cannot contain a quote (' or \")"
+        if "{" in group_name or "}" in group_name:
+            return "cannot contain a curly bracket ('{' or '}')"
+        if len(group_name) > cls.MAX_LIMITS_GROUP_NAME_LENGTH:
+            return f"must be {cls.MAX_LIMITS_GROUP_NAME_LENGTH} characters or less"
+        match = re.search(cls.LIMITS_GROUP_COLUMN_INVALID_CHARS, group_name)
+        if match:
+            return f"cannot contain '{match.group(0)}' since the time-series database replaces it with an underscore"
+        if group_name.endswith(cls.LIMITS_GROUP_ENABLED_SUFFIX):
+            return f"cannot end with {cls.LIMITS_GROUP_ENABLED_SUFFIX}"
+        if group_name in Packet.RESERVED_ITEM_NAMES:
+            return "is a reserved item name"
+        # Packet.packet_time reads an item named PACKET_TIME instead of the received time
+        if group_name == "PACKET_TIME":
+            return f"would replace the packet time of {cls.LIMITS_GROUP_PACKET}"
+        return None
+
+    # Builds the <TARGET> LIMITS_GROUP packet with a <GROUP> and <GROUP>_ENABLED
+    # item for each group, sorted by group name. The packet is virtual so it's never
+    # used to identify received data (the limits group microservice publishes it)
+    # but unlike a VIRTUAL packet it stays visible and enabled in the tools.
+    @classmethod
+    def generate_limits_group_packet(cls, target_name, group_names):
+        packet = Packet(
+            target_name,
+            cls.LIMITS_GROUP_PACKET,
+            "BIG_ENDIAN",
+            f"Rolled-up limits state of each limits group defined by {target_name}",
+        )
+        packet.virtual = True
+        packet.hidden = False
+        packet.disabled = False
+        packet.define_reserved_items()
+        for group in sorted(group_names):
+            item = packet.append_item(group, 8, "UINT")
+            item.states = dict(cls.LIMITS_GROUP_STATES)
+            item.description = (
+                f"Most severe limits state of the enabled members, or DISABLED when none are, of limits group {group}"
+            )
+            item = packet.append_item(f"{group}{cls.LIMITS_GROUP_ENABLED_SUFFIX}", 8, "UINT")
+            item.states = dict(cls.LIMITS_GROUP_ENABLED_STATES)
+            item.description = f"Whether limits are enabled on all (TRUE), none (FALSE) or some (PARTIAL) of the members of limits group {group}"
+        return packet
+
+    # Skipping a limits group isn't fatal, but log it since parser warnings aren't shown on install
+    def _limits_group_warning(self, parser, message):
+        message = f"{message} ({parser.filename}:{parser.line_number})"
+        self.warnings.append(message)
+        Logger.warn(message)
+
     def finish_item(self):
         if self.current_item:
             if not self.current_packet:

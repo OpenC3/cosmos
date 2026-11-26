@@ -69,6 +69,7 @@ class StoreMeta(type):
             "all_shards_update_interval",
             "DEFAULT_UPDATE_INTERVAL",
             "db_shard_for_target",
+            "clear_db_shard_for_target",
             "_db_shard_cache",
             "_db_shard_cache_lock",
             "DB_SHARD_CACHE_TIMEOUT",
@@ -157,6 +158,13 @@ class Store(metaclass=StoreMeta):
             cls._db_shard_cache[cache_key] = (db_shard_val, now)
 
         return db_shard_val
+
+    @classmethod
+    def clear_db_shard_for_target(cls, target_name, scope="DEFAULT"):
+        """Drop a target's cached db_shard so the next db_shard_for_target reads it
+        from the store, e.g. after the target is reinstalled on another db_shard."""
+        with cls._db_shard_cache_lock:
+            cls._db_shard_cache.pop(f"{scope}__{target_name}", None)
 
     def ensure_pool_size(self, pool_size: int) -> None:
         """Grow the connection pool to at least pool_size connections.

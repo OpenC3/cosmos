@@ -8,4 +8,8 @@ VERTICAL
   LABELVALUE INST2 HEALTH_STATUS COLLECTS
   LABELVALUE EXAMPLE STATUS VALUE
   LABELVALUE EXAMPLE STATUS STRING
+  # Rolled up limits state of the PAYLOAD group in cmd_tlm/limits_groups.txt
+  # which nests the TEMPS and GROUND groups of INST and INST2 and contains INST HEALTH_STATUS ZERO
+  LABELVALUE <%= target_name %> LIMITS_GROUP PAYLOAD
+  LABELVALUE <%= target_name %> LIMITS_GROUP PAYLOAD_ENABLED
 END
