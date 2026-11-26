@@ -351,13 +351,14 @@ class XtceConverter:
         return self._definition_signature(root)
 
     def _definition_signature(self, definition: Any) -> bytes:
-        """Compare emitted type semantics while preserving output descriptions.
+        """Compare emitted types with equivalent double alarm bounds normalized.
 
         Args:
             definition: XML containing the emitted type definition.
 
         Returns:
-            Canonical XML with cosmetic descriptions excluded.
+            Canonical XML with cosmetic descriptions excluded and equal numeric
+            alarm bounds shared. The exported XML remains unchanged.
         """
         root = deepcopy(definition)
         for node in root.iter():
@@ -365,6 +366,11 @@ class XtceConverter:
         # Collect descriptions before removing nodes from the tree.
         for description in root.findall(f".//{{{self.XTCE_NAMESPACE}}}LongDescription"):
             description.getparent().remove(description)
+        # Type construction validates exact integer representability first.
+        for alarm_range in root.findall(f".//{{{self.XTCE_NAMESPACE}}}StaticAlarmRanges/*"):
+            for name, lexical in alarm_range.attrib.items():
+                value = float(lexical)
+                alarm_range.set(name, str(0.0 if value == 0 else value))
         return etree.tostring(root, method="c14n")
 
     def _get_unique(self, packets: dict[str, Any]) -> dict[str, Any]:

@@ -465,6 +465,15 @@ module OpenC3
       end
       builder.doc.xpath('//@shortDescription').remove
       builder.doc.xpath('//*[local-name()="LongDescription"]').remove
+      if [:INT, :UINT].include?(item.data_type) && item.bit_size == 8 && (item.bit_offset % 8).zero?
+        builder.doc.xpath('//*[local-name()="IntegerDataEncoding"]/@byteOrder').remove
+      end
+      # Alarm bounds are xs:double. Normalize only the comparison document;
+      # to_xtce_type already rejects integer bounds that double cannot preserve.
+      builder.doc.xpath('//*[local-name()="StaticAlarmRanges"]/*/@*').each do |attribute|
+        value = Float(attribute.value)
+        attribute.value = (value.zero? ? 0.0 : value).to_s
+      end
       builder.doc.root.canonicalize
     end
 

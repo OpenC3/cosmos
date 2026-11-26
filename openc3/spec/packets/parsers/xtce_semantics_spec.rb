@@ -73,6 +73,23 @@ module OpenC3
       packet.get_item('TEMP').limits.state
     end
 
+    def duplicate_integer_definition(kind, data_type, bits: 8, offset: 0)
+      %w[BIG_ENDIAN LITTLE_ENDIAN].each_with_index.map do |order, index|
+        field = if kind == 'COMMAND'
+                  "ID_PARAMETER VALUE #{offset} #{bits} #{data_type} MIN MAX #{index + 1} \"Value\""
+                else
+                  "ITEM VALUE #{offset} #{bits} #{data_type} \"Value\""
+                end
+        "#{kind} INST PACKET#{index} #{order} \"Packet\"\n  #{field}\n"
+      end.join
+    end
+
+    def duplicate_limits_definition(first, second)
+      [first, second].each_with_index.map do |limits, index|
+        "TELEMETRY INST PACKET#{index} BIG_ENDIAN \"Packet\"\n  APPEND_ITEM VALUE 64 INT \"Value\"\n    LIMITS DEFAULT 1 ENABLED #{limits.join(' ')}\n"
+      end.join
+    end
+
     def expect_export_rejection(config, message = /conflicting XTCE definitions/)
       Dir.mktmpdir do |directory|
         file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
@@ -370,5 +387,58 @@ module OpenC3
         expect(types).to eq(['FIRST_PART_VALUE_Type'])
       end
     end
+    it 'shares byte-aligned one-byte integer definitions across byte orders' do
+      %w[TELEMETRY COMMAND].product(%w[INT UINT]).each do |kind, data_type|
+        config = parse_definition(duplicate_integer_definition(kind, data_type))
+        Dir.mktmpdir do |directory|
+          XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+          file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+          expect(XtceConverter.schema_errors(file)).to be_empty
+          document = Nokogiri::XML(File.read(file))
+          expect(document.xpath("//*[local-name()='IntegerParameterType']").length).to eq(1)
+        end
+      end
+    end
+
+    it 'retains byte-order conflicts for unaligned and multi-byte integer fields' do
+      %w[TELEMETRY COMMAND].product([[8, 9], [16, 0]]).each do |kind, (bits, offset)|
+        config = parse_definition(duplicate_integer_definition(kind, 'UINT', bits: bits, offset: offset))
+        expect_export_rejection(config)
+      end
+    end
+
+    it 'shares numerically equal alarm thresholds regardless of literal spelling' do
+      [-1, 1].product((0...4).to_a).each do |sign, index|
+        first = [0, 4, 8, 12].map { |offset| sign * 2**54 + offset }
+        second = first.map(&:to_s)
+        second[index] += '.0'
+        config = parse_definition(duplicate_limits_definition(first, second))
+        Dir.mktmpdir do |directory|
+          expect(export_parameter_counts(config, directory)).to eq([1, 2])
+        end
+      end
+    end
+
+    it 'shares positive and negative zero alarm thresholds' do
+      config = parse_definition(duplicate_limits_definition([-10, 0, 10, 20], [-10, '-0.0', 10, 20]))
+      Dir.mktmpdir { |directory| expect(export_parameter_counts(config, directory)).to eq([1, 2]) }
+    end
+
+    it 'rejects coincident warning bounds that hide an inclusive critical upper endpoint' do
+      [false, true].each do |floating|
+        expect { imported_alarm_packet([-20, 80, 80, 80], floating: floating) }
+          .to raise_error(/Coincident XTCE warning and critical bounds/)
+      end
+    end
+
+    it 'retains coincident ranges whose native evaluation preserves critical severity' do
+      { [-20, -20, 80, 80] => { -20 => :RED_LOW, 0 => :GREEN, 80 => :RED_HIGH },
+        [-20, 0, 0, 80] => { -20 => :RED_LOW, 0 => :YELLOW_LOW, 80 => :RED_HIGH },
+        [80, 80, 80, 80] => { 79 => :RED_LOW, 80 => :RED_LOW, 81 => :RED_HIGH } }.each do |bounds, observations|
+        packet = imported_alarm_packet(bounds)
+        observations.each { |value, state| expect(alarm_state(packet, value)).to eq(state) }
+      end
+    end
+
   end
 end

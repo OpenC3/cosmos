@@ -213,3 +213,47 @@ class TestXtceSemantics(unittest.TestCase):
                 document.xpath("//x:Argument/@argumentTypeRef", namespaces=ns),
                 ["FIRST_PART_VALUE_Type", "FIRST_PART_VALUE_Type"],
             )
+
+    def test_shares_numerically_equal_alarm_threshold_spellings(self):
+        for sign in [-1, 1]:
+            for index in range(4):
+                first = [str(sign * 2**54 + offset) for offset in [0, 4, 8, 12]]
+                second = first.copy()
+                second[index] += ".0"
+                with self.subTest(sign=sign, index=index), tempfile.TemporaryDirectory() as directory:
+                    config = self.parse(
+                        "".join(
+                            f'TELEMETRY INST PACKET{number} BIG_ENDIAN "Packet"\n'
+                            '  APPEND_ITEM VALUE 64 INT "Value"\n'
+                            f"    LIMITS DEFAULT 1 ENABLED {' '.join(limits)}\n"
+                            for number, limits in enumerate([first, second])
+                        )
+                    )
+                    self.assert_exported_parameter_counts(config, directory, 2)
+
+    def test_shares_positive_and_negative_zero_alarm_thresholds(self):
+        config = self.parse(
+            'TELEMETRY INST FIRST BIG_ENDIAN "First"\n'
+            '  APPEND_ITEM VALUE 64 INT "Value"\n'
+            "    LIMITS DEFAULT 1 ENABLED -10 0 10 20\n"
+            'TELEMETRY INST SECOND BIG_ENDIAN "Second"\n'
+            '  APPEND_ITEM VALUE 64 INT "Value"\n'
+            "    LIMITS DEFAULT 1 ENABLED -10 -0.0 10 20\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            self.assert_exported_parameter_counts(config, directory, 2)
+
+    def test_one_byte_byte_order_control_and_multibyte_conflict(self):
+        for bits in [8, 16]:
+            with self.subTest(bits=bits), tempfile.TemporaryDirectory() as directory:
+                config = self.parse(
+                    'TELEMETRY INST FIRST BIG_ENDIAN "First"\n'
+                    f'  APPEND_ITEM VALUE {bits} UINT "Value"\n'
+                    'TELEMETRY INST SECOND LITTLE_ENDIAN "Second"\n'
+                    f'  APPEND_ITEM VALUE {bits} UINT "Value"\n'
+                )
+                if bits == 8:
+                    self.assert_exported_parameter_counts(config, directory, 2)
+                else:
+                    with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
+                        XtceConverter.convert(config.commands, config.telemetry, directory)

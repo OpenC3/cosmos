@@ -830,6 +830,10 @@ module OpenC3
         unless red_low <= yellow_low && yellow_low <= yellow_high && yellow_high <= red_high
           raise 'XTCE warning and critical alarm ranges must be nested outside ranges'
         end
+        # Native limits check the low warning before the high critical bound.
+        if yellow_low.finite? && red_low < yellow_low && yellow_low == red_high
+          raise 'Coincident XTCE warning and critical bounds are not supported'
+        end
         item.limits.enabled = true
         values = {}
         values[:DEFAULT] = [red_low, yellow_low, yellow_high, red_high]
