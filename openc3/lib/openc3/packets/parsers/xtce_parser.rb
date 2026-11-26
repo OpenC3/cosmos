@@ -353,6 +353,9 @@ module OpenC3
         return false # Already recursed
 
       when 'StaticAlarmRanges'
+        if element['rangeForm'] && element['rangeForm'] != 'outside'
+          raise 'XTCE inside alarm ranges are not supported'
+        end
         xtce_recurse_element(element) do |block_element|
           case block_element.name
           when 'WarningRange'
@@ -658,7 +661,7 @@ module OpenC3
     end
 
     def set_alarm_range(element, lower_index, upper_index)
-      @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
+      @current_type.limits ||= [nil, nil, nil, nil]
       lower = parse_alarm_bound(element, 'min')
       upper = parse_alarm_bound(element, 'max')
       @current_type.limits[lower_index] = lower if lower
@@ -672,11 +675,13 @@ module OpenC3
 
       # XTCE FloatRangeType attributes are xs:double, even on integer parameters.
       value = Float(exclusive || inclusive)
-      return value if exclusive
-      raise 'Non-finite inclusive XTCE alarm bounds are not supported' unless value.finite?
+      # CCSDS 660.1-G-2 4.3.2.3.7.2.1 includes equality in the named outside
+      # alarm band. Yamcs uses the opposite endpoint convention.
+      return value unless exclusive
+      raise 'Non-finite exclusive XTCE alarm bounds are not supported' unless value.finite?
 
       # Packet readings are Integers or binary64 Floats. Choose the nearest
-      # reading outside the inclusive range across both domains; next_float
+      # reading beyond an exclusive alarm endpoint across both domains; next_float
       # alone would skip integer readings when the Float spacing exceeds one.
       float_value = value.to_f
       if side == 'min'
@@ -816,9 +821,16 @@ module OpenC3
       return unless @current_cmd_or_tlm == PacketConfig::TELEMETRY
 
       if type.limits
+        red_low = type.limits[0] || -Float::INFINITY
+        red_high = type.limits[3] || Float::INFINITY
+        yellow_low = type.limits[1] || red_low
+        yellow_high = type.limits[2] || red_high
+        unless red_low <= yellow_low && yellow_low <= yellow_high && yellow_high <= red_high
+          raise 'XTCE warning and critical alarm ranges must be nested outside ranges'
+        end
         item.limits.enabled = true
         values = {}
-        values[:DEFAULT] = type.limits
+        values[:DEFAULT] = [red_low, yellow_low, yellow_high, red_high]
         item.limits.values = values
         @current_packet.update_limits_items_cache(item)
       end

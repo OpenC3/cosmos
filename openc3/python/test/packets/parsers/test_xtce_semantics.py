@@ -81,21 +81,59 @@ class TestXtceSemantics(unittest.TestCase):
                 config = self.parse("".join(ordered))
                 self.assert_exported_parameter_counts(config, directory, 1)
 
-    def test_rejects_command_conflicts_before_replacing_an_existing_export(self):
-        for size, maximum in [(16, 10), (8, 20)]:
-            with self.subTest(size=size, maximum=maximum), tempfile.TemporaryDirectory() as directory:
-                config = self.parse(
-                    'COMMAND INST FIRST BIG_ENDIAN "First command"\n'
-                    '  APPEND_PARAMETER VALUE 8 UINT 0 10 0 "First argument"\n'
-                    'COMMAND INST SECOND BIG_ENDIAN "Second command"\n'
-                    f'  APPEND_PARAMETER VALUE {size} UINT 0 {maximum} 0 "Second argument"\n'
-                )
-                path = Path(directory) / "INST/cmd_tlm/inst.xtce"
-                path.parent.mkdir(parents=True)
-                path.write_text("previous export")
-                with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
-                    XtceConverter.convert(config.commands, config.telemetry, directory)
-                self.assertEqual(path.read_text(), "previous export")
+    def test_preserves_command_scoped_types_when_argument_names_match(self):
+        config = self.parse(
+            'COMMAND INST FIRST BIG_ENDIAN "First"\n'
+            '  APPEND_PARAMETER VALUE 8 UINT 0 10 3 "Value"\n'
+            'COMMAND INST SECOND BIG_ENDIAN "Second"\n'
+            '  APPEND_PARAMETER VALUE 16 UINT 0 1000 300 "Value"\n'
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            XtceConverter.convert(config.commands, config.telemetry, directory)
+            tree = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
+            ns = {"x": XtceConverter.XTCE_NAMESPACE}
+            for command, bits, maximum, default in [("FIRST", "8", "10", "3"), ("SECOND", "16", "1000", "300")]:
+                with self.subTest(command=command):
+                    argument = tree.find(f".//x:MetaCommand[@name='{command}']/x:ArgumentList/x:Argument", ns)
+                    self.assertEqual(argument.get("argumentTypeRef"), f"{command}_VALUE_Type")
+                    definition = tree.find(f".//x:IntegerArgumentType[@name='{command}_VALUE_Type']", ns)
+                    self.assertEqual(definition.find("x:IntegerDataEncoding", ns).get("sizeInBits"), bits)
+                    self.assertEqual(definition.find("x:ValidRangeSet/x:ValidRange", ns).get("maxInclusive"), maximum)
+                    self.assertEqual(definition.get("initialValue"), default)
+
+    def test_rejects_generated_command_type_name_collisions_without_replacing_export(self):
+        config = self.parse(
+            'COMMAND INST FIRST_VALUE BIG_ENDIAN "First"\n'
+            '  APPEND_PARAMETER ITEM 8 UINT 0 10 0 "Item"\n'
+            'COMMAND INST FIRST BIG_ENDIAN "Second"\n'
+            '  APPEND_PARAMETER VALUE_ITEM 16 UINT 0 1000 0 "Item"\n'
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "INST/cmd_tlm/inst.xtce"
+            path.parent.mkdir(parents=True)
+            path.write_text("previous export")
+            with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
+                XtceConverter.convert(config.commands, config.telemetry, directory)
+            self.assertEqual(path.read_text(), "previous export")
+
+    def test_rejects_lossy_integer_alarm_export_but_accepts_exact_double_values(self):
+        config = self.parse(
+            'TELEMETRY INST STATUS BIG_ENDIAN "Large integer"\n'
+            '  APPEND_ITEM TEMP 64 INT "Temperature"\n'
+            "    LIMITS DEFAULT 1 ENABLED 0 1 9007199254740990 9007199254740993\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "INST/cmd_tlm/inst.xtce"
+            path.parent.mkdir(parents=True)
+            path.write_text("previous export")
+            with self.assertRaisesRegex(ValueError, "cannot be represented exactly as an XTCE xs:double"):
+                XtceConverter.convert(config.commands, config.telemetry, directory)
+            self.assertEqual(path.read_text(), "previous export")
+            config.telemetry["INST"]["STATUS"].get_item("TEMP").limits.values["DEFAULT"][3] = 9007199254740994
+            XtceConverter.convert(config.commands, config.telemetry, directory)
+            tree = etree.parse(str(path))
+            critical = tree.find(".//x:CriticalRange", {"x": XtceConverter.XTCE_NAMESPACE})
+            self.assertEqual(float(critical.get("maxInclusive")), 9007199254740994)
 
     def test_exported_alarm_intervals_preserve_native_boundary_severity(self):
         config = self.parse(
@@ -114,11 +152,13 @@ class TestXtceSemantics(unittest.TestCase):
             ns = {"x": XtceConverter.XTCE_NAMESPACE}
             warning = document.find(".//x:WarningRange", ns)
             critical = document.find(".//x:CriticalRange", ns)
+            # CCSDS 660.1-G-2 4.3.2.3.7.2.1: inclusive endpoints belong
+            # to the outside alarm; these comparisons describe the normal region.
             comparisons = {
-                "minInclusive": operator.ge,
-                "minExclusive": operator.gt,
-                "maxInclusive": operator.le,
-                "maxExclusive": operator.lt,
+                "minInclusive": operator.gt,
+                "minExclusive": operator.ge,
+                "maxInclusive": operator.lt,
+                "maxExclusive": operator.le,
             }
             for value in [-81, -80, -79, -70, -69, 0, 59, 60, 61, 79, 80, 81]:
                 with self.subTest(value=value):

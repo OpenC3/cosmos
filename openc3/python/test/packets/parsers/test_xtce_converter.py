@@ -492,7 +492,7 @@ class TestXtceConverter(unittest.TestCase):
             # one-dimensional; the indices give that dimension's length.
             for type_name, item_name in [
                 ("ArrayParameterType", "ARRAY_ITEM"),
-                ("ArrayArgumentType", "CMD_ARRAY"),
+                ("ArrayArgumentType", "CMD1_CMD_ARRAY"),
             ]:
                 array_type = tree.find(f'.//xtce:{type_name}[@name="{item_name}_ArrayType"]', namespaces=nsmap)
                 self.assertIsNotNone(array_type, item_name)
@@ -632,7 +632,7 @@ class TestXtceConverter(unittest.TestCase):
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
-            enum_type = tree.find('.//xtce:EnumeratedArgumentType[@name="PARAM1_Type"]', namespaces=nsmap)
+            enum_type = tree.find('.//xtce:EnumeratedArgumentType[@name="CMD1_PARAM1_Type"]', namespaces=nsmap)
             self.assertEqual(enum_type.get("initialValue"), "ON")
             labels = [e.get("label") for e in enum_type.findall(".//xtce:Enumeration", namespaces=nsmap)]
             self.assertEqual(labels, ["OFF", "ON"])
@@ -688,13 +688,13 @@ class TestXtceConverter(unittest.TestCase):
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
             # Arguments wrap the range in a ValidRangeSet per the XTCE schema
-            int_type = tree.find('.//xtce:IntegerArgumentType[@name="INT_PARAM_Type"]', namespaces=nsmap)
+            int_type = tree.find('.//xtce:IntegerArgumentType[@name="CMD1_INT_PARAM_Type"]', namespaces=nsmap)
             self.assertEqual(int_type.get("initialValue"), "5")
             int_range = int_type.find("xtce:ValidRangeSet/xtce:ValidRange", namespaces=nsmap)
             self.assertEqual(int_range.get("minInclusive"), "-100")
             self.assertEqual(int_range.get("maxInclusive"), "100")
 
-            float_type = tree.find('.//xtce:FloatArgumentType[@name="FLOAT_PARAM_Type"]', namespaces=nsmap)
+            float_type = tree.find('.//xtce:FloatArgumentType[@name="CMD1_FLOAT_PARAM_Type"]', namespaces=nsmap)
             self.assertEqual(float_type.get("initialValue"), "0.5")
             self.assertIsNotNone(float_type.find("xtce:ValidRangeSet/xtce:ValidRange", namespaces=nsmap))
 
@@ -718,20 +718,20 @@ class TestXtceConverter(unittest.TestCase):
 
             # String initialValue is the value itself. Quoting it would make the quotes
             # part of the default for every reader but our own importer.
-            str_type = tree.find('.//xtce:StringArgumentType[@name="STR_PARAM_Type"]', namespaces=nsmap)
+            str_type = tree.find('.//xtce:StringArgumentType[@name="CMD1_STR_PARAM_Type"]', namespaces=nsmap)
             self.assertEqual(str_type.get("initialValue"), "DEAD")
 
             # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix, upper
             # case (hexBinary's canonical form, and what the Ruby converter writes)
-            bin_type = tree.find('.//xtce:BinaryArgumentType[@name="BIN_PARAM_Type"]', namespaces=nsmap)
+            bin_type = tree.find('.//xtce:BinaryArgumentType[@name="CMD1_BIN_PARAM_Type"]', namespaces=nsmap)
             self.assertEqual(bin_type.get("initialValue"), "DEADBEEF")
 
             # A string default given as printable bytes round trips as text
-            printable = tree.find('.//xtce:StringArgumentType[@name="PRINTABLE_PARAM_Type"]', namespaces=nsmap)
+            printable = tree.find('.//xtce:StringArgumentType[@name="CMD1_PRINTABLE_PARAM_Type"]', namespaces=nsmap)
             self.assertEqual(printable.get("initialValue"), "DEAD")
 
             # A string default that isn't printable falls back to a hex literal
-            unprintable = tree.find('.//xtce:StringArgumentType[@name="UNPRINTABLE_PARAM_Type"]', namespaces=nsmap)
+            unprintable = tree.find('.//xtce:StringArgumentType[@name="CMD1_UNPRINTABLE_PARAM_Type"]', namespaces=nsmap)
             self.assertEqual(unprintable.get("initialValue"), "0xDEAD")
 
     def test_xtce_unrepresentable_default_is_skipped(self):
@@ -774,11 +774,11 @@ class TestXtceConverter(unittest.TestCase):
 
             # A full 64 bit UINT range exceeds IntegerRangeType's xs:long bounds, so
             # emitting it would be schema invalid
-            uint_type = tree.find('.//xtce:IntegerArgumentType[@name="UINT_PARAM_Type"]', namespaces=nsmap)
+            uint_type = tree.find('.//xtce:IntegerArgumentType[@name="CMD1_UINT_PARAM_Type"]', namespaces=nsmap)
             self.assertIsNone(uint_type.find("xtce:ValidRangeSet", namespaces=nsmap))
 
             # FloatRangeType is xs:double, so even the FLOAT MIN / MAX defaults fit
-            float_type = tree.find('.//xtce:FloatArgumentType[@name="FLOAT_PARAM_Type"]', namespaces=nsmap)
+            float_type = tree.find('.//xtce:FloatArgumentType[@name="CMD1_FLOAT_PARAM_Type"]', namespaces=nsmap)
             float_range = float_type.find("xtce:ValidRangeSet/xtce:ValidRange", namespaces=nsmap)
             self.assertIsNotNone(float_range)
             self.assertEqual(float(float_range.get("minInclusive")), -sys.float_info.max)
@@ -836,11 +836,11 @@ class TestXtceConverter(unittest.TestCase):
             self.assertEqual(unit.get("description"), "Celsius")
 
             warning = float_type.find("xtce:DefaultAlarm/xtce:StaticAlarmRanges/xtce:WarningRange", namespaces=nsmap)
-            self.assertEqual(warning.get("minExclusive"), "-70.0")
-            self.assertEqual(warning.get("maxExclusive"), "60.0")
+            self.assertEqual(warning.get("minInclusive"), "-70.0")
+            self.assertEqual(warning.get("maxInclusive"), "60.0")
             critical = float_type.find("xtce:DefaultAlarm/xtce:StaticAlarmRanges/xtce:CriticalRange", namespaces=nsmap)
-            self.assertEqual(critical.get("minExclusive"), "-80.0")
-            self.assertEqual(critical.get("maxExclusive"), "80.0")
+            self.assertEqual(critical.get("minInclusive"), "-80.0")
+            self.assertEqual(critical.get("maxInclusive"), "80.0")
 
     def test_xtce_abstract_meta_command_only_with_id_items(self):
         """The abstract MetaCommand exists to carry ArgumentAssignments for ID items"""
@@ -932,9 +932,9 @@ class TestXtceConverter(unittest.TestCase):
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
-            escaped = tree.find('.//xtce:StringArgumentType[@name="STR_Type"]', namespaces=nsmap)
+            escaped = tree.find('.//xtce:StringArgumentType[@name="CMD1_STR_Type"]', namespaces=nsmap)
             self.assertEqual(escaped.get("initialValue"), "0x" + b"0xABCD".hex().upper())
-            plain = tree.find('.//xtce:StringArgumentType[@name="STR2_Type"]', namespaces=nsmap)
+            plain = tree.find('.//xtce:StringArgumentType[@name="CMD1_STR2_Type"]', namespaces=nsmap)
             self.assertEqual(plain.get("initialValue"), "HELLO")
 
     def test_xtce_validates_against_schema(self):

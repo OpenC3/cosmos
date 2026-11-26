@@ -82,8 +82,6 @@ class XtceConverter:
             # Reject ambiguous definitions before replacing an existing export.
             if target_name in telemetry:
                 self._get_unique(telemetry[target_name])
-            if target_name in commands:
-                self._get_unique(commands[target_name])
 
             # Reverse order of packets for the target so things are in expected order for XTCE
             self._reverse_packet_order(target_name, commands)
@@ -93,10 +91,6 @@ class XtceConverter:
             target_dir = os.path.join(output_dir, target_name, "cmd_tlm")
             os.makedirs(target_dir, exist_ok=True)
             filename = os.path.join(target_dir, f"{target_name.lower()}.xtce")
-
-            # Remove existing file if it exists
-            if os.path.exists(filename):
-                os.remove(filename)
 
             # Create the XTCE file for this target
             self._create_xtce_file(filename, target_name, commands, telemetry)
@@ -240,13 +234,16 @@ class XtceConverter:
                 )
                 self._process_entry_list(container, packet, "TELEMETRY")
 
-    def _create_commands(self, root, commands, target_name):
-        """Create command metadata in XTCE format
+    def _create_commands(self, root: Any, commands: dict[str, Any], target_name: str) -> None:
+        """Create command metadata with argument types scoped to each command.
 
         Args:
-            root: XML root element
-            commands (dict): Command packets hash
-            target_name (str): Name of the target
+            root: XML root element.
+            commands: Command packets keyed by target.
+            target_name: Target being exported.
+
+        Raises:
+            ValueError: If two generated type names have conflicting definitions.
         """
         if target_name not in commands:
             return
@@ -255,9 +252,26 @@ class XtceConverter:
 
         # ArgumentTypeSet
         arg_type_set = etree.SubElement(cmd_meta, f"{{{self.XTCE_NAMESPACE}}}ArgumentTypeSet")
-        unique_items = self._get_unique(commands[target_name])
-        for _arg_name, arg in unique_items.items():
-            self._to_xtce_type(arg, "Argument", arg_type_set)
+        type_definitions = {}
+        for packet_name, packet in commands[target_name].items():
+            prefix = f"{packet_name}_"
+            for arg in packet.sorted_items:
+                if arg.data_type == "DERIVED":
+                    continue
+                temporary = etree.Element("types")
+                self._to_xtce_type(arg, "Argument", temporary)
+                for definition in temporary[:]:
+                    definition.set("name", prefix + definition.get("name"))
+                    if definition.get("arrayTypeRef"):
+                        definition.set("arrayTypeRef", prefix + definition.get("arrayTypeRef"))
+                    name = definition.get("name")
+                    signature = etree.tostring(definition, method="c14n")
+                    if name in type_definitions:
+                        if type_definitions[name] != signature:
+                            raise ValueError(f"Command argument type '{name}' has conflicting XTCE definitions")
+                    else:
+                        type_definitions[name] = signature
+                        arg_type_set.append(definition)
 
         # MetaCommandSet
         meta_cmd_set = etree.SubElement(cmd_meta, f"{{{self.XTCE_NAMESPACE}}}MetaCommandSet")
@@ -288,7 +302,7 @@ class XtceConverter:
             if arg_items:
                 arg_list = etree.SubElement(arg_and_container_parent, f"{{{self.XTCE_NAMESPACE}}}ArgumentList")
                 for item in arg_items:
-                    self._to_xtce_item(item, "Argument", arg_list)
+                    self._to_xtce_item(item, "Argument", arg_list, prefix=f"{packet_name}_")
 
             # CommandContainer
             cmd_container = etree.SubElement(
@@ -693,15 +707,17 @@ class XtceConverter:
             size_in_bits = etree.SubElement(encoding_elem, f"{{{self.XTCE_NAMESPACE}}}SizeInBits")
             etree.SubElement(size_in_bits, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = str(item.bit_size)
 
-    def _to_xtce_item(self, item, param_or_arg, parent):
-        """Create XTCE item reference
+    def _to_xtce_item(self, item: Any, param_or_arg: str, parent: Any, prefix: str = "") -> None:
+        """Create an item reference while retaining its original item name.
 
         Args:
-            item: Packet item
-            param_or_arg (str): "Parameter" or "Argument"
-            parent: Parent XML element
+            item: Packet item.
+            param_or_arg: Parameter or Argument.
+            parent: Parent XML element.
+            prefix: Scope prefix for the referenced type name.
         """
         type_ref = f"{item.name}_ArrayType" if item.array_size else f"{item.name}_Type"
+        type_ref = prefix + type_ref
         etree.SubElement(
             parent,
             f"{{{self.XTCE_NAMESPACE}}}{param_or_arg}",
@@ -784,11 +800,14 @@ class XtceConverter:
             etree.SubElement(range_set, f"{{{self.XTCE_NAMESPACE}}}ValidRange", attrib=attrs)
 
     def _to_xtce_limits(self, item: Any, parent: Any) -> None:
-        """Export ranges whose excluded boundaries retain OpenC3 alarm severity.
+        """Export CCSDS outside alarm ranges with equality in the alarm band.
 
         Args:
             item: Packet item
             parent: Parent XML element
+
+        Raises:
+            ValueError: If an alarm threshold cannot be represented exactly.
         """
         if not item.limits or not item.limits.values:
             return
@@ -800,16 +819,40 @@ class XtceConverter:
                 etree.SubElement(
                     ranges,
                     f"{{{self.XTCE_NAMESPACE}}}WarningRange",
-                    attrib={
-                        "minExclusive": str(limits_values[1]),
-                        "maxExclusive": str(limits_values[2]),
-                    },
+                    attrib=self._alarm_range_attributes(limits_values, 1, 2),
                 )
                 etree.SubElement(
                     ranges,
                     f"{{{self.XTCE_NAMESPACE}}}CriticalRange",
-                    attrib={
-                        "minExclusive": str(limits_values[0]),
-                        "maxExclusive": str(limits_values[3]),
-                    },
+                    attrib=self._alarm_range_attributes(limits_values, 0, 3),
                 )
+
+    def _alarm_range_attributes(self, values: list[int | float], lower: int, upper: int) -> dict[str, str]:
+        """Represent finite thresholds exactly and leave open sides absent.
+
+        Args:
+            values: Native numeric limits.
+            lower: Lower boundary index.
+            upper: Upper boundary index.
+
+        Returns:
+            Inclusive XTCE outside-alarm attributes.
+
+        Raises:
+            ValueError: If a threshold cannot be represented without changing it.
+        """
+        attributes = {}
+        for name, index in [("minInclusive", lower), ("maxInclusive", upper)]:
+            value = values[index]
+            if (name == "minInclusive" and value == -math.inf) or (name == "maxInclusive" and value == math.inf):
+                continue
+            try:
+                represented = float(value)
+            except OverflowError as error:
+                raise ValueError(f"Alarm threshold {value} cannot be represented as an XTCE xs:double") from error
+            if isinstance(value, int) and represented != value:
+                raise ValueError(f"Integer alarm threshold {value} cannot be represented exactly as an XTCE xs:double")
+            if not math.isfinite(represented):
+                raise ValueError("Non-finite XTCE alarm threshold is not supported")
+            attributes[name] = str(value)
+        return attributes

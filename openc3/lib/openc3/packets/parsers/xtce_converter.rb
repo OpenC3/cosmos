@@ -154,8 +154,9 @@ module OpenC3
       targets.each do |target_name|
         next if target_name == 'UNKNOWN'
 
-        # Check before deleting an existing export or combining incompatible definitions.
+        # Check before replacing an existing export or combining incompatible definitions.
         get_unique(telemetry[target_name]) if telemetry[target_name]
+        get_unique_id_items(commands[target_name]) if commands[target_name]
 
         # Reverse order of packets for the target so things are expected (reverse) order for xtce
         XtceParser.reverse_packet_order(target_name, commands)
@@ -163,11 +164,6 @@ module OpenC3
 
         FileUtils.mkdir_p(File.join(output_dir, target_name, 'cmd_tlm'))
         filename = File.join(output_dir, target_name, 'cmd_tlm', target_name.downcase + '.xtce')
-        begin
-          File.delete(filename)
-        rescue
-          # Doesn't exist
-        end
 
         # Create the xtce file for this target
         builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
@@ -473,6 +469,15 @@ module OpenC3
       builder.doc.root.canonicalize
     end
 
+    def command_id_type(item)
+      # Each command carries its own ID constant in RestrictionCriteria. The
+      # shared wire type must not restrict every command to the first constant.
+      type_item = item.clone
+      type_item.default = nil
+      type_item.range = nil
+      type_item
+    end
+
     def get_unique(items)
       unique = {}
       origins = {}
@@ -520,11 +525,11 @@ module OpenC3
         end
       end
       unique.each do |item_name, unique_items|
-        if unique_items.length <= 1
-          unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
-          next
+        signature = parameter_signature(command_id_type(unique_items[0]))
+        if unique_items.drop(1).any? { |item| parameter_signature(command_id_type(item)) != signature }
+          raise "Command ID '#{item_name}' has conflicting XTCE definitions. Give these ID items distinct names before exporting."
         end
-        unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
+        unique[item_name] = unique_items.length > 1 ? command_id_type(unique_items[0]) : unique_items[0]
       end
       unique
     end
@@ -642,12 +647,27 @@ module OpenC3
         if limits_set == :DEFAULT
           xml['xtce'].DefaultAlarm do
             xml['xtce'].StaticAlarmRanges do
-              xml['xtce'].WarningRange(:minExclusive => limits_values[1], :maxExclusive => limits_values[2])
-              xml['xtce'].CriticalRange(:minExclusive => limits_values[0], :maxExclusive => limits_values[3])
+              xml['xtce'].WarningRange(alarm_range_attributes(limits_values, 1, 2))
+              xml['xtce'].CriticalRange(alarm_range_attributes(limits_values, 0, 3))
             end
           end
         end
       end
+    end
+
+    def alarm_range_attributes(values, lower_index, upper_index)
+      attributes = {}
+      { minInclusive: lower_index, maxInclusive: upper_index }.each do |name, index|
+        value = values[index]
+        next if name == :minInclusive && value == -Float::INFINITY
+        next if name == :maxInclusive && value == Float::INFINITY
+        if value.is_a?(Integer) && value.to_f != value
+          raise "Integer alarm threshold #{value} cannot be represented exactly as an XTCE xs:double"
+        end
+        raise 'Non-finite XTCE alarm threshold is not supported' unless value.finite?
+        attributes[name] = value
+      end
+      attributes
     end
 
     def to_xtce_int(item, param_or_arg, xml, prefix: "")

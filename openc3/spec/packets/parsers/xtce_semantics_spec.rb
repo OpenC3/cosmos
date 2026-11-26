@@ -28,9 +28,13 @@ module OpenC3
        document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", ns).length]
     end
 
-    def imported_alarm_packet(bounds, inclusive: false, floating: false)
+    def imported_alarm_packet(bounds, inclusive: true, floating: false, range_form: 'outside')
       flags = inclusive.is_a?(Array) ? inclusive : [inclusive] * 4
       attributes = flags.each_with_index.map { |flag, index| "#{index < 2 ? 'min' : 'max'}#{flag ? 'Inclusive' : 'Exclusive'}" }
+      ranges = { 'WarningRange' => [1, 2], 'CriticalRange' => [0, 3] }.filter_map do |tag, indices|
+        attrs = indices.filter_map { |index| "#{attributes[index]}=\"#{bounds[index]}\"" unless bounds[index].nil? }
+        "<xtce:#{tag} #{attrs.join(' ')}/>" unless attrs.empty?
+      end.join
       type = floating ? 'Float' : 'Integer'
       signed = floating ? '' : ' signed="true"'
       encoding = floating ? 'IEEE754_1985' : 'twosComplement'
@@ -40,9 +44,8 @@ module OpenC3
             <xtce:ParameterTypeSet>
               <xtce:#{type}ParameterType name="TEMP_Type"#{signed}>
                 <xtce:#{type}DataEncoding sizeInBits="64" encoding="#{encoding}"/>
-                <xtce:DefaultAlarm><xtce:StaticAlarmRanges>
-                  <xtce:WarningRange #{attributes[1]}="#{bounds[1]}" #{attributes[2]}="#{bounds[2]}"/>
-                  <xtce:CriticalRange #{attributes[0]}="#{bounds[0]}" #{attributes[3]}="#{bounds[3]}"/>
+                <xtce:DefaultAlarm><xtce:StaticAlarmRanges rangeForm="#{range_form}">
+                  #{ranges}
                 </xtce:StaticAlarmRanges></xtce:DefaultAlarm>
               </xtce:#{type}ParameterType>
             </xtce:ParameterTypeSet>
@@ -127,15 +130,18 @@ module OpenC3
       end
     end
 
-    it 'keeps inclusive integer alarm boundaries in the less severe state' do
-      packet = imported_alarm_packet([-80, -70, 60, 80], inclusive: true)
-      { -81 => :RED_LOW, -80 => :YELLOW_LOW, -70 => :GREEN, 60 => :GREEN, 80 => :YELLOW_HIGH, 81 => :RED_HIGH }.each do |value, state|
+    it 'matches the CCSDS outside-alarm example, including equality' do
+      # CCSDS 660.1-G-2 4.3.2.3.7.2.1: inclusive endpoints are alarms.
+      packet = imported_alarm_packet([-20, -5, 5, 20])
+      { -21 => :RED_LOW, -20 => :RED_LOW, -19 => :YELLOW_LOW,
+        -5 => :YELLOW_LOW, -4 => :GREEN, 0 => :GREEN, 4 => :GREEN,
+        5 => :YELLOW_HIGH, 19 => :YELLOW_HIGH, 20 => :RED_HIGH }.each do |value, state|
         expect(alarm_state(packet, value)).to eq(state)
       end
     end
 
-    it 'keeps inclusive floating alarm boundaries and their immediate neighbors distinct' do
-      packet = imported_alarm_packet([-80, -70, 60, 80], inclusive: true, floating: true)
+    it 'keeps exclusive floating alarm boundaries and their immediate neighbors distinct' do
+      packet = imported_alarm_packet([-80, -70, 60, 80], inclusive: false, floating: true)
       { (-80.0).prev_float => :RED_LOW, -80.0 => :YELLOW_LOW, -70.0 => :GREEN,
         60.0 => :GREEN, 60.0.next_float => :YELLOW_HIGH, 80.0 => :YELLOW_HIGH, 80.0.next_float => :RED_HIGH }.each do |value, state|
         expect(alarm_state(packet, value, floating: true)).to eq(state)
@@ -144,7 +150,7 @@ module OpenC3
 
     it 'handles inclusive and exclusive boundaries independently' do
       packet = imported_alarm_packet([-80, -70, 60, 80], inclusive: [true, false, true, false])
-      { -80 => :YELLOW_LOW, -70 => :YELLOW_LOW, 60 => :GREEN, 80 => :RED_HIGH }.each do |value, state|
+      { -80 => :RED_LOW, -70 => :GREEN, 60 => :YELLOW_HIGH, 80 => :YELLOW_HIGH }.each do |value, state|
         expect(alarm_state(packet, value)).to eq(state)
       end
     end
@@ -158,9 +164,9 @@ module OpenC3
       expect(alarm_state(packet, 9007199254740992)).to eq(:RED_HIGH)
     end
 
-    it 'does not skip integer readings next to a large inclusive bound' do
+    it 'does not skip integer readings next to a large exclusive bound' do
       [2**53, 2**53 + 2, 2**54, 2**54 + 4, 2**63 - 1024].each do |upper|
-        packet = imported_alarm_packet([-upper, -upper / 2, upper / 2, upper], inclusive: true)
+        packet = imported_alarm_packet([-upper, -upper / 2, upper / 2, upper], inclusive: false)
         expect(alarm_state(packet, upper)).to eq(:YELLOW_HIGH)
         expect(alarm_state(packet, upper + 1)).to eq(:RED_HIGH)
         expect(alarm_state(packet, -upper)).to eq(:YELLOW_LOW)
@@ -168,7 +174,7 @@ module OpenC3
       end
     end
 
-    it 'retains float handling for small and fractional exclusive bounds' do
+    it 'retains float handling for small and fractional inclusive bounds' do
       bounds = [-80.5, -70.5, 60.5, 80.5]
       packet = imported_alarm_packet(bounds, floating: true)
       expect(packet.get_item('TEMP').limits.values[:DEFAULT]).to eq(bounds)
@@ -176,9 +182,101 @@ module OpenC3
       expect(alarm_state(packet, 80.5, floating: true)).to eq(:RED_HIGH)
     end
 
-    it 'rejects non-finite inclusive bounds that have no representable neighbor' do
-      expect { imported_alarm_packet([-80, -70, 60, '1e309'], inclusive: true) }
-        .to raise_error(/Non-finite inclusive XTCE alarm bounds/)
+    it 'rejects non-finite exclusive bounds that have no representable neighbor' do
+      expect { imported_alarm_packet([-80, -70, 60, '1e309'], inclusive: false) }
+        .to raise_error(/Non-finite exclusive XTCE alarm bounds/)
+    end
+
+    it 'leaves absent alarm sides open and honors critical-only and warning-only ranges' do
+      [
+        [[nil, nil, 60, 80], { -100 => :GREEN, 0 => :GREEN, 60 => :YELLOW_HIGH, 80 => :RED_HIGH }],
+        [[-80, -60, nil, nil], { 100 => :GREEN, 0 => :GREEN, -60 => :YELLOW_LOW, -80 => :RED_LOW }],
+        [[nil, nil, nil, 80], { -100 => :GREEN, 0 => :GREEN, 79 => :GREEN, 80 => :RED_HIGH }],
+        [[nil, nil, 60, nil], { -100 => :GREEN, 0 => :GREEN, 60 => :YELLOW_HIGH, 100 => :YELLOW_HIGH }]
+      ].each do |bounds, observations|
+        packet = imported_alarm_packet(bounds)
+        observations.each { |value, state| expect(alarm_state(packet, value)).to eq(state) }
+        # Open sides survive a native export/import rather than becoming zero.
+        Dir.mktmpdir do |directory|
+          XtceConverter.convert({}, { 'INST' => { 'STATUS' => packet } }, directory, nil)
+          path = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+          expect(XtceConverter.schema_errors(path)).to be_empty
+          config = PacketConfig.new
+          config.process_file(path, 'INST')
+          observations.each { |value, state| expect(alarm_state(config.telemetry['INST']['STATUS'], value)).to eq(state) }
+        end
+      end
+    end
+
+    it 'rejects inside or non-nested alarms instead of silently changing their meaning' do
+      expect { imported_alarm_packet([-80, -70, 60, 80], range_form: 'inside') }
+        .to raise_error(/inside alarm ranges are not supported/)
+      expect { imported_alarm_packet([-80, -90, 60, 80]) }
+        .to raise_error(/must be nested outside ranges/)
+    end
+
+    it 'rejects lossy integer alarm exports and preserves the previous output' do
+      config = parse_definition(<<~TXT)
+        TELEMETRY INST STATUS BIG_ENDIAN "Large integer"
+          APPEND_ITEM TEMP 64 INT "Temperature"
+            LIMITS DEFAULT 1 ENABLED 0 1 9007199254740990 9007199254740993
+      TXT
+      Dir.mktmpdir do |directory|
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        FileUtils.mkdir_p(File.dirname(file))
+        File.write(file, 'previous export')
+        expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
+          .to raise_error(/cannot be represented exactly as an XTCE xs:double/)
+        expect(File.read(file)).to eq('previous export')
+        config.telemetry['INST']['STATUS'].get_item('TEMP').limits.values[:DEFAULT][3] = 9007199254740994
+        XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+        expect(XtceConverter.schema_errors(file)).to be_empty
+        imported = PacketConfig.new
+        imported.process_file(file, 'INST')
+        expect(alarm_state(imported.telemetry['INST']['STATUS'], 9007199254740993)).to eq(:YELLOW_HIGH)
+        expect(alarm_state(imported.telemetry['INST']['STATUS'], 9007199254740994)).to eq(:RED_HIGH)
+      end
+    end
+
+    it 'rejects conflicting command ID wire types before replacing an existing export' do
+      config = parse_definition(<<~TXT)
+        COMMAND INST FIRST BIG_ENDIAN "First"
+          APPEND_ID_PARAMETER OPCODE 8 UINT 1 1 1 "Opcode"
+        COMMAND INST SECOND BIG_ENDIAN "Second"
+          APPEND_ID_PARAMETER OPCODE 16 UINT 2 2 2 "Opcode"
+      TXT
+      Dir.mktmpdir do |directory|
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        FileUtils.mkdir_p(File.dirname(file))
+        File.write(file, 'previous export')
+        expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
+          .to raise_error(/Command ID 'OPCODE' has conflicting XTCE definitions/)
+        expect(File.read(file)).to eq('previous export')
+      end
+    end
+
+    it 'preserves different command ID constants and command-scoped argument types' do
+      config = parse_definition(<<~TXT)
+        COMMAND INST FIRST BIG_ENDIAN "First"
+          APPEND_ID_PARAMETER OPCODE 8 UINT 1 1 1 "Opcode"
+          APPEND_PARAMETER VALUE 8 UINT 0 10 3 "Value"
+        COMMAND INST SECOND BIG_ENDIAN "Second"
+          APPEND_ID_PARAMETER OPCODE 8 UINT 2 2 2 "Opcode"
+          APPEND_PARAMETER VALUE 16 UINT 0 1000 300 "Value"
+      TXT
+      Dir.mktmpdir do |directory|
+        XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        expect(XtceConverter.schema_errors(file)).to be_empty
+        imported = PacketConfig.new
+        imported.process_file(file, 'INST')
+        { 'FIRST' => [1, 8, 3], 'SECOND' => [2, 16, 300] }.each do |name, (id, bits, default)|
+          packet = imported.commands['INST'][name]
+          expect(packet.get_item('OPCODE').id_value).to eq(id)
+          expect(packet.get_item('VALUE').bit_size).to eq(bits)
+          expect(packet.get_item('VALUE').default).to eq(default)
+        end
+      end
     end
 
     it 'activates imported numeric alarms, including on cloned packets' do
