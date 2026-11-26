@@ -18,6 +18,16 @@ module OpenC3
       config
     end
 
+    def export_parameter_counts(config, directory)
+      XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+      file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+      expect(XtceConverter.schema_errors(file)).to be_empty
+      document = Nokogiri::XML(File.read(file))
+      ns = { 'x' => XtceConverter::XTCE_1_2_NAMESPACE }
+      [document.xpath("//x:Parameter[@name='VALUE']", ns).length,
+       document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", ns).length]
+    end
+
     def imported_alarm_packet(bounds, inclusive: false, floating: false)
       flags = inclusive.is_a?(Array) ? inclusive : [inclusive] * 4
       attributes = flags.each_with_index.map { |flag, index| "#{index < 2 ? 'min' : 'max'}#{flag ? 'Inclusive' : 'Exclusive'}" }
@@ -100,13 +110,7 @@ module OpenC3
           APPEND_ITEM VALUE 16 UINT "Different description"
       TXT
       Dir.mktmpdir do |directory|
-        XtceConverter.convert(config.commands, config.telemetry, directory, nil)
-        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
-        expect(XtceConverter.schema_errors(file)).to be_empty
-        document = Nokogiri::XML(File.read(file))
-        ns = { 'x' => XtceConverter::XTCE_1_2_NAMESPACE }
-        expect(document.xpath("//x:Parameter[@name='VALUE']", ns).length).to eq(1)
-        expect(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", ns).length).to eq(2)
+        expect(export_parameter_counts(config, directory)).to eq([1, 2])
       end
     end
 
@@ -118,13 +122,7 @@ module OpenC3
       [definitions, definitions.reverse].each do |ordered|
         config = parse_definition(ordered.join)
         Dir.mktmpdir do |directory|
-          XtceConverter.convert(config.commands, config.telemetry, directory, nil)
-          file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
-          expect(XtceConverter.schema_errors(file)).to be_empty
-          document = Nokogiri::XML(File.read(file))
-          ns = { 'x' => XtceConverter::XTCE_1_2_NAMESPACE }
-          expect(document.xpath("//x:Parameter[@name='VALUE']", ns).length).to eq(1)
-          expect(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", ns).length).to eq(1)
+          expect(export_parameter_counts(config, directory)).to eq([1, 1])
         end
       end
     end

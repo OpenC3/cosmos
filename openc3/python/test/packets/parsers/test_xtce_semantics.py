@@ -20,6 +20,15 @@ class TestXtceSemantics(unittest.TestCase):
             config.process_file(file.name, "INST")
         return config
 
+    def assert_exported_parameter_counts(self, config, directory, expected_refs):
+        XtceConverter.convert(config.commands, config.telemetry, directory)
+        document = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
+        ns = {"x": XtceConverter.XTCE_NAMESPACE}
+        self.assertEqual(len(document.xpath("//x:Parameter[@name='VALUE']", namespaces=ns)), 1)
+        self.assertEqual(
+            len(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", namespaces=ns)), expected_refs
+        )
+
     def test_rejects_conflicting_signedness_without_replacing_an_existing_export(self):
         config = self.parse(
             'TELEMETRY INST UNSIGNED BIG_ENDIAN "Unsigned channel"\n'
@@ -58,11 +67,7 @@ class TestXtceSemantics(unittest.TestCase):
             '  APPEND_ITEM VALUE 16 UINT "Different description"\n'
         )
         with tempfile.TemporaryDirectory() as directory:
-            XtceConverter.convert(config.commands, config.telemetry, directory)
-            document = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
-            ns = {"x": XtceConverter.XTCE_NAMESPACE}
-            self.assertEqual(len(document.xpath("//x:Parameter[@name='VALUE']", namespaces=ns)), 1)
-            self.assertEqual(len(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", namespaces=ns)), 2)
+            self.assert_exported_parameter_counts(config, directory, 2)
 
     def test_ignores_derived_items_when_a_numeric_item_has_the_same_name(self):
         definitions = [
@@ -74,11 +79,7 @@ class TestXtceSemantics(unittest.TestCase):
         for ordered in [definitions, definitions[::-1]]:
             with self.subTest(order=ordered), tempfile.TemporaryDirectory() as directory:
                 config = self.parse("".join(ordered))
-                XtceConverter.convert(config.commands, config.telemetry, directory)
-                document = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
-                ns = {"x": XtceConverter.XTCE_NAMESPACE}
-                self.assertEqual(len(document.xpath("//x:Parameter[@name='VALUE']", namespaces=ns)), 1)
-                self.assertEqual(len(document.xpath("//x:ParameterRefEntry[@parameterRef='VALUE']", namespaces=ns)), 1)
+                self.assert_exported_parameter_counts(config, directory, 1)
 
     def test_rejects_command_conflicts_before_replacing_an_existing_export(self):
         for size, maximum in [(16, 10), (8, 20)]:
