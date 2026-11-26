@@ -444,7 +444,9 @@ module OpenC3
       found
     end
 
-    # @return [Array<String>] All the item names for every packet in a target
+    # @return [Array<String>] All the item names for every packet in a target which
+    #   LATEST can resolve. The generated LIMITS_GROUP packet is left out like in
+    #   build_item_to_packet_map.
     def self.all_item_names(target_name, type: :TLM, scope:)
       items = store_for_target(target_name, scope: scope).zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1)
       items = rebuild_target_allitems_list(target_name, type: type, scope: scope) if items.empty?
@@ -454,6 +456,8 @@ module OpenC3
     def self.rebuild_target_allitems_list(target_name, type: :TLM, scope:)
       packets = packets(target_name, type: type, scope: scope)
       packets.each do |packet|
+        next if type.to_s.upcase == 'TLM' and packet['packet_name'] == PacketConfig::LIMITS_GROUP_PACKET
+
         packet['items'].each do |item|
           TargetModel.add_to_target_allitems_list(target_name, item['name'], scope: scope)
         end
@@ -1205,9 +1209,12 @@ module OpenC3
             raise e
           end
           json_hash = {}
+          # LATEST never resolves to the generated LIMITS_GROUP packet so its items
+          # (the limits group names) don't belong in the LATEST item list
+          add_to_allitems = (packet_name != PacketConfig::LIMITS_GROUP_PACKET)
           packet.sorted_items.each do |item|
             json_hash[item.name] = nil
-            TargetModel.add_to_target_allitems_list(target_name, item.name, scope: @scope)
+            TargetModel.add_to_target_allitems_list(target_name, item.name, scope: @scope) if add_to_allitems
           end
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end

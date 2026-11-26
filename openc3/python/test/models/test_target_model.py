@@ -549,6 +549,25 @@ class TestTargetModelMultipleDbShards(unittest.TestCase):
         self.assertIn(b"TEMP1", self.shard1.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1))
         self.assertFalse(self.shard0.exists("DEFAULT__openc3tlm__INST__allitems"))
 
+    def test_all_item_names_leaves_out_the_limits_group_items(self):
+        # LATEST can't resolve a limits group so listing one breaks get_tlm_available
+        packets = System.telemetry.packets("SYSTEM")
+        self.assertIn("LIMITS_GROUP", packets)
+        model = TargetModel(name="SYSTEM", scope="DEFAULT")
+        model.update_store_telemetry({"SYSTEM": packets})
+        group_items = ["FIRST", "FIRST_ENABLED", "SECOND", "SECOND_ENABLED"]
+        items = TargetModel.all_item_names("SYSTEM", scope="DEFAULT")
+        self.assertIn("PACKET_TIMESECONDS", items)
+        for item in group_items:
+            self.assertNotIn(item, items)
+
+        # Rebuilding the list leaves them out too
+        self.shard0.delete("DEFAULT__openc3tlm__SYSTEM__allitems")
+        items = TargetModel.all_item_names("SYSTEM", scope="DEFAULT")
+        self.assertIn("PACKET_TIMESECONDS", items)
+        for item in group_items:
+            self.assertNotIn(item, items)
+
     def test_item_to_packet_map_is_stored_on_the_target_db_shard(self):
         item_map = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
         self.assertEqual(item_map["TEMP1"], ["HEALTH_STATUS"])
