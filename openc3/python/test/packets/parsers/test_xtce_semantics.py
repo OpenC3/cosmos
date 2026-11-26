@@ -285,10 +285,10 @@ class TestXtceSemantics(unittest.TestCase):
                 with (
                     self.subTest(command=command, data_type=data_type, entries=ordered),
                     tempfile.TemporaryDirectory() as directory,
-                    self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
                 ):
                     config = self.byte_order_config(ordered, command, data_type)
-                    XtceConverter.convert(config.commands, config.telemetry, directory)
+                    with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
+                        XtceConverter.convert(config.commands, config.telemetry, directory)
 
     def test_rejects_opposite_byte_orders_when_a_later_shared_field_is_unaligned(self):
         entries = [("BIG_ENDIAN", 0), ("LITTLE_ENDIAN", 0), ("LITTLE_ENDIAN", 9)]
@@ -298,10 +298,10 @@ class TestXtceSemantics(unittest.TestCase):
             with (
                 self.subTest(command=command, data_type=data_type, entries=ordered),
                 tempfile.TemporaryDirectory() as directory,
-                self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
             ):
                 config = self.byte_order_config(ordered, command, data_type)
-                XtceConverter.convert(config.commands, config.telemetry, directory)
+                with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
+                    XtceConverter.convert(config.commands, config.telemetry, directory)
 
     def test_shares_matching_byte_order_across_integer_field_alignments(self):
         for command, data_type, order, offsets in itertools.product(
@@ -326,10 +326,10 @@ class TestXtceSemantics(unittest.TestCase):
             with (
                 self.subTest(command=command, data_type=data_type, entries=ordered),
                 tempfile.TemporaryDirectory() as directory,
-                self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
             ):
                 config = self.byte_order_config(ordered, command, data_type)
-                XtceConverter.convert(config.commands, config.telemetry, directory)
+                with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
+                    XtceConverter.convert(config.commands, config.telemetry, directory)
 
     def test_shares_aligned_one_byte_colliding_command_types_across_byte_orders(self):
         entries = [("BIG_ENDIAN", 0), ("LITTLE_ENDIAN", 0)]
@@ -347,7 +347,7 @@ class TestXtceSemantics(unittest.TestCase):
             with (
                 self.subTest(data_type=data_type, entries=ordered),
                 tempfile.TemporaryDirectory() as directory,
-                self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"),
             ):
                 config = self.byte_order_config(ordered, command=True, data_type=data_type, bits=16)
-                XtceConverter.convert(config.commands, config.telemetry, directory)
+                with self.assertRaisesRegex(ValueError, "conflicting XTCE definitions"):
+                    XtceConverter.convert(config.commands, config.telemetry, directory)
