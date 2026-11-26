@@ -321,5 +321,88 @@ module OpenC3
         end
       end
     end
+
+    it 'rejects inexact integer alarm exports without replacing an existing file' do
+      [-1, 1].each do |sign|
+        4.times do |index|
+          limits = [0, 4, 8, 12].map { |offset| sign * 2**54 + offset }
+          limits[index] += 1
+          config = parse_definition("TELEMETRY INST STATUS BIG_ENDIAN \"Counter\"\n  APPEND_ITEM COUNT 64 INT \"Counter\"\n    LIMITS DEFAULT 1 ENABLED #{limits.join(' ')}\n")
+          Dir.mktmpdir do |directory|
+            file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+            FileUtils.mkdir_p(File.dirname(file))
+            File.write(file, 'previous export')
+            expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
+              .to raise_error(/cannot be represented exactly as (?:an )?XTCE xs:double/)
+            expect(File.read(file)).to eq('previous export')
+          end
+        end
+      end
+    end
+
+    it 'allows shared command ID encodings with different comparison values' do
+      config = parse_definition(<<~TXT)
+        COMMAND INST FIRST BIG_ENDIAN "First command"
+          APPEND_ID_PARAMETER ID 8 UINT 0 255 1 "ID"
+        COMMAND INST SECOND BIG_ENDIAN "Second command"
+          APPEND_ID_PARAMETER ID 8 UINT 0 255 2 "ID"
+      TXT
+      Dir.mktmpdir do |directory|
+        XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        expect(XtceConverter.schema_errors(file)).to be_empty
+      end
+    end
+
+    it 'scopes ordinary command argument types by command' do
+      config = parse_definition(<<~TXT)
+        COMMAND INST FIRST BIG_ENDIAN "First command"
+          APPEND_PARAMETER VALUE 8 UINT 0 10 0 "First argument"
+        COMMAND INST SECOND BIG_ENDIAN "Second command"
+          APPEND_PARAMETER VALUE 16 UINT 0 20 0 "Second argument"
+      TXT
+      Dir.mktmpdir do |directory|
+        XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        expect(XtceConverter.schema_errors(file)).to be_empty
+        document = Nokogiri::XML(File.read(file))
+        types = document.xpath("//*[local-name()='IntegerArgumentType']/@name").map(&:value)
+        expect(types).to contain_exactly('FIRST_VALUE_Type', 'SECOND_VALUE_Type')
+      end
+    end
+
+    it 'rejects colliding scoped command types before replacing an export' do
+      config = parse_definition(<<~TXT)
+        COMMAND INST FIRST_PART BIG_ENDIAN "First command"
+          APPEND_PARAMETER VALUE 8 UINT 0 10 0 "First argument"
+        COMMAND INST FIRST BIG_ENDIAN "Second command"
+          APPEND_PARAMETER PART_VALUE 16 UINT 0 20 0 "Second argument"
+      TXT
+      Dir.mktmpdir do |directory|
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        FileUtils.mkdir_p(File.dirname(file))
+        File.write(file, 'previous export')
+        expect { XtceConverter.convert(config.commands, config.telemetry, directory, nil) }
+          .to raise_error(/conflicting XTCE definitions/)
+        expect(File.read(file)).to eq('previous export')
+      end
+    end
+
+    it 'shares equivalent colliding scoped command types' do
+      config = parse_definition(<<~TXT)
+        COMMAND INST FIRST_PART BIG_ENDIAN "First command"
+          APPEND_PARAMETER VALUE 8 UINT 0 10 0 "First argument"
+        COMMAND INST FIRST BIG_ENDIAN "Second command"
+          APPEND_PARAMETER PART_VALUE 8 UINT 0 10 0 "Second argument"
+      TXT
+      Dir.mktmpdir do |directory|
+        XtceConverter.convert(config.commands, config.telemetry, directory, nil)
+        file = File.join(directory, 'INST/cmd_tlm/inst.xtce')
+        expect(XtceConverter.schema_errors(file)).to be_empty
+        document = Nokogiri::XML(File.read(file))
+        types = document.xpath("//*[local-name()='IntegerArgumentType']/@name").map(&:value)
+        expect(types).to eq(['FIRST_PART_VALUE_Type'])
+      end
+    end
   end
 end

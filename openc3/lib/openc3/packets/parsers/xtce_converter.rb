@@ -156,7 +156,7 @@ module OpenC3
 
         # Check before replacing an existing export or combining incompatible definitions.
         get_unique(telemetry[target_name]) if telemetry[target_name]
-        get_unique_id_items(commands[target_name]) if commands[target_name]
+        command_argument_types(commands[target_name]) if commands[target_name]
 
         # Reverse order of packets for the target so things are expected (reverse) order for xtce
         XtceParser.reverse_packet_order(target_name, commands)
@@ -331,12 +331,11 @@ module OpenC3
             end
           end
         end
-        xml['xtce'].ArgumentTypeSet do
-          commands[target_name].each do |packet_name, packet|
-            packet.items.each do |arg_name, arg|
-              next if arg.data_type == :DERIVED
-              next if unique_id_items.key?(arg_name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
-              to_xtce_type(arg, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
+        argument_types = command_argument_types(commands[target_name])
+        unless argument_types.empty?
+          xml['xtce'].ArgumentTypeSet do
+            argument_types.each_value do |arg, prefix|
+              to_xtce_type(arg, 'Argument', xml, prefix: prefix)
             end
           end
         end
@@ -458,10 +457,10 @@ module OpenC3
       initial_value
     end
 
-    def parameter_signature(item)
+    def parameter_signature(item, param_or_arg: 'Parameter', prefix: '')
       builder = Nokogiri::XML::Builder.new do |xml|
-        xml['xtce'].ParameterTypeSet('xmlns:xtce' => XTCE_1_2_NAMESPACE) do
-          to_xtce_type(item, 'Parameter', xml)
+        xml['xtce'].public_send(param_or_arg + 'TypeSet', 'xmlns:xtce' => XTCE_1_2_NAMESPACE) do
+          to_xtce_type(item, param_or_arg, xml, prefix: prefix)
         end
       end
       builder.doc.xpath('//@shortDescription').remove
@@ -517,19 +516,42 @@ module OpenC3
 
     def get_unique_id_items(items)
       unique = {}
+      origins = {}
       items.each do |packet_name, packet|
         packet.id_items.each do |item|
           next if item.data_type == :DERIVED
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
+          (origins[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []) << packet_name
         end
       end
       unique.each do |item_name, unique_items|
         signature = parameter_signature(command_id_type(unique_items[0]))
         if unique_items.drop(1).any? { |item| parameter_signature(command_id_type(item)) != signature }
-          raise "Command ID '#{item_name}' has conflicting XTCE definitions. Give these ID items distinct names before exporting."
+          raise "Command ID '#{item_name}' has conflicting XTCE definitions in commands #{origins[item_name].join(', ')}. Give these ID items distinct names before exporting."
         end
         unique[item_name] = unique_items.length > 1 ? command_id_type(unique_items[0]) : unique_items[0]
+      end
+      unique
+    end
+
+    def command_argument_types(packets)
+      ids = get_unique_id_items(packets)
+      unique = {}
+      packets.each do |packet_name, packet|
+        prefix = packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_'
+        packet.items.each_value do |item|
+          next if item.data_type == :DERIVED || ids.key?(item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
+          name = prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
+          if unique.key?(name)
+            previous, previous_prefix = unique[name]
+            unless parameter_signature(previous, param_or_arg: 'Argument', prefix: previous_prefix) == parameter_signature(item, param_or_arg: 'Argument', prefix: prefix)
+              raise "Command type '#{name}' has conflicting XTCE definitions. Give these items distinct names before exporting."
+            end
+          else
+            unique[name] = [item, prefix]
+          end
+        end
       end
       unique
     end

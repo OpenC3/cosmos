@@ -178,3 +178,38 @@ class TestXtceSemantics(unittest.TestCase):
                         "CRITICAL" if not normal_for_critical else "WARNING" if not normal_for_warning else "NORMAL"
                     )
                     self.assertEqual(observed, expected)
+
+    def test_rejects_inexact_xtce_integer_limits_before_replacing_export(self):
+        for sign in [-1, 1]:
+            for index in range(4):
+                limits = [sign * 2**54 + offset for offset in [0, 4, 8, 12]]
+                limits[index] += 1
+                with self.subTest(sign=sign, index=index), tempfile.TemporaryDirectory() as directory:
+                    config = self.parse(
+                        'TELEMETRY INST STATUS BIG_ENDIAN "Counter"\n'
+                        '  APPEND_ITEM COUNT 64 INT "Counter"\n'
+                        "    LIMITS DEFAULT 1 ENABLED " + " ".join(map(str, limits)) + "\n"
+                    )
+                    path = Path(directory) / "INST/cmd_tlm/inst.xtce"
+                    path.parent.mkdir(parents=True)
+                    path.write_text("previous export")
+                    with self.assertRaisesRegex(ValueError, "cannot be represented exactly as (?:an )?XTCE xs:double"):
+                        XtceConverter.convert(config.commands, config.telemetry, directory)
+                    self.assertEqual(path.read_text(), "previous export")
+
+    def test_shares_equivalent_colliding_scoped_command_types(self):
+        config = self.parse(
+            'COMMAND INST FIRST_PART BIG_ENDIAN "First"\n'
+            '  APPEND_PARAMETER VALUE 8 UINT 0 10 0 "First argument"\n'
+            'COMMAND INST FIRST BIG_ENDIAN "Second"\n'
+            '  APPEND_PARAMETER PART_VALUE 8 UINT 0 10 0 "Second argument"\n'
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            XtceConverter.convert(config.commands, config.telemetry, directory)
+            document = etree.parse(str(Path(directory) / "INST/cmd_tlm/inst.xtce"))
+            ns = {"x": XtceConverter.XTCE_NAMESPACE}
+            self.assertEqual(len(document.xpath("//x:IntegerArgumentType", namespaces=ns)), 1)
+            self.assertEqual(
+                document.xpath("//x:Argument/@argumentTypeRef", namespaces=ns),
+                ["FIRST_PART_VALUE_Type", "FIRST_PART_VALUE_Type"],
+            )

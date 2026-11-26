@@ -11,6 +11,7 @@
 
 import math
 import os
+from copy import deepcopy
 from typing import Any
 
 from lxml import etree  # type: ignore[import]
@@ -265,7 +266,7 @@ class XtceConverter:
                     if definition.get("arrayTypeRef"):
                         definition.set("arrayTypeRef", prefix + definition.get("arrayTypeRef"))
                     name = definition.get("name")
-                    signature = etree.tostring(definition, method="c14n")
+                    signature = self._definition_signature(definition)
                     if name in type_definitions:
                         if type_definitions[name] != signature:
                             raise ValueError(f"Command argument type '{name}' has conflicting XTCE definitions")
@@ -347,6 +348,18 @@ class XtceConverter:
         """
         root = etree.Element("types")
         self._to_xtce_type(item, "Parameter", root)
+        return self._definition_signature(root)
+
+    def _definition_signature(self, definition: Any) -> bytes:
+        """Compare emitted type semantics while preserving output descriptions.
+
+        Args:
+            definition: XML containing the emitted type definition.
+
+        Returns:
+            Canonical XML with cosmetic descriptions excluded.
+        """
+        root = deepcopy(definition)
         for node in root.iter():
             node.attrib.pop("shortDescription", None)
         # Collect descriptions before removing nodes from the tree.
