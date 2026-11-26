@@ -261,8 +261,8 @@ importers:
         specifier: 3.5.0
         version: 3.5.0
       marked:
-        specifier: 14.1.4
-        version: 14.1.4
+        specifier: 18.2.1
+        version: 18.2.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -778,8 +778,8 @@ importers:
         specifier: 4.18.1
         version: 4.18.1
       marked:
-        specifier: 14.1.4
-        version: 14.1.4
+        specifier: 18.2.1
+        version: 18.2.1
       monaco-editor:
         specifier: 0.58.0
         version: 0.58.0
@@ -2167,9 +2167,9 @@ packages:
     engines: {node: '>= 18'}
     hasBin: true
 
-  marked@14.1.4:
-    resolution: {integrity: sha512-vkVZ8ONmUdPnjCKc5uTRvmkRbx4EAi2OkTOXmfTDhZz3OFqMNBM1oTTWwTr4HY4uAEojhzPf+Fy8F1DWa3Sndg==}
-    engines: {node: '>= 18'}
+  marked@18.2.1:
+    resolution: {integrity: sha512-ii4bxCTCqqwpT86XZWgJNs+ZnAIZksmLGYMViWA7PDIXYIeNo1x6cDdX3JOip9NM/cI6p8z57FxliACboTruMA==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   math-intrinsics@1.1.0:
@@ -3801,7 +3801,7 @@ snapshots:
 
   marked@14.0.0: {}
 
-  marked@14.1.4: {}
+  marked@18.2.1: {}
 
   math-intrinsics@1.1.0: {}
 
