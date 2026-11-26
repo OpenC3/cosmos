@@ -1292,6 +1292,22 @@ module OpenC3
         expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).to_not have_key("FIRST")
       end
 
+      it "leaves the LIMITS_GROUP items out of the LATEST item list" do
+        model = TargetModel.new(folder_name: "SYSTEM", name: "SYSTEM", scope: "DEFAULT", db_shard: 1)
+        model.create
+        model.update_store(System.new(["SYSTEM"], @target_dir))
+        # LATEST can't resolve a limits group so listing one breaks get_tlm_available
+        items = TargetModel.all_item_names("SYSTEM", scope: "DEFAULT")
+        expect(items).to include("PACKET_TIMESECONDS")
+        expect(items).to_not include("FIRST", "FIRST_ENABLED", "SECOND", "SECOND_ENABLED")
+
+        # Rebuilding the list leaves them out too
+        Store.instance(db_shard: 1).del("DEFAULT__openc3tlm__SYSTEM__allitems")
+        items = TargetModel.all_item_names("SYSTEM", scope: "DEFAULT")
+        expect(items).to include("PACKET_TIMESECONDS")
+        expect(items).to_not include("FIRST", "FIRST_ENABLED", "SECOND", "SECOND_ENABLED")
+      end
+
       it "fails for a target with a telemetry packet of its own named LIMITS_GROUP" do
         Dir.mktmpdir do |dir|
           FileUtils.cp_r(File.join(@target_dir, "SYSTEM"), dir)

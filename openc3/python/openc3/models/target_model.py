@@ -236,9 +236,20 @@ class TargetModel(Model):
             raise RuntimeError(f"Item(s) {', '.join(not_found)} does not exist")
         return found
 
-    # @return [List<String>] All the item names for every packet in a target
     @classmethod
     def all_item_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE) -> list[str]:
+        """Get the item names of every packet in a target which LATEST can resolve.
+
+        The generated LIMITS_GROUP packet is left out like in build_item_to_packet_map.
+
+        Args:
+            target_name: Name of the target.
+            type: Packet type, TLM or CMD.
+            scope: Scope of the target.
+
+        Returns:
+            The sorted item names.
+        """
         items = cls._store_for_target(target_name, scope).zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1)
         if not items:
             return cls.rebuild_target_allitems_list(target_name, type=type, scope=scope)
@@ -246,7 +257,19 @@ class TargetModel(Model):
 
     @classmethod
     def rebuild_target_allitems_list(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE) -> list[str]:
+        """Rebuild the sorted set of item names returned by all_item_names.
+
+        Args:
+            target_name: Name of the target.
+            type: Packet type, TLM or CMD.
+            scope: Scope of the target.
+
+        Returns:
+            The sorted item names.
+        """
         for packet in cls.packets(target_name, scope=scope):
+            if type.upper() == "TLM" and packet["packet_name"] == "LIMITS_GROUP":
+                continue
             for item in packet["items"]:
                 cls.add_to_target_allitems_list(target_name, item["name"], scope=scope)
         # return the new sorted set to let redis do the sorting
@@ -686,9 +709,15 @@ class TargetModel(Model):
                     Logger.error(f"Invalid text present in {target_name} {packet_name} tlm packet")
                     raise e
                 json_hash = {}
+                # LATEST never resolves to the generated LIMITS_GROUP packet so its items
+                # (the limits group names) don't belong in the LATEST item list
+                add_to_allitems = packet_name != "LIMITS_GROUP"
                 for item in packet.sorted_items:
                     json_hash[item.name] = None
-                    TargetModel.add_to_target_allitems_list(target_name, item.name, scope=self.scope)
+                    if add_to_allitems:
+                        TargetModel.add_to_target_allitems_list(
+                            target_name, item.name, scope=self.scope or OPENC3_SCOPE
+                        )
                 # Use Store.hset directly instead of CvtModel.set to avoid circular dependency
                 db_shard_store.hset(
                     f"{self.scope}__tlm__{packet.target_name}",
