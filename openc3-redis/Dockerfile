@@ -1,6 +1,6 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG OPENC3_REDIS_IMAGE=valkey/valkey
-ARG OPENC3_REDIS_VERSION=9.1.3-trixie
+ARG OPENC3_REDIS_VERSION=9.2.0-trixie
 ARG APT_URL=http://deb.debian.org
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_REDIS_IMAGE}:${OPENC3_REDIS_VERSION}
@@ -15,7 +15,7 @@ ARG APT_URL
 # pin this image to the previous one indefinitely. Bumping this busts that
 # layer; the dpkg check fails the build if apt fell short (stale APT_URL
 # mirror). scripts/release/package_audit.rb verifies it against deb.debian.org.
-ARG DEBIAN_POINT_RELEASE=13.7
+ARG DEBIAN_POINT_RELEASE=13.8
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem

@@ -11,8 +11,8 @@ ARG NODE_VERSION=24.22.3
 # deps, e.g.
 #   npm pack npm@<version> && tar xzf npm-<version>.tgz
 #   cat package/node_modules/{brace-expansion,ip-address,tar,undici}/package.json
-ARG NPM_VERSION=12.2.2
-ARG PNPM_VERSION=11.28.12
+ARG NPM_VERSION=12.2.3
+ARG PNPM_VERSION=11.29.0
 
 FROM node:${NODE_VERSION}-trixie-slim AS nodejs
 

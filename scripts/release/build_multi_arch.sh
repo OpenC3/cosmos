@@ -369,7 +369,7 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
   OPENC3_TRAEFIK_RELEASE=v3.7.19
 else
-  OPENC3_TRAEFIK_RELEASE=v3.7.19
+  OPENC3_TRAEFIK_RELEASE=v3.7.20
 fi
 cd ../openc3-traefik
 retry_build \

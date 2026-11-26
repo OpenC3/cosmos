@@ -12,7 +12,7 @@ ARG APT_URL=http://deb.debian.org
 # pin this image to the previous one indefinitely. Bumping this busts that
 # layer; the dpkg check fails the build if apt fell short (stale APT_URL
 # mirror). scripts/release/package_audit.rb verifies it against deb.debian.org.
-ARG DEBIAN_POINT_RELEASE=13.7
+ARG DEBIAN_POINT_RELEASE=13.8
 ARG OPENC3_VERSITYGW_VERSION
 ARG TARGETARCH
 

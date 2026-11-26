@@ -64,13 +64,13 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 RUN microdnf update -y && \
     microdnf install -y --setopt=tsflags=nodocs $PACKAGES && \
     mkdir -p /usr/src && \
-    tar -xzf /tmp/ruby-3.4.12.tar.gz -C /usr/src/ && \
-    rm -f /tmp/ruby-3.4.12.tar.gz
-WORKDIR /usr/src/ruby-3.4.12
+    tar -xzf /tmp/ruby-3.4.13.tar.gz -C /usr/src/ && \
+    rm -f /tmp/ruby-3.4.13.tar.gz
+WORKDIR /usr/src/ruby-3.4.13
 RUN ./configure --disable-install-doc --enable-shared && \
     make -j "$(nproc)" && \
     make install && \
-    rm -rf /usr/src/ruby-3.4.12
+    rm -rf /usr/src/ruby-3.4.13
 
 # tini - https://github.com/krallin/tini
 WORKDIR /usr/src
@@ -139,7 +139,7 @@ ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 # rbspy - https://github.com/rbspy/rbspy
 # Same ARG as the Debian Dockerfile so scripts/release/package_audit.rb bumps
 # both. UBI builds are amd64 only (openc3_build_ubi.sh) so only x86_64 is used.
-ARG RBSPY_VERSION=0.55.0
+ARG RBSPY_VERSION=0.56.0
 COPY rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /opt/
 WORKDIR /opt
 RUN tar -xzf "rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz" && \

@@ -1919,10 +1919,17 @@ end
 # Gemfile constraint blocks the bump, so `bundle update <gem>` becomes a no-op
 # and the user thinks acceptance did nothing.
 #
-# Pass the same `approved` hash across calls to auto-approve gems already
-# accepted in an earlier directory (keyed by "name installed newest"), so overlapping
-# gems in cmd-tlm-api and script-runner-api are only prompted once.
-def update_outdated_gems(dir, extra_env = {}, approved: {})
+# Pass the same `approved` hash across calls to reuse the answers given in an
+# earlier directory (keyed by "name installed newest", true for yes and false
+# for no), so overlapping gems in cmd-tlm-api and script-runner-api are only
+# prompted once.
+#
+# `reference_versions` (name => [versions], see core_gem_versions) carries the
+# choices already made in core into enterprise, whose images install on top of
+# core's: a gem core already moved to `newest` is updated without asking, and
+# one core kept at `installed` is skipped. Anything else is prompted, and shared
+# gems still on a different version than core are reported at the end.
+def update_outdated_gems(dir, extra_env = {}, approved: {}, reference_versions: nil)
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated gems in #{label}:"
   updated = 0
@@ -1937,19 +1944,73 @@ def update_outdated_gems(dir, extra_env = {}, approved: {})
       name, newest, installed = m.captures
       next if newest == installed
       key = "#{name} #{installed} #{newest}"
-      if approved[key]
-        puts "  [#{label}] Auto-approving gem #{name} #{installed} -> #{newest} (previously approved)"
-        system(env, "bundle update #{name}")
-        updated += 1
-      elsif prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?", installed, newest)
+      core = reference_versions&.fetch(name, nil)
+      if core&.include?(newest)
+        puts "  [#{label}] Updating gem #{name} #{installed} -> #{newest} (matches core)"
         approved[key] = true
-        system(env, "bundle update #{name}")
-        updated += 1
+      elsif core&.include?(installed)
+        puts "  [#{label}] Skipping gem #{name} #{installed} -> #{newest} (core is still on #{installed})"
+        approved[key] = false
+      elsif approved.key?(key)
+        answer = approved[key] ? 'approved' : 'declined'
+        puts "  [#{label}] #{answer.capitalize} gem #{name} #{installed} -> #{newest} (previously #{answer})"
+      else
+        hint = core ? " (core has #{core.join(', ')})" : ''
+        approved[key] = prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?#{hint}", installed, newest)
       end
+      next unless approved[key]
+
+      system(env, "bundle update #{name}")
+      updated += 1
     end
+
+    report_gem_mismatches(label, 'Gemfile.lock', reference_versions) if reference_versions
   end
   puts "  No updatable gems." if updated == 0
   updated
+end
+
+# Core directories with a committed Gemfile.lock, in the order the core audit
+# walks them.
+CORE_GEM_DIRS = %w[openc3 openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api].freeze
+
+# Gem name => the versions locked across core's Gemfile.locks (platform
+# suffixes dropped), for update_outdated_gems' reference_versions.
+def core_gem_versions(root_dir: ROOT_DIR)
+  lockfile_gem_versions(CORE_GEM_DIRS.map { |dir| File.join(root_dir, dir, 'Gemfile.lock') })
+end
+
+# Reads the four-space-indented "name (version)" spec lines directly, because
+# Bundler::LockfileParser resolves PATH sources (the openc3 path gem) against a
+# Gemfile in the current directory and raises without one.
+def lockfile_gem_versions(paths)
+  versions = {}
+  paths.each do |path|
+    File.foreach(path) do |line|
+      m = line.match(/\A {4}([\w\-.]+) \(([^)]+)\)\s*\z/)
+      next unless m
+
+      # Platform gems lock as "1.19.0-x86_64-linux-gnu"; a version itself
+      # never has a "-" followed by a letter.
+      version = m[2].sub(/-[a-z].*\z/i, '')
+      list = (versions[m[1]] ||= [])
+      list << version unless list.include?(version)
+    end
+  end
+  versions
+end
+
+# Warn about gems in `lockfile` that core also locks, but at another version.
+# This catches what the outdated walk can't: a gem already at its newest here
+# that core declined, or one this lockfile is still behind on because the
+# Gemfile constraint here differs from core's.
+def report_gem_mismatches(label, lockfile, reference_versions)
+  lockfile_gem_versions([lockfile]).each do |name, versions|
+    core = reference_versions[name]
+    next if core.nil? || versions.all? { |v| core.include?(v) }
+
+    puts "  WARN: [#{label}] gem #{name} is #{versions.join(', ')} but core has #{core.join(', ')}"
+  end
 end
 
 # Walk `uv pip list --outdated` in a uv-managed project and prompt per package.
