@@ -18,17 +18,6 @@ require 'openc3/utilities/authentication'
 require 'openc3/api/api'
 
 module OpenC3
-  saved_verbose = $VERBOSE
-  $VERBOSE = nil
-  module Script
-    private
-    # Override the prompt_for_hazardous method to always return true since there is no user to prompt
-    def prompt_for_hazardous(target_name, cmd_name, hazardous_description)
-      return true
-    end
-  end
-  $VERBOSE = saved_verbose
-
   # The queue processor runs in a single thread and processes commands via cmd_api.
   class QueueProcessor
     include Api # Provides access to api methods
@@ -58,6 +47,7 @@ module OpenC3
     def process_queued_commands
       while @state == 'RELEASE'
         begin
+          args = nil
           _queue_name, command_data, _timestamp = Store.bzpopmin("#{@scope}:#{@name}", timeout: 0.2)
           if command_data
             command = JSON.parse(command_data)
@@ -65,11 +55,6 @@ module OpenC3
             if extra.is_a?(String)
               extra = JSON.parse(extra, allow_nan: true, create_additions: true)
             end
-            # It's important to set queue: false here to avoid infinite recursion when
-            # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
-            # NOTE: cmd() via script rescues hazardous errors and calls prompt_for_hazardous()
-            # but we've overridden it to always return true and go straight to cmd_no_hazardous_check()
-
             # Support both new format (target_name, cmd_name, cmd_params) and legacy format (command string)
             if command['target_name'] && command['cmd_name']
               # New format: use 3-parameter cmd() method
@@ -78,18 +63,34 @@ module OpenC3
               else
                 cmd_params = {}
               end
-              validate = command.key?('validate') ? command['validate'] : true
-              timeout = command['timeout']
-              # Pass queue_username so Command History is attributed to the original
-              # author rather than the queue microservice name
-              cmd(command['target_name'], command['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command['username'], extra: extra, scope: @scope)
+              args = [command['target_name'], command['cmd_name'], cmd_params]
             elsif command['value']
               # Legacy format: use single string parameter for backwards compatibility
-              validate = command.key?('validate') ? command['validate'] : true
-              timeout = command['timeout']
-              cmd(command['value'], queue: false, validate: validate, timeout: timeout, queue_username: command['username'], extra: extra, scope: @scope)
+              args = [command['value']]
             else
               @logger.error "QueueProcessor: Invalid command format, missing required fields"
+            end
+          end
+          if args
+            # It's important to set queue: false here to avoid infinite recursion when
+            # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue.
+            # Pass queue_username so Command History is attributed to the original
+            # author rather than the queue microservice name.
+            kwargs = {
+              queue: false,
+              validate: command.key?('validate') ? command['validate'] : true,
+              timeout: command['timeout'],
+              queue_username: command['username'],
+              extra: extra,
+              scope: @scope
+            }
+            begin
+              cmd(*args, **kwargs)
+            rescue HazardousError
+              # Releasing the queue approves its commands and there is no user to prompt,
+              # so resend hazardous commands without the hazardous check. This matches
+              # executing a single command in QueuesController#exec_command.
+              cmd_no_hazardous_check(*args, **kwargs)
             end
           end
         rescue StandardError => e

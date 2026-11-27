@@ -253,6 +253,47 @@ module OpenC3
         expect(processor).not_to have_received(:cmd)
       end
 
+      it 'resends hazardous commands without the hazardous check' do
+        # Releasing the queue is the approval, so a HazardousError must not drop the command
+        allow(processor).to receive(:cmd).and_raise(HazardousError.new)
+        allow(processor).to receive(:cmd_no_hazardous_check)
+        call_count = 0
+        allow(Store).to receive(:bzpopmin) do
+          call_count += 1
+          case call_count
+          when 1
+            ["#{scope}:QUEUE", command1.to_json, 0]
+          when 2
+            ["#{scope}:QUEUE", command3_new_format.to_json, 0]
+          else
+            processor.state = 'HOLD'
+            nil
+          end
+        end
+        expect(logger).not_to receive(:error)
+
+        processor.process_queued_commands
+
+        expect(processor).to have_received(:cmd_no_hazardous_check)
+          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user', extra: nil)
+        expect(processor).to have_received(:cmd_no_hazardous_check)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true,
+            queue_username: 'test_user', extra: { 'flow_uuid' => '1234-5678' })
+      end
+
+      it 'does not resend non-hazardous commands without the hazardous check' do
+        allow(processor).to receive(:cmd_no_hazardous_check)
+        allow(Store).to receive(:bzpopmin) do
+          processor.state = 'HOLD' if processor.state == 'RELEASE'
+          ["#{scope}:QUEUE", command1.to_json, 0]
+        end
+
+        processor.process_queued_commands
+
+        expect(processor).to have_received(:cmd).once
+        expect(processor).not_to have_received(:cmd_no_hazardous_check)
+      end
+
       it 'handles errors and continues processing when cmd fails' do
         allow(Store).to receive(:bzpopmin) do
           processor.state = 'HOLD' if processor.state == 'RELEASE'
