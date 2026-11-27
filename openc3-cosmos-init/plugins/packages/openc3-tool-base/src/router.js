@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -34,10 +34,11 @@ const getFirstTool = async () => {
   const { data } = await Api.get('/openc3-api/tools/all', {
     params: { scope: 'DEFAULT' },
   })
-  const [_, firstTool] = Object.entries(data).find(([name, tool]) => {
+  // Undefined when no tool but Admin is shown (e.g. a plugin install failed),
+  // which sends the guard to DEFAULT_TOOL_URL
+  return Object.entries(data).find(([name, tool]) => {
     return name !== 'Admin' && tool.shown
-  })
-  return firstTool
+  })?.[1]
 }
 
 const timeout = (ms) => {
