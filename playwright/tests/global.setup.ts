@@ -13,6 +13,53 @@ import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
 import { saveAuthState } from './fixture'
 import { Utilities } from '../utilities'
 
+// JSON-RPC call to the cmd-tlm-api as the user signed in on this page
+async function api(page: Page, method: string, params: any[] = []) {
+  return await page.evaluate(
+    async ({ method, params }) => {
+      const response = await fetch('/openc3-api/api', {
+        method: 'POST',
+        headers: {
+          Authorization: localStorage.openc3Token,
+          'Content-Type': 'application/json-rpc',
+          manual: 'true',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method,
+          params,
+          id: 1,
+          keyword_params: { scope: 'DEFAULT' },
+        }),
+      })
+      return (await response.json()).result
+    },
+    { method, params },
+  )
+}
+
+// Give the signed-in user an offline access token (Enterprise only). Tools that
+// run things on the user's behalf (Notebooks, Script Runner, Autonomic,
+// Calendar, Command Queue, ...) call ensure_offline_access() on load, and the
+// first time a user has none it redirects through Keycloak to get one, which
+// reloads the tool. On a fresh stack that reload landed in the middle of
+// whichever spec first opened such a tool, detaching whatever it was clicking.
+// Do the same round trip here, once per user, so specs never see it.
+async function ensureOfflineAccess(page: Page) {
+  if (!(await api(page, 'offline_access_needed'))) return
+  // Same steps as OpenC3Api.ensure_offline_access: getOfflineAccess() logs in
+  // again with the offline_access scope and auth.js stores the result in
+  // localStorage.openc3OfflineToken when Keycloak redirects back here.
+  await page.evaluate(() => (window as any).OpenC3Auth.getOfflineAccess())
+  await page.waitForFunction(() => !!localStorage.openc3OfflineToken, null, {
+    timeout: 30000,
+  })
+  const token = await page.evaluate(() => localStorage.openc3OfflineToken)
+  await api(page, 'set_offline_access', [token])
+  await page.evaluate(() => delete localStorage.openc3OfflineToken)
+  expect(await api(page, 'offline_access_needed')).toBe(false)
+}
+
 // Take the demo sim targets out of QUIET mode. The demo boots quiet
 // (INST/lib/sim_inst.rb @quiet = true, INST2/lib/sim_inst.py self.quiet = True),
 // and QUIET suppresses every limits violation: temps cycle inside in-limits
@@ -103,7 +150,7 @@ async function waitForBuild(page: Page) {
   })
 }
 
-setup('global setup', async ({ page }) => {
+setup('global setup', async ({ page, browser }) => {
   // 8 minutes to build, deploy and connect: waitForTools can spend up to 3
   // minutes waiting out plugin installation before waitForBuild's own
   // 120s + 60s interface waits even start.
@@ -113,6 +160,7 @@ setup('global setup', async ({ page }) => {
     const utils = new Utilities(page)
     await utils.signIn('operator', 'operator')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
+    await ensureOfflineAccess(page)
     // Save signed-in state to 'storageState.json'.
     await saveAuthState(page.context(), STORAGE_STATE)
 
@@ -122,11 +170,25 @@ setup('global setup', async ({ page }) => {
       await page.locator('button:has-text("Dismiss")').click()
     }
 
-    // Logout and log back in as admin
-    await utils.switchUser('admin', 'admin')
-    await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
-    // Save signed-in state to 'adminStorageState.json'.
-    await saveAuthState(page.context(), ADMIN_STORAGE_STATE)
+    // Sign admin in from a separate context rather than logging operator out.
+    // Logging out ends operator's Keycloak session, so the storageState.json
+    // saved above was already dead: every operator spec started on the sign-in
+    // page, and any spec that doesn't go through the fixture's re-login (e.g.
+    // enterprise/tool-load) failed outright.
+    const adminContext = await browser.newContext()
+    try {
+      const adminPage = await adminContext.newPage()
+      await adminPage.goto('/tools/cmdtlmserver')
+      await new Utilities(adminPage).signIn('admin', 'admin')
+      await expect(
+        adminPage.locator('nav:has-text("CmdTlmServer")'),
+      ).toBeVisible()
+      await ensureOfflineAccess(adminPage)
+      // Save signed-in state to 'adminStorageState.json'.
+      await saveAuthState(adminContext, ADMIN_STORAGE_STATE)
+    } finally {
+      await adminContext.close()
+    }
   } else {
     // Wait for the nav bar to populate
     for (let i = 0; i < 10; i++) {
