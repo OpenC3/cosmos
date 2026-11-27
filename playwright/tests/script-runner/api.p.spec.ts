@@ -184,20 +184,29 @@ test('test python calendar apis', async ({ page, utils }) => {
 // INST HEALTH_STATUS ZERO directly. The procedures check the PARTIAL and
 // DISABLED rollups and cascade: false. They wait out the API's 10s packet
 // cache after each change so allow longer than runScript does.
-for (const [language, filename] of [
-  ['ruby', 'limits_groups.rb'],
-  ['python', 'limits_groups.py'],
-]) {
-  test(`test ${language} limits group apis`, async ({ page, utils }) => {
-    test.setTimeout(4 * 60 * 1000)
-    await openFile(page, utils, filename)
-    await page.locator('[data-test=start-button]').click()
-    await expect(page.locator('[data-test=state] input')).toHaveValue(
-      'completed',
-      { timeout: 3 * 60 * 1000 },
-    )
-  })
-}
+test.describe('limits group apis', () => {
+  // Both procedures enable and disable SYSTEM PAYLOAD with cascade, which also
+  // changes the INST and INST2 groups nested in it. Run in parallel, one
+  // script's cascade undid the other's disabled group mid-check (e.g. the
+  // Python finally re-enabled INST TEMPS while the Ruby script waited for INST
+  // PAYLOAD_ENABLED to be PARTIAL), so run them one after the other.
+  test.describe.configure({ mode: 'default' })
+
+  for (const [language, filename] of [
+    ['ruby', 'limits_groups.rb'],
+    ['python', 'limits_groups.py'],
+  ]) {
+    test(`test ${language} limits group apis`, async ({ page, utils }) => {
+      test.setTimeout(4 * 60 * 1000)
+      await openFile(page, utils, filename)
+      await page.locator('[data-test=start-button]').click()
+      await expect(page.locator('[data-test=state] input')).toHaveValue(
+        'completed',
+        { timeout: 3 * 60 * 1000 },
+      )
+    })
+  }
+})
 
 test('test ruby stash apis', async ({ page, utils }) => {
   await runScript(page, utils, 'stash.rb')
