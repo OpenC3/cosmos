@@ -85,8 +85,10 @@ test('shows everything for a query of only spaces', async ({ page, utils }) => {
   await expect(
     page.getByRole('option', { name: 'HEALTH_STATUS', exact: true }),
   ).toBeVisible()
+  // The menu is a virtual list that only renders the rows near the top, so
+  // check a packet that sorts near the start rather than one further down
   await expect(
-    page.getByRole('option', { name: 'MECH', exact: true }),
+    page.getByRole('option', { name: 'ADCS', exact: true }),
   ).toBeVisible()
 })
 
