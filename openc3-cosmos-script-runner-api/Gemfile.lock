@@ -16,7 +16,7 @@ PATH
       ffi (~> 1.15)
       fiddle (~> 1.1)
       hiredis-client (~> 0.22)
-      json (~> 2.14)
+      json (>= 2.14, < 4.0)
       jsonpath (~> 1.1)
       listen (~> 3.9)
       matrix (~> 0.4)
@@ -248,7 +248,7 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     jmespath (1.6.2)
-    json (2.21.2)
+    json (3.1.0)
     jsonpath (1.1.5)
       multi_json
     listen (3.10.1)
