@@ -20,7 +20,7 @@ When you install a plugin, the microservices for its targets and interfaces all 
 
 ![COSMOS Enterprise Architecture](/img/enterprise-architecture.svg)
 
-COSMOS Enterprise extends Core with additional services and is optionally deployed on a Kubernetes cluster using **Helm** charts as shown above. The core services (cmd-tlm-api, script-runner-api, traefik, init, operator) remain the same and are deployed by the **openc3** chart. Data services (tsdb, buckets, redis, redis-ephemeral) are deployed by a separate **openc3-db** chart. Enterprise adds **Keycloak** for full identity and access management with role-based permissions, backed by a **PostgreSQL** database. A **Grafana** instance and **metrics** collector provide system monitoring and observability dashboards. The **COSMOS NFS** chart provides shared network file storage across the cluster.
+COSMOS Enterprise extends Core with additional services and is optionally deployed on a Kubernetes cluster using **Helm** charts as shown above. The core services (cmd-tlm-api, script-runner-api, traefik, init, operator) remain the same and are deployed by the **openc3** chart. Data services (tsdb, buckets, redis, redis-ephemeral) are deployed by a separate **openc3-db** chart. Enterprise adds **Keycloak** for full identity and access management with role-based permissions, backed by a **PostgreSQL** database. Instead of deploying the bundled Keycloak and PostgreSQL, several COSMOS Enterprise installations can share one standalone Keycloak for single sign-on (see [Multiple Enterprise Instances](/docs/guides/multiple-enterprise-instances)). A **Grafana** instance and **metrics** collector provide system monitoring and observability dashboards. The **COSMOS NFS** chart provides shared network file storage across the cluster.
 
 In Kubernetes, the Helm `operator.shards` value chooses how plugin microservices run. Most deployments should use the default of `0`.
 
@@ -195,6 +195,8 @@ QuestDB tables are partitioned by day, so individual partitions can be detached 
 ### Keycloak (Enterprise)
 
 [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) uses [Keycloak](https://www.keycloak.org/) as its Single Sign-On (SSO) solution. Keycloak is an open-source Identity and Access Management system that provides authentication, authorization, and user federation capabilities. Keycloak implements the OAuth 2.0 and OpenID Connect protocols and issues several types of tokens to manage user sessions.
+
+Each COSMOS Enterprise installation deploys its own Keycloak by default. If you run more than one installation, you can point them all at one standalone Keycloak instead, so users have a single account and log in once for every installation, and you never have to migrate users between them. See [Shared Keycloak for Single Sign-On](/docs/guides/multiple-enterprise-instances#shared-keycloak-for-single-sign-on).
 
 #### Access Token
 

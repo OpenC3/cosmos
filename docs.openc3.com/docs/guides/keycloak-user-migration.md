@@ -7,6 +7,10 @@ sidebar_custom_props:
 
 This guide describes how to migrate users from one Keycloak instance to another. It applies when standing up a new COSMOS Enterprise deployment and you need to bring existing users over from a prior Keycloak.
 
+:::tip[Avoid migrations with a shared Keycloak]
+If you run more than one COSMOS Enterprise installation, consider pointing them all at one standalone Keycloak instead of giving each its own. Users then have one account for every installation, and adding or rebuilding an installation doesn't require migrating users. See [Shared Keycloak for Single Sign-On](/docs/guides/multiple-enterprise-instances#shared-keycloak-for-single-sign-on). You can use this guide once to move existing users into the shared Keycloak.
+:::
+
 The process has two parts:
 
 1. Export the realm (including users) from the old Keycloak.
