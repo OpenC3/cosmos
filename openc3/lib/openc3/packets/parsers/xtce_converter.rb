@@ -154,17 +154,16 @@ module OpenC3
       targets.each do |target_name|
         next if target_name == 'UNKNOWN'
 
+        # Check before replacing an existing export or combining incompatible definitions.
+        get_unique(telemetry[target_name]) if telemetry[target_name]
+        command_argument_types(commands[target_name]) if commands[target_name]
+
         # Reverse order of packets for the target so things are expected (reverse) order for xtce
         XtceParser.reverse_packet_order(target_name, commands)
         XtceParser.reverse_packet_order(target_name, telemetry)
 
         FileUtils.mkdir_p(File.join(output_dir, target_name, 'cmd_tlm'))
         filename = File.join(output_dir, target_name, 'cmd_tlm', target_name.downcase + '.xtce')
-        begin
-          File.delete(filename)
-        rescue
-          # Doesn't exist
-        end
 
         # Create the xtce file for this target
         builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
@@ -332,12 +331,11 @@ module OpenC3
             end
           end
         end
-        xml['xtce'].ArgumentTypeSet do
-          commands[target_name].each do |packet_name, packet|
-            packet.items.each do |arg_name, arg|
-              next if arg.data_type == :DERIVED
-              next if unique_id_items.key?(arg_name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
-              to_xtce_type(arg, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
+        argument_types = command_argument_types(commands[target_name])
+        unless argument_types.empty?
+          xml['xtce'].ArgumentTypeSet do
+            argument_types.each_value do |arg, prefix|
+              to_xtce_type(arg, 'Argument', xml, prefix: prefix)
             end
           end
         end
@@ -459,20 +457,72 @@ module OpenC3
       initial_value
     end
 
+    def parameter_signature(item, param_or_arg: 'Parameter', prefix: '', normalize_byte_order: false)
+      builder = Nokogiri::XML::Builder.new do |xml|
+        xml['xtce'].public_send(param_or_arg + 'TypeSet', 'xmlns:xtce' => XTCE_1_2_NAMESPACE) do
+          to_xtce_type(item, param_or_arg, xml, prefix: prefix)
+        end
+      end
+      builder.doc.xpath('//@shortDescription').remove
+      builder.doc.xpath('//*[local-name()="LongDescription"]').remove
+      if normalize_byte_order
+        builder.doc.xpath('//*[local-name()="IntegerDataEncoding"]/@byteOrder').remove
+      elsif [:INT, :UINT].include?(item.data_type) && item.bit_size == 8 && item.endianness == :LITTLE_ENDIAN
+        # Eight-bit enumerations omit byteOrder when emitted. A shared type
+        # containing an unaligned field must still compare the source order.
+        builder.doc.xpath('//*[local-name()="IntegerDataEncoding"]').each do |encoding|
+          encoding['byteOrder'] = 'leastSignificantByteFirst'
+        end
+      end
+      # Alarm bounds are xs:double. Normalize only the comparison document;
+      # to_xtce_type already rejects integer bounds that double cannot preserve.
+      builder.doc.xpath('//*[local-name()="StaticAlarmRanges"]/*/@*').each do |attribute|
+        value = Float(attribute.value)
+        attribute.value = (value.zero? ? 0.0 : value).to_s
+      end
+      builder.doc.root.canonicalize
+    end
+
+    def byte_order_independent?(items)
+      # Normalize together: an unaligned field constrains the shared wire type.
+      items.all? do |item|
+        [:INT, :UINT].include?(item.data_type) && item.bit_size == 8 && (item.bit_offset % 8).zero?
+      end
+    end
+
+    def command_id_type(item)
+      # Each command carries its own ID constant in RestrictionCriteria. The
+      # shared wire type must not restrict every command to the first constant.
+      type_item = item.clone
+      type_item.default = nil
+      type_item.range = nil
+      type_item
+    end
+
     def get_unique(items)
       unique = {}
+      origins = {}
       items.each do |packet_name, packet|
         packet.sorted_items.each do |item|
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
+          (origins[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []) << packet_name
         end
       end
       unique.each do |item_name, unique_items|
-        if unique_items.length <= 1
-          unique[item_name] = unique_items[0]
+        # Keep legacy placeholders and time associations when every item is derived,
+        # but only compare definitions that emit a real parameter type.
+        emitted_items = unique_items.reject { |item| item.data_type == :DERIVED }
+        if emitted_items.length <= 1
+          unique[item_name] = emitted_items[0] || unique_items[0]
           next
         end
-        unique[item_name] = unique_items[0]
+        normalize_order = byte_order_independent?(emitted_items)
+        signature = parameter_signature(emitted_items[0], normalize_byte_order: normalize_order)
+        if emitted_items.drop(1).any? { |item| parameter_signature(item, normalize_byte_order: normalize_order) != signature }
+          raise "Telemetry item '#{item_name}' has conflicting XTCE definitions in packets #{origins[item_name].join(', ')}. Give these items distinct names before exporting."
+        end
+        unique[item_name] = emitted_items[0]
       end
       unique
     end
@@ -489,19 +539,47 @@ module OpenC3
 
     def get_unique_id_items(items)
       unique = {}
+      origins = {}
       items.each do |packet_name, packet|
         packet.id_items.each do |item|
           next if item.data_type == :DERIVED
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
+          (origins[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []) << packet_name
         end
       end
       unique.each do |item_name, unique_items|
-        if unique_items.length <= 1
-          unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
-          next
+        normalize_order = byte_order_independent?(unique_items)
+        signature = parameter_signature(command_id_type(unique_items[0]), normalize_byte_order: normalize_order)
+        if unique_items.drop(1).any? { |item| parameter_signature(command_id_type(item), normalize_byte_order: normalize_order) != signature }
+          raise "Command ID '#{item_name}' has conflicting XTCE definitions in commands #{origins[item_name].join(', ')}. Give these ID items distinct names before exporting."
         end
-        unique[item_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] = unique_items[0]
+        unique[item_name] = unique_items.length > 1 ? command_id_type(unique_items[0]) : unique_items[0]
+      end
+      unique
+    end
+
+    def command_argument_types(packets)
+      ids = get_unique_id_items(packets)
+      unique = {}
+      packets.each do |packet_name, packet|
+        prefix = packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_'
+        packet.items.each_value do |item|
+          next if item.data_type == :DERIVED || ids.key?(item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR))
+          name = prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
+          (unique[name] ||= []) << [item, prefix]
+        end
+      end
+      unique.each do |name, definitions|
+        if definitions.length > 1
+          normalize_order = byte_order_independent?(definitions.map(&:first))
+          first, first_prefix = definitions.first
+          signature = parameter_signature(first, param_or_arg: 'Argument', prefix: first_prefix, normalize_byte_order: normalize_order)
+          if definitions.drop(1).any? { |item, prefix| parameter_signature(item, param_or_arg: 'Argument', prefix: prefix, normalize_byte_order: normalize_order) != signature }
+            raise "Command type '#{name}' has conflicting XTCE definitions. Give these items distinct names before exporting."
+          end
+        end
+        unique[name] = definitions.first
       end
       unique
     end
@@ -619,12 +697,27 @@ module OpenC3
         if limits_set == :DEFAULT
           xml['xtce'].DefaultAlarm do
             xml['xtce'].StaticAlarmRanges do
-              xml['xtce'].WarningRange(:minInclusive => limits_values[1], :maxInclusive => limits_values[2])
-              xml['xtce'].CriticalRange(:minInclusive => limits_values[0], :maxInclusive => limits_values[3])
+              xml['xtce'].WarningRange(alarm_range_attributes(limits_values, 1, 2))
+              xml['xtce'].CriticalRange(alarm_range_attributes(limits_values, 0, 3))
             end
           end
         end
       end
+    end
+
+    def alarm_range_attributes(values, lower_index, upper_index)
+      attributes = {}
+      { minInclusive: lower_index, maxInclusive: upper_index }.each do |name, index|
+        value = values[index]
+        next if name == :minInclusive && value == -Float::INFINITY
+        next if name == :maxInclusive && value == Float::INFINITY
+        if value.is_a?(Integer) && value.to_f != value
+          raise "Integer alarm threshold #{value} cannot be represented exactly as an XTCE xs:double"
+        end
+        raise 'Non-finite XTCE alarm threshold is not supported' unless value.finite?
+        attributes[name] = value
+      end
+      attributes
     end
 
     def to_xtce_int(item, param_or_arg, xml, prefix: "")

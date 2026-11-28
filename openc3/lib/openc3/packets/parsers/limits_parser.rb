@@ -183,13 +183,20 @@ module OpenC3
       values
     end
 
+    def parse_limit(value)
+      integer = Integer(value, 10)
+      integer.abs <= 2**53 ? integer.to_f : integer
+    rescue ArgumentError
+      Float(value)
+    end
+
     def get_red_yellow_values
       params = @parser.parameters
       err = nil
-      red_low = Float(params[3]) rescue err = "red low"
-      yellow_low = Float(params[4]) rescue err = "yellow low"
-      yellow_high = Float(params[5]) rescue err = "yellow high"
-      red_high = Float(params[6]) rescue err = "red high"
+      red_low = parse_limit(params[3]) rescue err = "red low"
+      yellow_low = parse_limit(params[4]) rescue err = "yellow low"
+      yellow_high = parse_limit(params[5]) rescue err = "yellow high"
+      red_high = parse_limit(params[6]) rescue err = "red high"
       raise @parser.error("Invalid #{err} limit value. Limits can be integers or floats.", @usage) if err
 
       # Verify valid limits are specified
@@ -210,8 +217,8 @@ module OpenC3
       return [] unless params.length == 9
 
       err = nil
-      green_low = Float(params[7]) rescue err = "green low"
-      green_high = Float(params[8]) rescue err = "green high"
+      green_low = parse_limit(params[7]) rescue err = "green low"
+      green_high = parse_limit(params[8]) rescue err = "green high"
       raise @parser.error("Invalid #{err} limit value. Limits can be integers or floats.", @usage) if err
 
       if (yellow_low > green_low) or (green_low >= green_high) or (green_high > yellow_high)

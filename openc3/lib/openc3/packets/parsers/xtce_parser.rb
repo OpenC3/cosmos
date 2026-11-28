@@ -353,15 +353,17 @@ module OpenC3
         return false # Already recursed
 
       when 'StaticAlarmRanges'
+        if element['rangeForm'] && element['rangeForm'] != 'outside'
+          raise 'XTCE inside alarm ranges are not supported'
+        end
         xtce_recurse_element(element) do |block_element|
-          if block_element.name == 'WarningRange'
-            @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            @current_type.limits[1] = Float(block_element['minInclusive']) if block_element['minInclusive']
-            @current_type.limits[2] = Float(block_element['maxInclusive']) if block_element['maxInclusive']
-          elsif block_element.name == 'CriticalRange'
-            @current_type.limits ||= [0.0, 0.0, 0.0, 0.0]
-            @current_type.limits[0] = Float(block_element['minInclusive']) if block_element['minInclusive']
-            @current_type.limits[3] = Float(block_element['maxInclusive']) if block_element['maxInclusive']
+          case block_element.name
+          when 'WarningRange'
+            set_alarm_range(block_element, 1, 2)
+          when 'CriticalRange'
+            set_alarm_range(block_element, 0, 3)
+          else
+            # Continue traversing elements that do not define supported limits.
           end
           true
         end
@@ -660,6 +662,39 @@ module OpenC3
       array_num_items * bit_size
     end
 
+    def set_alarm_range(element, lower_index, upper_index)
+      @current_type.limits ||= [nil, nil, nil, nil]
+      lower = parse_alarm_bound(element, 'min')
+      upper = parse_alarm_bound(element, 'max')
+      @current_type.limits[lower_index] = lower if lower
+      @current_type.limits[upper_index] = upper if upper
+    end
+
+    def parse_alarm_bound(element, side)
+      exclusive = element["#{side}Exclusive"]
+      inclusive = element["#{side}Inclusive"]
+      return nil unless exclusive || inclusive
+
+      # XTCE FloatRangeType attributes are xs:double, even on integer parameters.
+      value = Float(exclusive || inclusive)
+      # CCSDS 660.1-G-2 4.3.2.3.7.2.1 includes equality in the named outside
+      # alarm band. Yamcs uses the opposite endpoint convention.
+      return value unless exclusive
+      raise 'Non-finite exclusive XTCE alarm bounds are not supported' unless value.finite?
+
+      # Packet readings are Integers or binary64 Floats. Choose the nearest
+      # reading beyond an exclusive alarm endpoint across both domains; next_float
+      # alone would skip integer readings when the Float spacing exceeds one.
+      float_value = value.to_f
+      if side == 'min'
+        float_value = float_value.prev_float if float_value >= value
+        [value.ceil - 1, float_value].max
+      else
+        float_value = float_value.next_float if float_value <= value
+        [value.floor + 1, float_value].min
+      end
+    end
+
     def get_data_type(type)
       data_type = nil
       case type.xtce_encoding
@@ -788,10 +823,22 @@ module OpenC3
       return unless @current_cmd_or_tlm == PacketConfig::TELEMETRY
 
       if type.limits
+        red_low = type.limits[0] || -Float::INFINITY
+        red_high = type.limits[3] || Float::INFINITY
+        yellow_low = type.limits[1] || red_low
+        yellow_high = type.limits[2] || red_high
+        unless red_low <= yellow_low && yellow_low <= yellow_high && yellow_high <= red_high
+          raise 'XTCE warning and critical alarm ranges must be nested outside ranges'
+        end
+        # Native limits check the low warning before the high critical bound.
+        if yellow_low.finite? && red_low < yellow_low && yellow_low == red_high
+          raise 'Coincident XTCE warning and critical bounds are not supported'
+        end
         item.limits.enabled = true
         values = {}
-        values[:DEFAULT] = type.limits
+        values[:DEFAULT] = [red_low, yellow_low, yellow_high, red_high]
         item.limits.values = values
+        @current_packet.update_limits_items_cache(item)
       end
     end
 
