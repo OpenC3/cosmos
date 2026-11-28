@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    openc3 (7.5.1.pre.beta0)
+    openc3 (7.6.0)
       activesupport (~> 8.0)
       argon2 (~> 2.3)
       aws-sdk-s3 (< 2)

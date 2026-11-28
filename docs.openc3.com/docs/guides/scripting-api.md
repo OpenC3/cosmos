@@ -2076,7 +2076,7 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITIN
 
 ### critical_cmd_info
 
-<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+<span class="badge badge--secondary since-heading">Since 7.6.0</span>
 
 Returns the status of the critical command along with the users who have approved it and the number of approvals required. The number of approvals required is set by the scope's Critical Cmd Approvers setting when the command is created. Each approval must come from a different user, and the user who sent the command can't approve it.
 
@@ -5225,7 +5225,7 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 
 Enables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are enabled on every group and item below it. With cascade false only the group itself and the items directly in it are enabled, and its nested groups keep their own state.
 
-The target name and cascade parameters are available since _Coming Soon_. Without a target name the group name must only be defined by one target.
+The target name and cascade parameters are available since 7.6.0. Without a target name the group name must only be defined by one target.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5283,7 +5283,7 @@ enable_limits_group("SYSTEM", "PAYLOAD", cascade: false)
 
 Disables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are disabled on every group and item below it. With cascade false only the group itself and the items directly in it are disabled, so the group is DISABLED and its parents ignore it while its nested groups keep checking limits.
 
-The target name and cascade parameters are available since _Coming Soon_. Without a target name the group name must only be defined by one target.
+The target name and cascade parameters are available since 7.6.0. Without a target name the group name must only be defined by one target.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5341,7 +5341,7 @@ disable_limits_group("SYSTEM", "PAYLOAD", cascade: false)
 
 Returns the limits groups in the system keyed by group name with their members as `[target, packet, item]` lists. A nested group appears as the LIMITS_GROUP member of the target which defines it, so a group containing the INST group THERMAL lists `["INST", "LIMITS_GROUP", "THERMAL"]`.
 
-Pass a target name (available since _Coming Soon_) to only return the groups that target defines. Without a target name, a group name which more than one target defines is keyed `TARGET__GROUP` (like `INST__THERMAL`) for each target since the name alone doesn't identify the group.
+Pass a target name (available since 7.6.0) to only return the groups that target defines. Without a target name, a group name which more than one target defines is keyed `TARGET__GROUP` (like `INST__THERMAL`) for each target since the name alone doesn't identify the group.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -7879,7 +7879,7 @@ A shared resource record is a hash with the following keys:
 
 ### get_shared_resources
 
-<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+<span class="badge badge--secondary since-heading">Since 7.6.0</span>
 
 Returns an array of the shared resources which have members in the current scope. Members in scopes you don't have system permission in are left out, but `owner` still shows which scope the resource is active in.
 
@@ -7926,7 +7926,7 @@ end
 
 ### get_shared_resource
 
-<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+<span class="badge badge--secondary since-heading">Since 7.6.0</span>
 
 Returns the shared resource record or nil / None if it doesn't exist or has no members in the current scope. Members in scopes you don't have system permission in are left out.
 
@@ -7976,7 +7976,7 @@ puts resource['state'] # 'ACTIVE'
 
 ### switch_shared_resource
 
-<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+<span class="badge badge--secondary since-heading">Since 7.6.0</span>
 
 Makes a shared resource active in a scope. The microservices of the resource's interfaces, routers, and microservices in the currently active scope are stopped first, then the ones in the new scope are started. Until the switch completes the resource is not active in either scope and the record's state is RELEASING. Requires admin permission in both the new scope and the currently active scope.
 
@@ -8034,7 +8034,7 @@ switch_shared_resource("THERMAL_VAC_CHAMBER", "TEST")
 
 ### release_shared_resource
 
-<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+<span class="badge badge--secondary since-heading">Since 7.6.0</span>
 
 Releases a shared resource so it is not active in any scope. Its microservices in the currently active scope are stopped. The resource stays inactive (even if a plugin is reinstalled) until it is switched to a scope with switch_shared_resource. Requires admin permission in the current scope and the currently active scope.
 
@@ -10960,7 +10960,7 @@ delete_timeline_activity(name, start, uuid, recurring: false)
 | name      | Name of the timeline                                                                                                                                                     |
 | start     | Start time of the activity. Time / datetime instance.                                                                                                                    |
 | uuid      | UUID of the activity, or the recurring group UUID (the activity's `recurring` `uuid`) when `recurring` is true                                                           |
-| recurring | Whether to also delete every activity in the same recurring group. `start` must be the start of an occurrence that still exists. Default is false. (Since _Coming Soon_) |
+| recurring | Whether to also delete every activity in the same recurring group. `start` must be the start of an occurrence that still exists. Default is false. (Since 7.6.0) |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">

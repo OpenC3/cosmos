@@ -309,7 +309,7 @@ SHARED_RESOURCE:
     one scope at a time. The first scope to install the resource owns it. Members in other scopes are
     installed but their microservices are not started until the resource is switched to their scope with
     switch_shared_resource. Can not be used with BRIDGE. See [Shared Resources](plugins#shared-resources).
-  since: _Coming Soon_
+  since: 7.6.0
   parameters:
     - name: Shared Resource Name
       required: true

@@ -204,7 +204,7 @@ MICROSERVICE:
         The microservice only runs in the scope where the shared resource is active. In other scopes it is
         installed but not started until the resource is switched to their scope with switch_shared_resource.
         See [Shared Resources](plugins#shared-resources).
-      since: _Coming Soon_
+      since: 7.6.0
       parameters:
         - name: Shared Resource Name
           required: true

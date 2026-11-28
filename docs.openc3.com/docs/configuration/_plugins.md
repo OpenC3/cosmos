@@ -166,7 +166,7 @@ When a plugin is uninstalled, COSMOS destroys all its components in dependency o
 
 ## Shared Resources
 
-<span class="badge badge--secondary since-right">Since _Coming Soon_</span>
+<span class="badge badge--secondary since-right">Since 7.6.0</span>
 
 A shared resource is something, typically expensive hardware, that is defined in several scopes but must only be used by one scope at a time. Add the `SHARED_RESOURCE <Name>` keyword to the interfaces, routers, microservices, and targets that use it. Everything with the same shared resource name, in any scope, belongs to the same shared resource.
 

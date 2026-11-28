@@ -133,7 +133,7 @@ TARGET:
         reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives
         faster updates but increases processor utilization. Setting it to 0 disables queuing and writes
         every packet to Redis immediately. This is the decom equivalent of the interface UPDATE_INTERVAL option.
-      since: _Coming Soon_
+      since: 7.6.0
       parameters:
         - name: Interval
           required: true
@@ -178,7 +178,7 @@ TARGET:
         share one write queue that flushes at the fastest DECOM_UPDATE_INTERVAL of its
         targets. Adding or removing a target
         restarts the group's processes. Cannot be combined with TARGET_MICROSERVICE.
-      since: _Coming Soon_
+      since: 7.6.0
       parameters:
         - name: Group Name
           required: true
@@ -253,7 +253,7 @@ TARGET:
         The target's own microservices (decom, logging, cleanup) keep running in every scope so telemetry
         screens, build_cmd, inject_tlm, and historical data still work.
         See [Shared Resources](plugins#shared-resources).
-      since: _Coming Soon_
+      since: 7.6.0
       parameters:
         - name: Shared Resource Name
           required: true

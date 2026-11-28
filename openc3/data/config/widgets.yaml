@@ -143,7 +143,7 @@ Layout Widgets:
             screen opens instead of when it is first shown, so all of their items are polled
             and their graphs and other widgets run from the start. Put this SETTING directly
             after TABBOOK, before the first TABITEM.
-          since: _Coming Soon_
+          since: 7.6.0
           parameters:
             - name: Enabled
               required: true
