@@ -76,8 +76,8 @@ dev = [
     # match (just stubs-check), and every ty 0.0.x release can change which
     # diagnostics are reported.
     # Keep ruff in step with tools/generate_singleton_stubs.py.lock.
-    "ruff==0.17.5",
-    "ty==0.0.104",
+    "ruff==0.17.6",
+    "ty==0.0.108",
 ]
 # The uv release CI runs. It is never installed: the group is not in uv's
 # default-groups, so plain `uv sync` skips it. It exists so the pin sits where
@@ -85,7 +85,7 @@ dev = [
 # .github/actions/setup-uv-python's version-file. Keep OPENC3_UV_VERSION in
 # openc3-ruby/Dockerfile and Dockerfile-ubi, and the uv_build range in
 # [build-system] below, in step.
-uv = ["uv==0.13.8"]
+uv = ["uv==0.13.9"]
 
 [build-system]
 # uv builds the project itself, with no build environment or download, so the
